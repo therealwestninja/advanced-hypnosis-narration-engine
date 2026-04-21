@@ -744,25 +744,45 @@ body.in-session .footer {
   }
   .history-list { margin-top: 10px; }
   .history-item {
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 0; border-bottom: 1px solid #0f1318;
-    font-size: 0.78rem; color: var(--text-dim);
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+    display: grid; grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto; gap: 4px 8px;
+    font-size: 0.72rem; color: var(--text-dim);
   }
-  .history-item .h-date { color: var(--text-faint); min-width: 60px; }
-  .history-item .h-guide { color: var(--text); flex: 1; }
-  .history-item .h-dur { color: var(--text-faint); }
-  .history-item .h-play, .history-item .h-delete {
-    background: none; border: 1px solid var(--glass-border); color: var(--text-faint);
-    border-radius: 4px; cursor: pointer;
-    transition: all 0.2s; flex-shrink: 0; line-height: 1;
+  .history-item .h-title {
+    grid-column: 1; font-family: var(--font-display);
+    font-size: 0.82rem; font-weight: 600; color: var(--text);
+    letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .history-item .h-meta {
+    grid-column: 1; font-size: 0.68rem; color: var(--text-faint);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .history-item .h-preview {
+    grid-column: 1; margin-top: 4px;
+    border: 1px solid var(--glass-border); border-radius: 6px;
+    padding: 6px 8px; font-size: 0.62rem; line-height: 1.4;
+    color: var(--text-faint); font-style: italic;
+    max-height: 52px; overflow: hidden;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .history-item .h-actions {
+    grid-column: 2; grid-row: 1 / -1;
+    display: flex; flex-direction: column; gap: 4px;
+    align-items: center; justify-content: center;
   }
   .history-item .h-play {
-    padding: 2px 6px; font-size: 0.7rem;
+    background: none; border: 1px solid var(--glass-border); color: var(--text-dim);
+    border-radius: 8px; padding: 8px 10px; font-size: 1rem; cursor: pointer;
+    transition: all 0.2s; line-height: 1;
   }
   .history-item .h-delete {
-    padding: 1px 4px; font-size: 0.55rem; opacity: 0.4;
+    background: none; border: 1px solid var(--glass-border); color: var(--text-faint);
+    border-radius: 6px; padding: 4px 7px; font-size: 0.6rem; cursor: pointer;
+    transition: all 0.2s; line-height: 1; opacity: 0.4;
   }
-  .history-item .h-play:hover { color: var(--neon-cyan); border-color: var(--neon-cyan); box-shadow: 0 0 6px rgba(0,229,255,0.2); }
+  .history-item .h-play:hover { color: var(--neon-cyan); border-color: var(--neon-cyan); box-shadow: 0 0 8px rgba(0,229,255,0.25); }
   .history-item .h-delete:hover { color: #ff3b3b; border-color: #ff3b3b; opacity: 1; }
 
   /* ============ KEYBOARD HINT ============ */
@@ -3733,16 +3753,29 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     history.slice(0, 20).forEach((s, idx) => {
       const d = new Date(s.date);
       const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
       const mins = Math.round((s.durationSec || 0) / 60);
       const hasScript = !!(s.script && s.script.length > 20);
+      const status = s.completed ? `${mins}m` : `${mins}m · incomplete`;
+
+      // Script preview — first ~120 chars, strip markers
+      let preview = '';
+      if (hasScript) {
+        preview = s.script.replace(/===\s*\w+\s*===/gi, '').replace(/\[PAUSE\s+\d+\]/gi, '').trim();
+        preview = preview.substring(0, 120).replace(/\s+/g, ' ');
+        if (s.script.length > 120) preview += '…';
+      }
+
       const item = document.createElement('div');
       item.className = 'history-item';
       item.innerHTML = `
-        <span class="h-date">${dateStr}</span>
-        <span class="h-guide">${escapeHtml(s.guide || '—')} · ${escapeHtml(s.method || '—')}</span>
-        <span class="h-dur">${mins}m${s.completed ? '' : ' <span style="opacity:0.4;font-size:0.6rem;">incomplete</span>'}</span>
-        ${hasScript ? `<button class="h-play" data-idx="${idx}" title="Replay this session">▶</button>` : ''}
-        <button class="h-delete" data-idx="${idx}" title="Delete this entry">🗑</button>`;
+        <div class="h-title">${dateStr} ${timeStr} · ${status}</div>
+        <div class="h-meta">${escapeHtml(s.guide || '—')} · ${escapeHtml(s.method || '—')}${s.intentionText ? ' · ' + escapeHtml(s.intentionText.substring(0, 30)) : ''}</div>
+        ${preview ? `<div class="h-preview">${escapeHtml(preview)}</div>` : ''}
+        <div class="h-actions">
+          ${hasScript ? `<button class="h-play" data-idx="${idx}" title="Replay this session">▶</button>` : ''}
+          <button class="h-delete" data-idx="${idx}" title="Delete">✕</button>
+        </div>`;
       list.appendChild(item);
     });
 
@@ -5349,16 +5382,18 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   // ====================================================================
   // ONBOARDING TOUR (from Studio profile-tour.js)
   // ====================================================================
-  const TOUR_KEY = 'stillness_tour_v1';
+  const TOUR_KEY = 'stillness_tour_v2';
   const TOUR_STEPS = [
-    { icon: '🌀', title: 'Welcome to the Hypnosis Generator', body: 'This tool creates personalised AI-generated hypnosis sessions with narration, visuals, and procedural soundscapes — all running locally in your browser. This 30-second tour shows you how.' },
-    { icon: '👤', title: 'Step 1: Choose a Guide', body: 'Your guide is the voice personality that narrates the session. 25 built-in personas across four temperaments — from The Therapist (gentle, permissive) to The Dominatrix (commanding authority). Or create your own.' },
-    { icon: '🔮', title: 'Step 2: Choose a Method', body: '37 induction techniques — how trance will be induced. From gentle progressive relaxation to dramatic shock inductions. Each has a recommended visual and soundscape.' },
-    { icon: '🎯', title: 'Step 3: Set an Intention', body: 'What you want from the session. The AI crafts a technically-precise hypnotic suggestion from your rough description. 20 intention types from triggers to time distortion.' },
-    { icon: '⚙', title: 'Step 4: Configure', body: 'Fine-tune everything: 10 procedural soundscapes, 16 visual effects, voice pitch/speed/volume, and 7 HUD element toggles. Or use the quick-start presets on Step 1 to skip straight here.' },
-    { icon: '▶', title: 'Step 5: Generate & Begin', body: 'One AI call generates a complete five-phase script. Edit it, then begin a fully narrated session. Use ⚙ Settings during the session to adjust anything in real time.' },
-    { icon: '⚡', title: 'Quick-start presets', body: 'Don\'t want to configure? Use the preset cards on Step 1: Sleep, Quick Calm, Deep Focus, Demo Night, Pain Relief, or Micro Reset. One click sets everything.' },
-    { icon: '✨', title: 'You\'re ready', body: 'Pick a guide and method, or use a preset. Your first session takes about 2 minutes to set up. All your data stays on this device — nothing is sent anywhere.' },
+    { icon: '🌀', title: 'Welcome to the Hypnosis Engine', body: 'This tool creates personalised AI-generated hypnosis sessions with narration, visuals, and procedural soundscapes — all running locally in your browser. No data leaves your device. This quick tour shows you how.' },
+    { icon: '⚡', title: 'Quick-start or deep-customise', body: 'In a hurry? Use a <strong>Preset</strong> at the top of Step 1 — one click sets guide, method, intention, soundscape, and length. Or follow the 5-step wizard for full control. You can also click "I already have a script" to skip straight to the player.' },
+    { icon: '👤', title: 'Step 1 — Choose a Guide', body: '25 built-in personas across four temperaments: contemplative, showman, somatic, and authoritarian. Each has a distinct voice and therapeutic style. Create unlimited custom personas too.' },
+    { icon: '🔮', title: 'Step 2 — Choose a Method', body: '37 induction techniques from gentle progressive relaxation to dramatic shock inductions. Rapid and advanced methods unlock after 3 and 7 completed sessions — building your experience safely.' },
+    { icon: '🎯', title: 'Step 3 — Set an Intention', body: 'Describe what you want from the session. The AI crafts a precise hypnotic suggestion from your description. Add your own personal affirmations — they\'ll be woven verbatim into the script.' },
+    { icon: '⚙', title: 'Step 4 — Configure', body: '19 procedural soundscapes, 16 visual effects with live tuning sliders (speed, intensity, trail), voice controls, ducking toggle, and HUD element toggles. All settings auto-save between visits.' },
+    { icon: '▶', title: 'Step 5 — Generate & Begin', body: 'Each script phase is generated individually with live progress indicators. If a phase fails, click its red dot to retry just that one. Edit the script, fix timings if needed, then begin your session.' },
+    { icon: '📊', title: 'Your profile sidebar', body: 'The left sidebar tracks your stats, streak, activity heatmap, and full session history. Every session stores its complete script — click ▶ to replay any past session with identical settings.' },
+    { icon: '🎵', title: 'During a session', body: '<strong>Space</strong> pauses everything (voice and soundscape). <strong>Escape</strong> triggers an emergency re-alert in your guide\'s voice. Use <strong>← back to script</strong> to return and edit mid-session. The ⚙ panel lets you adjust audio and visuals live.' },
+    { icon: '✨', title: 'You\'re ready', body: 'Pick a guide and method, or tap a preset. Your first session takes about 2 minutes to set up. Backup your data anytime from the sidebar. If you need help, the <strong>I NEED HELP</strong> button has crisis resources.' },
   ];
 
   function shouldShowTour() { try { return !localStorage.getItem(TOUR_KEY); } catch { return false; } }
