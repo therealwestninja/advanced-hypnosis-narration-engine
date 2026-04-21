@@ -945,6 +945,13 @@ body.in-session .footer {
       </details>
 
       <details style="margin-top: 10px;">
+        <summary>structured programs (multi-day)</summary>
+        <div class="sublabel" style="margin-bottom:8px;">Follow a daily program. Each session builds on the last — the AI remembers your anchors and progression.</div>
+        <div id="programActivePanel"></div>
+        <div class="preset-grid" id="programGrid"></div>
+      </details>
+
+      <details style="margin-top: 10px;">
         <summary>saved scripts (load a previous session)</summary>
         <div class="library-list" id="libraryList"></div>
       </details>
@@ -1057,6 +1064,12 @@ body.in-session .footer {
       <div class="field-group">
         <label class="field-label">describe what you want</label>
         <textarea id="intentionInput" placeholder="Plain language. Be specific. e.g. 'feel a warm happy smile when I think about kittens'"></textarea>
+      </div>
+
+      <div class="field-group" id="affirmationGroup">
+        <label class="field-label">your own affirmations <span class="hint">(optional)</span></label>
+        <textarea id="userAffirmations" rows="2" placeholder="Type your own affirmations — the AI will weave them into the script. One per line. e.g.&#10;I am calm and in control&#10;My body knows how to heal"></textarea>
+        <div class="sublabel">Your exact words will appear in the deepening and work phases.</div>
       </div>
  
       <button class="btn warm full" id="craftBtn">craft hypnotic suggestion →</button>
@@ -3042,6 +3055,14 @@ REINFORCEMENT VARIANTS: ${JSON.stringify(state.craftedSuggestion.reinforcementPh
 • In WORK phase: BUILD the effect progressively
 • Include a TEST at end of WORK or start of EMERGENCE — instruct the user to attempt the "impossible" action
 ` : '';
+
+    // User-authored affirmations
+    const userAff = $('userAffirmations')?.value?.trim();
+    const affirmBlock = userAff ? `
+USER'S OWN AFFIRMATIONS (weave these exact phrases into DEEPENER and WORK phases):
+${userAff.split('\n').filter(l => l.trim()).map(l => `"${l.trim()}"`).join('\n')}
+⚠️ Use the user's exact words. Repeat each at least once.
+` : '';
  
     const instruction = `You are ${persona.name}. ${persona.systemPrompt}
  
@@ -3057,6 +3078,7 @@ ${demoBlock}
  
 SESSION THEME: "${rough || 'general trance experience'}"
 ${craftedBlock}
+${affirmBlock}
  
 ═══ PHASE STRUCTURE — write ALL five phases with markers ═══
  
@@ -3491,6 +3513,9 @@ Begin:`;
     // Warm overlay for sleep sessions (blue-light reduction)
     setSleepOverlay(state.intentionType === 'sleep');
 
+    // Media Session API — lock-screen controls for mobile
+    setMediaSession(true);
+
     // Reset post-session controls for fresh state
     const postSlider = $('postStateSlider'); if (postSlider) { postSlider.value = 5; }
     const postVal = $('postStateVal'); if (postVal) postVal.textContent = '5';
@@ -3785,6 +3810,9 @@ Begin:`;
 
     // Remove warm overlay
     setSleepOverlay(false);
+
+    // Advance structured program (non-emergency only)
+    if (!wasEmergency) advanceProgramDay();
 
     // Build post-session summary
     const mins = Math.floor(elapsed / 60), secs = elapsed % 60;
@@ -4407,6 +4435,142 @@ Begin:`;
   }
 
   // ====================================================================
+  // STRUCTURED MULTI-SESSION PROGRAMS
+  // ====================================================================
+  const PROGRAMS = [
+    { id: 'sleep-7', name: '7-Day Sleep', icon: '🌙', days: 7, desc: 'Progressive sleep improvement',
+      persona: 'therapist', method: 'progressive', intention: 'sleep', length: 'long', soundscape: 'ocean',
+      arc: ['Body scan & breath awareness', 'Staircase descent into dream space', 'Safe place construction', 'Anchor word installation', 'Deepening the anchor', 'Dream rehearsal', 'Integration & autonomous sleep'] },
+    { id: 'anxiety-14', name: '14-Day Calm', icon: '🍃', days: 14, desc: 'Systematic anxiety reduction',
+      persona: 'therapist', method: 'breath-478', intention: 'release', length: 'medium', soundscape: 'rain',
+      arc: ['Breath awareness & safety','Safe place visualization','Calm anchor installation','Body tension release','Worry containment','Trigger desensitization','Expanding calm','Social ease','Confidence layering','Automatic calm response','Stress inoculation','Resilience building','Future pacing','Integration & autonomy'] },
+    { id: 'confidence-10', name: '10-Day Confidence', icon: '🦁', days: 10, desc: 'Build unshakable self-belief',
+      persona: 'commander', method: 'staircase', intention: 'emotional', length: 'medium', soundscape: 'drone',
+      arc: ['Baseline & intention setting','Inner critic observation','Resourceful memory access','Posture & presence anchor','Voice of authority','Social confidence','Challenge reframe','Peak performance state','Identity integration','Future self embodiment'] },
+    { id: 'pain-6', name: '6-Week Pain', icon: '💊', days: 42, desc: 'Structured pain management (clinical model)',
+      persona: 'bodyworker', method: 'pain-dial', intention: 'pain', length: 'medium', soundscape: 'bowls',
+      arc: null }, // null arc = auto-generated from day number
+    { id: 'focus-7', name: '7-Day Focus', icon: '🎯', days: 7, desc: 'Deep concentration training',
+      persona: 'scientist', method: 'betty-erickson', intention: 'focus', length: 'medium', soundscape: 'brown',
+      arc: ['Attention narrowing','Distraction dismissal','Time compression','Flow state entry','Sustained immersion','Automatic focus trigger','Integration & autonomous flow'] },
+  ];
+
+  async function getActiveProgramState() {
+    return (await idbGet('stillness_program_v1')) || null;
+  }
+  async function saveActiveProgramState(ps) {
+    await idbSet('stillness_program_v1', ps);
+  }
+
+  async function renderPrograms() {
+    const grid = $('programGrid');
+    const activePanel = $('programActivePanel');
+    if (!grid) return;
+
+    const active = await getActiveProgramState();
+
+    // Show active program status
+    if (active && activePanel) {
+      const prog = PROGRAMS.find(p => p.id === active.programId);
+      if (prog) {
+        const pct = Math.round((active.currentDay / prog.days) * 100);
+        const todayFocus = prog.arc ? prog.arc[Math.min(active.currentDay, prog.arc.length - 1)] : `Day ${active.currentDay + 1}`;
+        activePanel.innerHTML = `
+          <div class="detail-panel" style="margin-bottom:12px;">
+            <div class="detail-title">${prog.icon} ${escapeHtml(prog.name)} — Day ${active.currentDay + 1} of ${prog.days}</div>
+            <div style="font-size:0.75rem;color:var(--text-dim);margin:6px 0;">Today's focus: <strong>${escapeHtml(todayFocus)}</strong></div>
+            <div class="session-progress-wrap" style="position:relative;height:4px;margin:8px 0;"><div class="session-progress-fill" style="width:${pct}%;"></div></div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button class="btn secondary" id="programContinueBtn" style="flex:1;font-size:0.82rem;">continue program →</button>
+              <button class="btn secondary" id="programQuitBtn" style="font-size:0.82rem;color:#8a5a58;">quit program</button>
+            </div>
+          </div>`;
+        $('programContinueBtn')?.addEventListener('click', () => startProgramDay(prog, active));
+        $('programQuitBtn')?.addEventListener('click', async () => {
+          if (confirm(`Quit "${prog.name}"? Your progress (Day ${active.currentDay + 1}) will be lost.`)) {
+            await idbSet('stillness_program_v1', null);
+            renderPrograms();
+          }
+        });
+      }
+    } else if (activePanel) {
+      activePanel.innerHTML = '';
+    }
+
+    // Show program cards
+    grid.innerHTML = '';
+    PROGRAMS.forEach(prog => {
+      const isActive = active?.programId === prog.id;
+      const card = document.createElement('div');
+      card.className = 'preset-card' + (isActive ? ' selected' : '');
+      card.innerHTML = `<div class="preset-icon">${prog.icon}</div><div class="preset-name">${escapeHtml(prog.name)}</div><div class="preset-desc">${prog.days} days · ${escapeHtml(prog.desc)}</div>`;
+      card.addEventListener('click', async () => {
+        if (isActive) { startProgramDay(prog, active); return; }
+        if (active) { if (!confirm('Starting a new program will replace your current one. Continue?')) return; }
+        const newState = { programId: prog.id, currentDay: 0, startedAt: Date.now(), anchors: [], completedDays: [] };
+        await saveActiveProgramState(newState);
+        renderPrograms();
+        notify.success(`Started "${prog.name}" — Day 1 of ${prog.days}.`);
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  function startProgramDay(prog, ps) {
+    // Apply program settings
+    state.selectedPersonaId = prog.persona; state.selectedMethodId = prog.method;
+    state.intentionType = prog.intention; state.length = prog.length;
+    state.soundscape = prog.soundscape; state.droneEnabled = prog.soundscape !== 'none';
+    $('intentionType').value = prog.intention;
+    $('lengthSelect').value = prog.length;
+    const ssSelect = $('soundscapeSelect'); if (ssSelect) ssSelect.value = prog.soundscape;
+
+    // Set the intention input with program context
+    const dayFocus = prog.arc ? prog.arc[Math.min(ps.currentDay, (prog.arc?.length || 1) - 1)] : `Day ${ps.currentDay + 1} of structured ${prog.name} program`;
+    const anchorContext = ps.anchors.length ? `Prior anchors: ${ps.anchors.join(', ')}. ` : '';
+    $('intentionInput').value = `${anchorContext}Day ${ps.currentDay + 1} of ${prog.days}: ${dayFocus}`;
+
+    // Store program reference for post-session advancement
+    state._activeProgram = { prog, ps };
+
+    renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
+    updateIntentionHint(); updateStepUI();
+    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: false, 5: false };
+    goToStep(4);
+    notify.success(`Day ${ps.currentDay + 1}: ${dayFocus}`);
+  }
+
+  // Advance program after successful session completion
+  async function advanceProgramDay() {
+    if (!state._activeProgram) return;
+    const { prog, ps } = state._activeProgram;
+    ps.currentDay = Math.min(ps.currentDay + 1, prog.days);
+    ps.completedDays.push(Date.now());
+    await saveActiveProgramState(ps);
+    if (ps.currentDay >= prog.days) {
+      notify.success(`🎉 Congratulations! You completed "${prog.name}".`);
+      await idbSet('stillness_program_v1', null); // Clear completed program
+    }
+    state._activeProgram = null;
+  }
+
+  // ====================================================================
+  // MEDIA SESSION API — lock-screen controls for mobile
+  // ====================================================================
+  function setMediaSession(playing) {
+    if (!('mediaSession' in navigator)) return;
+    const persona = getPersona(), method = getMethod();
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: method.name + ' — ' + (state.length),
+      artist: persona.name,
+      album: 'Stillness Generator',
+    });
+    navigator.mediaSession.setActionHandler('play', () => { if (state.paused) togglePause(); });
+    navigator.mediaSession.setActionHandler('pause', () => { if (!state.paused) togglePause(); });
+    navigator.mediaSession.setActionHandler('stop', () => emergencyEnd());
+  }
+
+  // ====================================================================
   // ACTIVITY HEATMAP (from Studio metrics-history.js)
   // ====================================================================
   async function renderHeatmap() {
@@ -4563,6 +4727,7 @@ Begin:`;
     renderMethodDetail();
     renderLibrary();
     renderPresets();
+    renderPrograms();
     renderSessionHistory();
     renderHeatmap();
     updateIntentionHint();
