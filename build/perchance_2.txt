@@ -53,7 +53,7 @@
     background: radial-gradient(ellipse, rgba(255,160,40,0.06) 0%, rgba(255,80,20,0.02) 40%, transparent 70%);
   }
   body { padding: 24px 18px 60px; position: relative; z-index: 1; }
-  .container { max-width: 720px; margin: 0 auto; position: relative; z-index: 1; }
+  .container { max-width: 850px; min-width: 600px; margin: 0 auto; position: relative; z-index: 1; }
 
   h1 {
     font-family: var(--font-display);
@@ -131,10 +131,10 @@
   .step-nav .btn-skip[hidden] { display: none !important; }
 
   /* ============ CARD GRID ============ */
-  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 5fr)); gap: 6px; }
   .card {
     background: var(--glass); border: 1px solid var(--glass-border);
-    border-radius: var(--radius); padding: 13px 15px; cursor: pointer;
+    border-radius: var(--radius); padding: 5px 15x; cursor: pointer;
     transition: all 0.25s ease; position: relative;
     display: flex; flex-direction: column; gap: 4px;
   }
@@ -636,11 +636,11 @@ body.in-session .footer {
   .heatmap-cell[data-count="4"] { background: #39d353; border-color: #39d353; }
 
   /* ============ QUICK-START PRESETS ============ */
-  .preset-grid { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+  .preset-grid { display: flex; gap: 8px; flex-wrap: wrap; margin: 5px 0; }
   .preset-card {
-    flex: 1; min-width: 120px; max-width: 180px;
+    flex: 1; min-width: 85px; max-width: 150px;
     background: var(--glass); border: 1px solid var(--glass-border);
-    border-radius: var(--radius); padding: 10px 12px; cursor: pointer;
+    border-radius: var(--radius); padding: 5px 15x; cursor: pointer;
     transition: all 0.2s; text-align: center;
   }
   .preset-card:hover { border-color: var(--accent-soft); background: rgba(0,229,255,0.04); }
@@ -848,6 +848,89 @@ body.in-session .footer {
   }
   .live-panel-overlay.open { display: block; }
 
+  /* ============ SIDEBAR PROFILE PANEL ============ */
+  .app-layout {
+    display: flex; gap: 16px; align-items: flex-start; position: relative;
+  }
+  .sidebar {
+    width: 260px; flex-shrink: 0; position: sticky; top: 16px;
+    max-height: calc(100vh - 32px); overflow-y: auto; overflow-x: hidden;
+    scrollbar-width: thin; scrollbar-color: var(--wood-light) transparent;
+  }
+  .sidebar-inner {
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 14px 12px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .sidebar-profile {
+    display: flex; align-items: center; gap: 10px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--glass-border);
+  }
+  .sidebar-avatar {
+    width: 36px; height: 36px; border-radius: 6px;
+    background: var(--wood); border: 1.5px solid var(--neon-cyan);
+    box-shadow: var(--glow-cyan);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; flex-shrink: 0;
+  }
+  .sidebar-profile-info { flex: 1; min-width: 0; }
+  .sidebar-profile-name {
+    font-family: var(--font-display); font-size: 0.85rem; font-weight: 600;
+    color: var(--text); letter-spacing: 0.04em; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .sidebar-profile-sub { font-size: 0.68rem; color: var(--text-faint); }
+  .sidebar details { margin: 0; }
+  .sidebar summary {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-dim); cursor: pointer;
+    padding: 6px 0; list-style: none;
+  }
+  .sidebar summary::before { content: '▸ '; color: var(--neon-amber); }
+  .sidebar details[open] summary::before { content: '▾ '; }
+  .sidebar summary::-webkit-details-marker { display: none; }
+  .sidebar .sidebar-stat-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.75rem; color: var(--text-dim); padding: 3px 0;
+  }
+  .sidebar .sidebar-stat-val {
+    font-weight: 600; color: var(--text); font-family: var(--font-display);
+    font-size: 0.85rem;
+  }
+  .sidebar-settings-btn {
+    width: 100%; background: var(--wood); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); padding: 8px 12px; font-size: 0.75rem;
+    color: var(--text-dim); cursor: pointer; text-align: left;
+    font-family: var(--font-body); transition: all 0.25s;
+    letter-spacing: 0.04em; margin-top: 4px;
+  }
+  .sidebar-settings-btn:hover { border-color: var(--neon-amber); color: var(--text); }
+  .sidebar-toggle {
+    display: none; position: fixed; top: 12px; left: 12px; z-index: 100;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: 6px; padding: 6px 10px; font-size: 1.1rem;
+    color: var(--neon-cyan); cursor: pointer; backdrop-filter: blur(8px);
+  }
+  .sidebar-toggle:hover { border-color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
+  .main-content { flex: 1; min-width: 0; }
+
+  @media (max-width: 740px) {
+    .app-layout { flex-direction: column; }
+    .sidebar {
+      position: fixed; top: 0; left: -280px; z-index: 200;
+      width: 270px; height: 100vh; max-height: 100vh;
+      background: var(--bg); padding: 50px 8px 16px; transition: left 0.3s ease;
+      border-right: 1px solid var(--glass-border);
+    }
+    .sidebar.open { left: 0; }
+    .sidebar-toggle { display: block; }
+    .sidebar-overlay {
+      position: fixed; inset: 0; z-index: 199;
+      background: rgba(0,0,0,0.5); display: none;
+    }
+    .sidebar-overlay.open { display: block; }
+  }
+
   /* ============ REDUCED MOTION ============ */
   @media (prefers-reduced-motion: reduce) {
     .fixation-dot.pulse { animation: none; }
@@ -859,8 +942,76 @@ body.in-session .footer {
 </style>
  
 <div class="container">
-  <h1>· hypnosis script generator · </h1>
-  <p>An <i>Ai-driven</i> free hypnosis experience generator. Generate scripts<br> with automatically narrated voiceovers and fully guided sessions.</p>
+  <h1>· advanced hypnosis narration engine · </h1>
+  <p>"The" <i>single-most</i> dangerous hypnosys app on the planet, and it's free.<br>Generate scripts with automatically narrated voiceovers and fully guided sessions.</p>
+
+  <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-inner">
+        <div class="sidebar-profile">
+          <div class="sidebar-avatar">🧠</div>
+          <div class="sidebar-profile-info">
+            <div class="sidebar-profile-name">Practitioner</div>
+            <div class="sidebar-profile-sub" id="sidebarStreak">—</div>
+          </div>
+        </div>
+        <details open>
+          <summary>stats</summary>
+          <div id="sidebarStats"></div>
+          <div id="heatmapWrap" style="margin-top:6px;"></div>
+        </details>
+        <details>
+          <summary>presets</summary>
+          <div class="preset-grid" id="presetGrid"></div>
+        </details>
+        <details>
+          <summary>programs</summary>
+          <div id="programActivePanel"></div>
+          <div class="preset-grid" id="programGrid"></div>
+        </details>
+        <details>
+          <summary>saved scripts</summary>
+          <div class="library-list" id="libraryList"></div>
+        </details>
+        <details>
+          <summary>history</summary>
+          <div id="sessionStatsPanel"></div>
+          <div class="history-list" id="sessionHistoryList"></div>
+        </details>
+        <details>
+          <summary>backup</summary>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <button class="btn secondary" id="backupBtn" style="flex:1;font-size:0.72rem;padding:6px;">export</button>
+            <label class="btn secondary" style="flex:1;font-size:0.72rem;padding:6px;text-align:center;cursor:pointer;">import<input type="file" id="restoreInput" accept=".json" style="display:none;"></label>
+          </div>
+        </details>
+        <details>
+          <summary>self-assessment</summary>
+          <div style="padding:4px 0;">
+            <div class="sublabel" style="margin-bottom:6px;font-size:0.68rem;">Quick suggestibility self-test.</div>
+            <div style="margin-bottom:6px;">
+              <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:3px;">1. Eye-roll (white showing)</div>
+              <select id="hipQ1" style="font-size:0.78rem;padding:6px 8px;"><option value="0">None / very little</option><option value="1" selected>Slight white visible</option><option value="2">Moderate white</option><option value="3">Mostly white — strong roll</option></select>
+            </div>
+            <div style="margin-bottom:6px;">
+              <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:3px;">2. Absorption (lost in books/films)</div>
+              <select id="hipQ2" style="font-size:0.78rem;padding:6px 8px;"><option value="0">Rarely</option><option value="1" selected>Sometimes</option><option value="2">Often</option><option value="3">Very often — deep immersion</option></select>
+            </div>
+            <div style="margin-bottom:6px;">
+              <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:3px;">3. Imagery vividness</div>
+              <select id="hipQ3" style="font-size:0.78rem;padding:6px 8px;"><option value="0">Intellectual only</option><option value="1" selected>Mild sensation</option><option value="2">Moderate — can feel it</option><option value="3">Strong — vivid response</option></select>
+            </div>
+            <button class="btn secondary" id="hipAssessBtn" style="font-size:0.72rem;width:100%;padding:6px;">assess suggestibility</button>
+            <div id="hipResult" style="margin-top:6px;font-size:0.72rem;"></div>
+          </div>
+        </details>
+        <button class="sidebar-settings-btn" id="sidebarSettingsBtn">⚙ Settings</button>
+      </div>
+    </aside>
+    <div class="main-content">
  
   <!-- ============ WIZARD ============ -->
   <div id="setup-wizard">
@@ -915,67 +1066,6 @@ body.in-session .footer {
       <div class="card-grid" id="personaGrid"></div>
       <div class="detail-panel" id="personaDetail"></div>
 
-      <details style="margin-top: 20px;" open>
-        <summary>quick-start presets</summary>
-        <div class="sublabel" style="margin-bottom:6px;">One click — sets guide, method, intention, soundscape, and length.</div>
-        <div class="preset-grid" id="presetGrid"></div>
-      </details>
-
-      <details style="margin-top: 10px;">
-        <summary>structured programs (multi-day)</summary>
-        <div class="sublabel" style="margin-bottom:8px;">Follow a daily program. Each session builds on the last — the AI remembers your anchors and progression.</div>
-        <div id="programActivePanel"></div>
-        <div class="preset-grid" id="programGrid"></div>
-      </details>
-
-      <details style="margin-top: 10px;">
-        <summary>saved scripts (load a previous session)</summary>
-        <div class="library-list" id="libraryList"></div>
-      </details>
-
-      <details style="margin-top: 10px;">
-        <summary>session history & stats</summary>
-        <div id="sessionStatsPanel"></div>
-        <div id="heatmapWrap" style="margin-top:10px;"></div>
-        <div class="history-list" id="sessionHistoryList"></div>
-      </details>
-
-      <details style="margin-top: 10px;">
-        <summary>backup & restore</summary>
-        <div style="padding: 8px 0;">
-          <div class="sublabel" style="margin-bottom: 10px;">Export all your personas, saved scripts, and session history as a single JSON file. Import to restore on another device or browser.</div>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button class="btn secondary" id="backupBtn" style="flex:1; font-size:0.82rem; padding:8px 12px;">↓ export backup</button>
-            <label class="btn secondary" style="flex:1; font-size:0.82rem; padding:8px 12px; text-align:center; cursor:pointer;">
-              ↑ import backup
-              <input type="file" id="restoreInput" accept=".json" style="display:none;">
-            </label>
-          </div>
-        </div>
-      </details>
-
-      <details style="margin-top: 10px;">
-        <summary>hypnotizability self-assessment</summary>
-        <div style="padding: 8px 0;">
-          <div class="sublabel" style="margin-bottom: 12px;">A quick self-assessment inspired by the Spiegel Eye-Roll Sign and Stanford scales. Not a clinical test — just helps suggest which methods might work best for you.</div>
-          <div id="hipQuiz">
-            <div class="field" style="margin-bottom:12px;">
-              <div class="field-label-sm" style="margin-bottom:6px;">1. Roll your eyes upward as far as you can while slowly closing your eyelids. How much white showed?</div>
-              <select id="hipQ1" style="font-size:0.85rem;"><option value="0">None — couldn't see any white</option><option value="1">A sliver of white</option><option value="2" selected>A noticeable band of white</option><option value="3">A lot of white — most of the iris hidden</option></select>
-            </div>
-            <div class="field" style="margin-bottom:12px;">
-              <div class="field-label-sm" style="margin-bottom:6px;">2. Have you ever been so absorbed in a book, film, or daydream that you lost track of time or didn't hear someone calling you?</div>
-              <select id="hipQ2" style="font-size:0.85rem;"><option value="0">Rarely or never</option><option value="1" selected>Sometimes</option><option value="2">Often</option><option value="3">Very frequently — I get deeply absorbed</option></select>
-            </div>
-            <div class="field" style="margin-bottom:12px;">
-              <div class="field-label-sm" style="margin-bottom:6px;">3. When someone describes a vivid scene — a lemon being cut, a sunny beach — how strongly do you feel it physically?</div>
-              <select id="hipQ3" style="font-size:0.85rem;"><option value="0">I understand it intellectually but don't feel much</option><option value="1" selected>Mild sensation — a faint impression</option><option value="2">Moderate — I can taste/feel/see something</option><option value="3">Strong — vivid physical response</option></select>
-            </div>
-            <button class="btn secondary full" id="hipAssessBtn" style="font-size:0.85rem;">assess my suggestibility</button>
-            <div id="hipResult" style="margin-top:10px;"></div>
-          </div>
-        </div>
-      </details>
     </div>
     <div class="step-content" data-step="2">
       <div class="step-header">
@@ -1213,11 +1303,6 @@ body.in-session .footer {
           <div class="toggle-row"><label for="vizTrail">Trail / Fade</label><input type="range" id="vizTrail" min="1" max="50" value="12"><span class="hint" id="vizTrailVal" style="min-width:32px;text-align:right;">0.12</span></div>
           <div class="sublabel">Adjustments apply live to the current effect and are saved between sessions.</div>
         </div>
-        <div style="margin-top:10px;">
-          <div class="toggle-row"><label for="vizSpeedSlider">Effect speed</label><input type="range" id="vizSpeedSlider" min="20" max="200" value="100"><span class="hint" id="vizSpeedVal" style="min-width:32px;text-align:right;">1.0×</span></div>
-          <div class="toggle-row"><label for="vizBrightnessSlider">Effect brightness</label><input type="range" id="vizBrightnessSlider" min="20" max="100" value="100"><span class="hint" id="vizBrightnessVal" style="min-width:32px;text-align:right;">100%</span></div>
-          <div class="toggle-row"><label for="vizHueSlider">Hue shift</label><input type="range" id="vizHueSlider" min="0" max="360" value="0"><span class="hint" id="vizHueVal" style="min-width:32px;text-align:right;">0°</span></div>
-        </div>
       </div>
 
       <!-- ── HUD ELEMENTS ── -->
@@ -1298,6 +1383,8 @@ body.in-session .footer {
       <button class="btn-next" id="btnNext">next →</button>
     </div>
   <div class="footer"><span>© 2026 therealwestninja.</span> · <a href="https://www.deviantart.com/west-ninja" target="_blank" rel="noopener">DeviantArt</a> · <a href="https://github.com/therealwestninja" target="_blank" rel="noopener">GitHub</a> · <a href="#" id="crisisLink" style="color:var(--accent-green); text-shadow: 0 0 6px rgba(57,255,142,0.2);">crisis resources</a></div>
+    </div><!-- /main-content -->
+  </div><!-- /app-layout -->
   </div>
  
   <!-- SESSION SCREEN -->
@@ -1917,6 +2004,8 @@ body.in-session .footer {
           vizOverride: state.vizOverride,
           vizSettings: state.vizSettings,
           hud: state.hud,
+          personaFilter: state.personaFilter,
+          methodFilter: state.methodFilter,
           intentionInput: $('intentionInput')?.value || '',
           userAffirmations: $('userAffirmations')?.value || '',
           voiceName: $('voiceSelect')?.value || '',
@@ -1954,6 +2043,9 @@ body.in-session .footer {
       // Restore HUD toggle checkboxes
       const hudMap = { fixationDot:'cfgFixationDot', textDisplay:'cfgTextDisplay', phaseDots:'cfgPhaseDots', phaseLabel:'cfgPhaseLabel', progressBar:'cfgProgressBar', sessionTime:'cfgSessionTime', labels:'cfgLabels' };
       for (const [key, elId] of Object.entries(hudMap)) { const el = $(elId); if (el) el.checked = state.hud[key] !== false; }
+      // Restore filter tabs
+      if (s.personaFilter) state.personaFilter = s.personaFilter;
+      if (s.methodFilter) state.methodFilter = s.methodFilter;
       if (s.intentionInput) { const el = $('intentionInput'); if (el) el.value = s.intentionInput; }
       if (s.userAffirmations) { const el = $('userAffirmations'); if (el) el.value = s.userAffirmations; }
       if (s.voiceName) state._savedVoiceName = s.voiceName;
@@ -3518,58 +3610,81 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
   /**
    * Fix [PAUSE N] timings in a script based on content heuristics.
-   * - Removes existing pauses and recalculates from scratch
-   * - Inserts pauses between sentences based on length and content
-   * - Longer pauses after directives, shorter after short phrases
-   * - Preserves phase markers
+   * - Removes existing pauses and recalculates
+   * - Breaks sentences >30 words at clause boundaries
+   * - Combines fragments <3 words with adjacent sentences
+   * - Inserts pauses based on content type and length
    */
   function fixScriptTimings(scriptText) {
-    // Split by phase markers, process each phase separately
     const phaseRx = /(===\s*\w+\s*===)/gi;
     const parts = scriptText.split(phaseRx);
 
-    const processed = parts.map((part, idx) => {
-      // Phase markers pass through unchanged
-      if (phaseRx.test(part)) { phaseRx.lastIndex = 0; return part; }
+    const processed = parts.map((part) => {
+      if (/(===\s*\w+\s*===)/i.test(part)) return part;
 
-      // Strip existing pauses
       let clean = part.replace(/\[PAUSE\s+\d+\]/gi, '').trim();
       if (!clean) return part;
 
-      // Split into sentences
-      const sentences = clean.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 2);
-      if (sentences.length === 0) return clean;
+      // Split into raw sentences
+      let sentences = clean.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
 
+      // Break long sentences (>30 words) at clause boundaries
+      const broken = [];
+      for (const sent of sentences) {
+        const words = sent.split(/\s+/).length;
+        if (words > 30) {
+          // Split at clause boundaries: semicolons, em-dashes, commas after 12+ words
+          const clauses = sent.split(/(?<=[;—–])\s+|(?<=,)\s+(?=\w)/);
+          let buffer = '';
+          for (const clause of clauses) {
+            const combined = buffer ? buffer + ' ' + clause : clause;
+            if (combined.split(/\s+/).length > 22 && buffer) {
+              broken.push(buffer.trim());
+              buffer = clause;
+            } else {
+              buffer = combined;
+            }
+          }
+          if (buffer.trim()) broken.push(buffer.trim());
+        } else {
+          broken.push(sent);
+        }
+      }
+      sentences = broken;
+
+      // Combine tiny fragments (<3 words) with the previous sentence
+      const combined = [];
+      for (const sent of sentences) {
+        const words = sent.split(/\s+/).length;
+        if (words < 3 && combined.length > 0) {
+          combined[combined.length - 1] += ' ' + sent;
+        } else {
+          combined.push(sent);
+        }
+      }
+      sentences = combined;
+
+      // Build result with calculated pauses
       const result = [];
       for (let i = 0; i < sentences.length; i++) {
         const sent = sentences[i].trim();
         result.push(sent);
 
-        // Don't add pause after the very last sentence in the phase
         if (i === sentences.length - 1) continue;
 
-        // Calculate pause duration based on content
         const words = sent.split(/\s+/).length;
         const isDirective = DIRECTIVE_RX.test(sent);
         const hasEllipsis = ELLIPSIS_RX.test(sent);
         const isQuestion = sent.endsWith('?');
-        const isShort = words <= 5;
-        const isLong = words >= 20;
 
         let pause;
-        if (isDirective) {
-          pause = isShort ? 5 : 4; // Directives need time to follow
-        } else if (hasEllipsis) {
-          pause = 3; // Trailing off = dramatic pause
-        } else if (isQuestion) {
-          pause = 3; // Let the question land
-        } else if (isShort) {
-          pause = 2; // Quick statements flow faster
-        } else if (isLong) {
-          pause = 3; // Long sentences need a breath after
-        } else {
-          pause = 2; // Default inter-sentence pause
-        }
+        if (isDirective && words <= 8) pause = 5;
+        else if (isDirective) pause = 4;
+        else if (hasEllipsis) pause = 3;
+        else if (isQuestion) pause = 3;
+        else if (words <= 5) pause = 2;
+        else if (words >= 20) pause = 3;
+        else pause = 2;
 
         result.push(`[PAUSE ${pause}]`);
       }
@@ -3578,10 +3693,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     });
 
     let fixed = processed.join('\n');
-
-    // Add pause after each phase marker (if not already followed by one)
     fixed = fixed.replace(/(===\s*\w+\s*===)\s*(?!\[PAUSE)/gi, '$1\n[PAUSE 4]\n');
-
     return fixed;
   }
 
@@ -3728,6 +3840,39 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       item.innerHTML = `<span class="h-date">${dateStr}</span><span class="h-guide">${escapeHtml(s.guide || '—')} · ${escapeHtml(s.method || '—')}</span><span class="h-dur">${mins}m${s.completed ? '' : ' ✕'}</span>`;
       list.appendChild(item);
     });
+  }
+
+  /** Populate sidebar stats and streak from session history */
+  async function renderSidebarStats() {
+    const statsEl = $('sidebarStats');
+    const streakEl = $('sidebarStreak');
+    const history = (await idbGet('stillness_history_v1')) || [];
+    if (history.length === 0) {
+      if (statsEl) statsEl.innerHTML = '<div style="font-size:0.68rem;color:var(--text-faint);">No sessions yet</div>';
+      if (streakEl) streakEl.textContent = 'New practitioner';
+      return;
+    }
+    const totalSessions = history.length;
+    const totalMinutes = Math.round(history.reduce((sum, s) => sum + (s.durationSec || 0), 0) / 60);
+    const completed = history.filter(s => s.completed).length;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dayMs = 86400000;
+    const sessionDays = [...new Set(history.map(s => { const d = new Date(s.date); d.setHours(0,0,0,0); return d.getTime(); }))].sort((a,b) => b - a);
+    let streak = 0, freezesUsed = 0, checkDay = today.getTime();
+    for (const day of sessionDays) {
+      const gap = (checkDay - day) / dayMs;
+      if (gap <= 1) { streak++; checkDay = day; }
+      else if (gap === 2 && freezesUsed < 2) { streak++; freezesUsed++; checkDay = day; }
+      else break;
+    }
+    if (streakEl) streakEl.textContent = streak > 0 ? `${streak}-day streak` : `${totalSessions} sessions`;
+    if (statsEl) {
+      statsEl.innerHTML = `
+        <div class="sidebar-stat-row"><span>Sessions</span><span class="sidebar-stat-val">${totalSessions}</span></div>
+        <div class="sidebar-stat-row"><span>Minutes</span><span class="sidebar-stat-val">${totalMinutes}</span></div>
+        <div class="sidebar-stat-row"><span>Streak</span><span class="sidebar-stat-val">${streak} days</span></div>
+        <div class="sidebar-stat-row"><span>Completion</span><span class="sidebar-stat-val">${Math.round(completed/totalSessions*100)}%</span></div>`;
+    }
   }
 
   // ====================================================================
@@ -4258,6 +4403,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     await idbSet('stillness_history_v1', history);
     renderHeatmap(); // Refresh activity heatmap
     renderSparkline(); // Refresh rising-score sparkline
+    renderSidebarStats(); // Refresh sidebar stats
 
     // Haptic marker — double-pulse on session end
     vibrateSessionMarker();
@@ -5259,6 +5405,19 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     alert(msg);
   });
 
+
+  // Sidebar toggle (mobile)
+  $('sidebarToggle')?.addEventListener('click', () => {
+    $('sidebar')?.classList.toggle('open');
+    $('sidebarOverlay')?.classList.toggle('open');
+  });
+  $('sidebarOverlay')?.addEventListener('click', () => {
+    $('sidebar')?.classList.remove('open');
+    $('sidebarOverlay')?.classList.remove('open');
+  });
+  $('sidebarSettingsBtn')?.addEventListener('click', () => {
+    $('crisisLink')?.click();
+  });
   // Session daily cap — max 3 sessions per day to prevent compulsive use
   async function checkDailyCap() {
     const history = (await idbGet('stillness_history_v1')) || [];
@@ -5366,6 +5525,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     renderPrograms();
     renderSessionHistory();
     renderHeatmap();
+    renderSidebarStats();
     updateIntentionHint();
     // Set soundscape default based on method — but only if no saved settings
     if (!hadSavedSettings) {
