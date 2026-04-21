@@ -858,18 +858,6 @@ body.in-session .footer {
   }
   .live-panel-overlay.open { display: block; }
 
-  /* ============ SHARE MODAL ============ */
-
-  /* ============ COOLDOWN OVERLAY ============ */
-    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-    text-align: center;
-  }
-    font-size: 2.5rem; font-weight: 200; color: var(--accent);
-    margin-bottom: 8px;
-  }
-    font-size: 0.8rem; color: var(--text-dim); letter-spacing: 0.06em;
-  }
-
   /* ============ REDUCED MOTION ============ */
   @media (prefers-reduced-motion: reduce) {
     .fixation-dot.pulse { animation: none; }
