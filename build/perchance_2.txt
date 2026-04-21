@@ -350,21 +350,6 @@
   .script-actions .btn { flex: 1; min-width: 100px; padding: 10px 12px; font-size: 0.88rem; }
  
   /* ============ LIBRARY ============ */
-  .library-list { display: grid; gap: 6px; margin-top: 8px; }
-  .library-item {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--glass); border: 1px solid var(--glass-border);
-    border-radius: var(--radius); padding: 10px 12px;
-    cursor: pointer; transition: all 0.2s;
-  }
-  .library-item:hover { border-color: var(--accent); }
-  .library-item .lib-name { flex: 1; font-size: 0.85rem; color: var(--text); }
-  .library-item .lib-meta { font-size: 0.7rem; color: var(--text-faint); }
-  .library-item .lib-del {
-    background: transparent; border: none; color: var(--text-faint);
-    cursor: pointer; font-size: 1rem; padding: 2px 6px;
-  }
-  .library-item .lib-del:hover { color: #d88; }
   .library-empty { font-size: 0.8rem; color: var(--text-faint); font-style: italic; padding: 10px 0; }
  
   /* ============ MODALS ============ */
@@ -768,11 +753,17 @@ body.in-session .footer {
   .history-item .h-dur { color: var(--text-faint); }
   .history-item .h-play, .history-item .h-delete {
     background: none; border: 1px solid var(--glass-border); color: var(--text-faint);
-    border-radius: 4px; padding: 1px 5px; font-size: 0.65rem; cursor: pointer;
-    transition: all 0.2s; flex-shrink: 0; line-height: 1.2;
+    border-radius: 4px; cursor: pointer;
+    transition: all 0.2s; flex-shrink: 0; line-height: 1;
+  }
+  .history-item .h-play {
+    padding: 2px 6px; font-size: 0.7rem;
+  }
+  .history-item .h-delete {
+    padding: 1px 4px; font-size: 0.55rem; opacity: 0.4;
   }
   .history-item .h-play:hover { color: var(--neon-cyan); border-color: var(--neon-cyan); box-shadow: 0 0 6px rgba(0,229,255,0.2); }
-  .history-item .h-delete:hover { color: #ff3b3b; border-color: #ff3b3b; }
+  .history-item .h-delete:hover { color: #ff3b3b; border-color: #ff3b3b; opacity: 1; }
 
   /* ============ KEYBOARD HINT ============ */
   .kb-hint {
@@ -973,19 +964,6 @@ body.in-session .footer {
           <div id="heatmapWrap" style="margin-top:6px;"></div>
         </details>
         <details>
-          <summary>presets</summary>
-          <div class="preset-grid" id="presetGrid"></div>
-        </details>
-        <details>
-          <summary>programs</summary>
-          <div id="programActivePanel"></div>
-          <div class="preset-grid" id="programGrid"></div>
-        </details>
-        <details>
-          <summary>saved scripts</summary>
-          <div class="library-list" id="libraryList"></div>
-        </details>
-        <details>
           <summary>history</summary>
           <div id="sessionStatsPanel"></div>
           <div class="history-list" id="sessionHistoryList"></div>
@@ -993,28 +971,8 @@ body.in-session .footer {
         <details>
           <summary>backup</summary>
           <div style="display:flex;gap:6px;margin-top:4px;">
-            <button class="btn secondary" id="backupBtn" style="flex:1;font-size:0.72rem;padding:6px;">export</button>
-            <label class="btn secondary" style="flex:1;font-size:0.72rem;padding:6px;text-align:center;cursor:pointer;">import<input type="file" id="restoreInput" accept=".json" style="display:none;"></label>
-          </div>
-        </details>
-        <details>
-          <summary>self-assessment</summary>
-          <div style="padding:4px 0;">
-            <div class="sublabel" style="margin-bottom:6px;font-size:0.68rem;">Quick suggestibility self-test.</div>
-            <div style="margin-bottom:6px;">
-              <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:3px;">1. Eye-roll (white showing)</div>
-              <select id="hipQ1" style="font-size:0.78rem;padding:6px 8px;"><option value="0">None / very little</option><option value="1" selected>Slight white visible</option><option value="2">Moderate white</option><option value="3">Mostly white — strong roll</option></select>
-            </div>
-            <div style="margin-bottom:6px;">
-              <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:3px;">2. Absorption (lost in books/films)</div>
-              <select id="hipQ2" style="font-size:0.78rem;padding:6px 8px;"><option value="0">Rarely</option><option value="1" selected>Sometimes</option><option value="2">Often</option><option value="3">Very often — deep immersion</option></select>
-            </div>
-            <div style="margin-bottom:6px;">
-              <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:3px;">3. Imagery vividness</div>
-              <select id="hipQ3" style="font-size:0.78rem;padding:6px 8px;"><option value="0">Intellectual only</option><option value="1" selected>Mild sensation</option><option value="2">Moderate — can feel it</option><option value="3">Strong — vivid response</option></select>
-            </div>
-            <button class="btn secondary" id="hipAssessBtn" style="font-size:0.72rem;width:100%;padding:6px;">assess suggestibility</button>
-            <div id="hipResult" style="margin-top:6px;font-size:0.72rem;"></div>
+            <button class="btn secondary" id="backupBtn" style="flex:1;font-size:0.72rem;padding:6px;">export .gz</button>
+            <label class="btn secondary" style="flex:1;font-size:0.72rem;padding:6px;text-align:center;cursor:pointer;">import .gz<input type="file" id="restoreInput" accept=".gz,.json" style="display:none;"></label>
           </div>
         </details>
         <button class="sidebar-settings-btn" id="sidebarSettingsBtn"> &#8226; I NEED HELP &#8226;</button>
@@ -1065,6 +1023,20 @@ body.in-session .footer {
         <h2 class="step-title">Choose Your Guide</h2>
         <p class="step-subtitle">The voice that will lead you through this session. Different guides suit different temperaments.</p>
       </div>
+
+      <!-- Presets & Programs — above the guide grid -->
+      <details style="margin-bottom:16px;" open>
+        <summary style="font-size:0.78rem;font-weight:600;color:var(--text-dim);letter-spacing:0.06em;">Quick-Start Presets</summary>
+        <div class="sublabel" style="margin-bottom:6px;">One click — sets guide, method, intention, soundscape, and length.</div>
+        <div class="preset-grid" id="presetGrid"></div>
+      </details>
+      <details style="margin-bottom:16px;">
+        <summary style="font-size:0.78rem;font-weight:600;color:var(--text-dim);letter-spacing:0.06em;">Structured Programs (multi-day)</summary>
+        <div class="sublabel" style="margin-bottom:6px;">Follow a daily program. Each session builds on the last.</div>
+        <div id="programActivePanel"></div>
+        <div class="preset-grid" id="programGrid"></div>
+      </details>
+
       <div class="filter-tabs" id="personaFilterTabs">
         <div class="filter-tab active" data-filter="all">all</div>
         <div class="filter-tab" data-filter="contemplative">contemplative</div>
@@ -1361,7 +1333,6 @@ body.in-session .footer {
         <div class="script-actions">
           <button class="btn secondary" id="regenScriptBtn">regenerate</button>
           <button class="btn secondary" id="fixTimingsBtn" style="display:none;">⏱ fix timings</button>
-          <button class="btn secondary" id="saveScriptBtn">save to library</button>
           <button class="btn secondary" id="exportScriptBtn">↓ download .txt</button>
           <button class="btn secondary" id="shareConfigBtn">⚯ share config</button>
           <button class="btn green" id="beginBtn">begin session →</button>
@@ -1557,7 +1528,6 @@ body.in-session .footer {
       </div>
 
       <div style="display: flex; gap: 10px; justify-content: center; margin-top: 24px; flex-wrap: wrap;">
-        <button class="btn secondary" id="postSaveBtn">save to library</button>
         <button class="btn" style="max-width: 240px;" id="restartBtn">begin a new session</button>
       </div>
     </div>
@@ -1575,13 +1545,6 @@ body.in-session .footer {
   </div>
 </div>
  
-<div class="modal-backdrop" id="saveScriptModal">
-  <div class="modal">
-    <h2>save script to library</h2>
-    <div class="field"><label class="field-label-sm">name</label><input type="text" id="saveScriptName"></div>
-    <div class="modal-actions"><button class="btn secondary" id="saveScriptCancelBtn">cancel</button><button class="btn" id="saveScriptConfirmBtn">save</button></div>
-  </div>
-</div>
 
 <div id="toastContainer"></div>
 
@@ -1896,11 +1859,9 @@ body.in-session .footer {
   const getMethod = () => METHODS.find(m => m.id === state.selectedMethodId) || _FALLBACK_METHOD;
   const getPersona = () => (state.personas.find(p => p.id === state.selectedPersonaId) || state.personas[0]) ?? _FALLBACK_PERSONA;
   const PERSONA_KEY = 'stillness_personas_v1';
-  const LIBRARY_KEY = 'stillness_library_v1';
 
   // IDB-backed storage with localStorage migration
   let _personaCache = null;
-  let _libraryCache = null;
 
   async function _initStorage() {
     // Migrate personas from localStorage → IDB
@@ -1913,15 +1874,6 @@ body.in-session .footer {
     }
     if (!Array.isArray(_personaCache)) _personaCache = [];
 
-    // Migrate library from localStorage → IDB
-    _libraryCache = await idbGet(LIBRARY_KEY);
-    if (!_libraryCache) {
-      try {
-        const lsRaw = localStorage.getItem(LIBRARY_KEY);
-        if (lsRaw) { _libraryCache = JSON.parse(lsRaw); await idbSet(LIBRARY_KEY, _libraryCache); localStorage.removeItem(LIBRARY_KEY); }
-      } catch {}
-    }
-    if (!Array.isArray(_libraryCache)) _libraryCache = [];
 
     // Persist browser storage so IDB isn't cleared
     if (navigator.storage?.persist) await navigator.storage.persist();
@@ -1929,8 +1881,6 @@ body.in-session .footer {
 
   const loadCustomPersonas = () => _personaCache || [];
   const saveCustomPersonas = arr => { _personaCache = arr; idbSet(PERSONA_KEY, arr); return true; };
-  const loadLibrary = () => _libraryCache || [];
-  const saveLibrary = arr => { _libraryCache = arr; idbSet(LIBRARY_KEY, arr); return true; };
   function refreshPersonas() {
     const custom = loadCustomPersonas().map(p => ({ ...p, isCustom: true, category: p.category || 'contemplative' }));
     state.personas = [...BUILTIN_PERSONAS, ...custom];
@@ -3708,83 +3658,6 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   function updateFixTimingsVisibility() {
     showEl('fixTimingsBtn', _scriptEditedSinceGen);
   }
- 
-  // ====================================================================
-  // LIBRARY
-  // ====================================================================
-  function renderLibrary() {
-    const list = $('libraryList');
-    const lib = loadLibrary();
-    if (lib.length === 0) { list.innerHTML = '<div class="library-empty">no saved scripts yet</div>'; return; }
-    list.innerHTML = '';
-    lib.forEach(entry => {
-      const item = document.createElement('div');
-      item.className = 'library-item';
-      const date = new Date(entry.savedAt).toLocaleDateString();
-      item.innerHTML = `<div class="lib-name">${escapeHtml(entry.name)}</div><div class="lib-meta">${escapeHtml(entry.persona)} · ${escapeHtml(entry.method)} · ${date}</div><button class="lib-del">×</button>`;
-      item.addEventListener('click', e => {
-        if (e.target.classList.contains('lib-del')) {
-          e.stopPropagation();
-          if (confirm('Delete "' + entry.name + '"?')) { saveLibrary(loadLibrary().filter(x => x.id !== entry.id)); renderLibrary(); }
-          return;
-        }
-        loadScriptFromLibrary(entry);
-      });
-      list.appendChild(item);
-    });
-  }
-  function loadScriptFromLibrary(entry) {
-    state.fullScript = entry.script;
-    state.parsedScript = parseScript(entry.script);
-    if (entry.personaId) state.selectedPersonaId = entry.personaId;
-    if (entry.methodId) state.selectedMethodId = entry.methodId;
-    if (entry.length) { state.length = entry.length; $('lengthSelect').value = entry.length; }
-    // Restore intention trail so user can navigate back to step 3 without breaking validation
-    if (entry.craftedSuggestion) state.craftedSuggestion = entry.craftedSuggestion;
-    if (entry.roughIntention !== undefined) $('intentionInput').value = entry.roughIntention;
-    if (entry.intentionType) {
-      state.intentionType = entry.intentionType;
-      $('intentionType').value = entry.intentionType;
-      $('intentionTypeHint').textContent = (INTENTION_TYPES[entry.intentionType] || {}).hint || '';
-    }
-    if (state.craftedSuggestion) showCrafted();
-    // Jump straight to step 5
-    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: false };
-    state.currentStep = 5;
-    renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
-    refreshSummary(); showScript(); updateStepUI();
-  }
- 
-  function openSaveScriptModal() {
-    if (!state.fullScript) { notify.warn('Generate a script first.'); return; }
-    const suggested = ($('intentionInput').value.trim() || 'session') + ' · ' + getMethod().name;
-    $('saveScriptName').value = suggested;
-    $('saveScriptModal').classList.add('visible');
-  }
-  const closeSaveScriptModal = () => $('saveScriptModal').classList.remove('visible');
-  function confirmSaveScript() {
-    const name = $('saveScriptName').value.trim();
-    if (!name) return;
-    const script = $('scriptText').value.trim();
-    const entry = {
-      id: 'lib_' + Date.now(),
-      name,
-      script,
-      persona: getPersona().name,
-      personaId: state.selectedPersonaId,
-      method: getMethod().name,
-      methodId: state.selectedMethodId,
-      length: state.length,
-      savedAt: Date.now(),
-      // Persist the intention trail so loading a script restores all wizard state
-      craftedSuggestion: state.craftedSuggestion,
-      roughIntention: $('intentionInput').value,
-      intentionType: state.intentionType,
-    };
-    const lib = loadLibrary(); lib.unshift(entry);
-    if (!saveLibrary(lib)) { notify.error('Could not save: browser storage may be full.'); return; }
-    renderLibrary(); closeSaveScriptModal();
-  }
 
   // ====================================================================
   // SESSION HISTORY & STATS
@@ -3848,9 +3721,9 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       item.innerHTML = `
         <span class="h-date">${dateStr}</span>
         <span class="h-guide">${escapeHtml(s.guide || '—')} · ${escapeHtml(s.method || '—')}</span>
-        <span class="h-dur">${mins}m${s.completed ? '' : ' ✕'}</span>
-        ${hasScript ? `<button class="h-play" data-idx="${idx}" title="Replay this session">▷</button>` : ''}
-        <button class="h-delete" data-idx="${idx}" title="Delete this entry">✕</button>`;
+        <span class="h-dur">${mins}m${s.completed ? '' : ' <span style="opacity:0.4;font-size:0.6rem;">incomplete</span>'}</span>
+        ${hasScript ? `<button class="h-play" data-idx="${idx}" title="Replay this session">▶</button>` : ''}
+        <button class="h-delete" data-idx="${idx}" title="Delete this entry">🗑</button>`;
       list.appendChild(item);
     });
 
@@ -3868,7 +3741,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     list.querySelectorAll('.h-delete').forEach(btn => {
       btn.addEventListener('click', async e => {
         const idx = parseInt(e.target.dataset.idx, 10);
-        if (!confirm('Delete this session from history?')) return;
+        if (!confirm('Are you sure you want to delete this session?\n\nThis can\'t be undone.')) return;
         const h = (await idbGet('stillness_history_v1')) || [];
         h.splice(idx, 1);
         await idbSet('stillness_history_v1', h);
@@ -4050,29 +3923,39 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   }
 
   async function exportBackup() {
-    const backup = { version: 2, exportedAt: Date.now(), personas: loadCustomPersonas(), library: loadLibrary(), history: (await idbGet('stillness_history_v1')) || [], program: (await idbGet('stillness_program_v1')) || null };
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const backup = { version: 3, exportedAt: Date.now(), personas: loadCustomPersonas(), history: (await idbGet('stillness_history_v1')) || [], program: (await idbGet('stillness_program_v1')) || null };
+    const json = JSON.stringify(backup);
+    let blob;
+    try {
+      const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+      blob = await new Response(stream).blob();
+    } catch(e) { blob = new Blob([json], { type: 'application/json' }); }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `stillness-backup-${new Date().toISOString().slice(0,10)}.json`;
-    a.click(); URL.revokeObjectURL(a.href); notify.success('Backup exported.');
+    a.download = `stillness-backup-${new Date().toISOString().slice(0,10)}.gz`;
+    a.click(); URL.revokeObjectURL(a.href); notify.success('Backup exported (.gz).');
   }
 
   async function importBackup(file) {
     try {
-      const backup = JSON.parse(await file.text());
+      let text;
+      try {
+        // Try gzip decompression first
+        const stream = file.stream().pipeThrough(new DecompressionStream('gzip'));
+        text = await new Response(stream).text();
+      } catch(e) {
+        // Fallback to plain JSON
+        text = await file.text();
+      }
+      const backup = JSON.parse(text);
       if (!backup.version) { notify.error('Invalid backup file.'); return; }
       const ep = loadCustomPersonas(), eIds = new Set(ep.map(p => p.id));
       const np = (backup.personas||[]).filter(p => !eIds.has(p.id));
       if (np.length) { saveCustomPersonas([...ep,...np]); refreshPersonas(); renderPersonaGrid(); }
-      const el = loadLibrary(), elIds = new Set(el.map(l => l.id));
-      const nl = (backup.library||[]).filter(l => !elIds.has(l.id));
-      if (nl.length) { saveLibrary([...nl,...el]); renderLibrary(); }
       const eh = (await idbGet('stillness_history_v1'))||[], ehIds = new Set(eh.map(h => h.id));
       const nh = (backup.history||[]).filter(h => !ehIds.has(h.id));
       if (nh.length) { const m = [...nh,...eh].sort((a,b)=>(b.date||0)-(a.date||0)); m.length = Math.min(m.length,50); await idbSet('stillness_history_v1',m); renderSessionHistory(); }
-      // Restore program state if present and no active program
       if (backup.program && !(await idbGet('stillness_program_v1'))) { await idbSet('stillness_program_v1', backup.program); renderPrograms(); }
-      notify.success(`Imported: ${np.length} personas, ${nl.length} scripts, ${nh.length} sessions.`);
+      notify.success(`Imported: ${np.length} personas, ${nh.length} sessions.`);
     } catch(e) { notify.error('Import failed: ' + e.message); }
   }
 
@@ -4835,12 +4718,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   // Step 5
   $('generateScriptBtn').addEventListener('click', generateFullScript);
   $('regenScriptBtn').addEventListener('click', generateFullScript);
-  $('saveScriptBtn').addEventListener('click', openSaveScriptModal);
   $('exportScriptBtn').addEventListener('click', exportScript);
   $('shareConfigBtn').addEventListener('click', shareConfig);
-  $('saveScriptCancelBtn').addEventListener('click', closeSaveScriptModal);
-  $('saveScriptConfirmBtn').addEventListener('click', confirmSaveScript);
-  $('saveScriptModal').addEventListener('click', e => { if (e.target.id === 'saveScriptModal') closeSaveScriptModal(); });
   $('beginBtn').addEventListener('click', startSession);
 
   // Pre-session state scale (0-10)
@@ -5064,10 +4943,6 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   });
 
   // Post-session save
-  $('postSaveBtn').addEventListener('click', () => {
-    if (!state.fullScript) { notify.warn('No script to save.'); return; }
-    openSaveScriptModal();
-  });
 
   // Voice preview with stop
   $('voicePreviewBtn').addEventListener('click', () => {
@@ -5599,40 +5474,6 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   $('personaModal').addEventListener('click', e => { if (e.target.id === 'personaModal') closePersonaEditor(); });
 
   // Hypnotic Induction Profile quiz
-  $('hipAssessBtn')?.addEventListener('click', () => {
-    const q1 = parseInt($('hipQ1')?.value || '1', 10);
-    const q2 = parseInt($('hipQ2')?.value || '1', 10);
-    const q3 = parseInt($('hipQ3')?.value || '1', 10);
-    const total = q1 + q2 + q3; // 0-9 range
-    const el = $('hipResult');
-    if (!el) return;
-
-    let tier, desc, recMethods, recGuide;
-    if (total <= 2) {
-      tier = 'Low suggestibility';
-      desc = 'You tend toward analytical processing. This is not a limitation — it means structured, evidence-based methods work best for you. Avoid "just relax" approaches; your mind needs something to do.';
-      recMethods = 'Betty Erickson 3-2-1, Highway (monotony), Confusion Method, Hand Heaviness';
-      recGuide = 'The Scientist or The Driver';
-    } else if (total <= 5) {
-      tier = 'Moderate suggestibility';
-      desc = 'You have a good balance of analytical and imaginative processing. Most methods will work for you. You\'ll likely respond well to narrative approaches and may be surprised by demonstration effects.';
-      recMethods = 'Staircase Descent, Progressive Relaxation, Ericksonian, Fractionation';
-      recGuide = 'The Therapist or The Bartender';
-    } else {
-      tier = 'High suggestibility';
-      desc = 'You absorb experiences deeply and respond strongly to suggestion. Demonstration methods should produce vivid effects. You may find that advanced techniques like time distortion and hallucination work readily. Start with shorter sessions to gauge intensity.';
-      recMethods = 'Spiral Fixation, Eye-Roll (Spiegel), Arm Catalepsy, Time Distortion, Positive Hallucination';
-      recGuide = 'The Showman, The Mystic, or The Dominatrix';
-    }
-
-    el.innerHTML = `
-      <div class="detail-panel">
-        <div class="detail-title" style="color:var(--accent);">${tier} (score: ${total}/9)</div>
-        <div style="margin-bottom:8px;">${desc}</div>
-        <div style="font-size:0.78rem;"><strong>Recommended methods:</strong> ${recMethods}</div>
-        <div style="font-size:0.78rem; margin-top:4px;"><strong>Try starting with:</strong> ${recGuide}</div>
-      </div>`;
-  });
 
   // Init — async to wait for IDB storage migration
   (async function init() {
@@ -5644,7 +5485,6 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     renderPersonaDetail();
     renderMethodGrid();
     renderMethodDetail();
-    renderLibrary();
     renderPresets();
     renderPrograms();
     renderSessionHistory();
