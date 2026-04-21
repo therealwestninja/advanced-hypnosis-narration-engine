@@ -396,7 +396,6 @@
   .modal h2 { margin: 0 0 20px; font-size: 1.1rem; color: var(--text); font-weight: 500; }
   .modal .field { margin-bottom: 16px; }
   .modal .field-label-sm { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 6px; letter-spacing: 0; text-transform: none; }
-  .modal .field-hint { font-size: 0.75rem; color: var(--text-faint); margin-top: 4px; }
   .modal .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
   .modal .modal-actions .btn { flex: 1; }
  
@@ -594,9 +593,6 @@ body.in-session .footer {
   }
 
   /* ============ VOICE PREVIEW ============ */
-  .voice-preview-row {
-    display: flex; align-items: center; gap: 8px; margin-top: 8px;
-  }
   .voice-preview-btn {
     background: var(--bg-softer); border: 1px solid #2a3340;
     color: var(--text-dim); border-radius: 6px;
@@ -688,18 +684,51 @@ body.in-session .footer {
   .tour-skip { background: none; border: none; color: var(--text-faint); font-size: 0.68rem; cursor: pointer; padding: 0; }
   .tour-next { background: var(--accent-soft); border: none; color: var(--text); border-radius: 6px; padding: 6px 16px; font-size: 0.75rem; cursor: pointer; font-weight: 500; }
 
-  /* ============ MOOD CHECK-IN ============ */
-  .mood-row {
-    display: flex; gap: 4px; justify-content: center;
-    margin: 12px 0 6px;
+  /* ============ FIRST-RUN SAFETY SCREEN ============ */
+  .safety-screen {
+    position: fixed; inset: 0; z-index: 2000;
+    background: var(--bg); overflow-y: auto; padding: 24px 16px 40px;
+    display: flex; flex-direction: column; align-items: center;
   }
-  .mood-btn {
+  .safety-inner { max-width: 520px; width: 100%; }
+  .safety-inner h2 { font-size: 1rem; color: var(--text); font-weight: 500; margin: 0 0 12px; }
+  .safety-inner p { font-size: 0.78rem; color: var(--text-dim); line-height: 1.6; margin: 0 0 10px; }
+  .safety-check {
+    display: flex; align-items: flex-start; gap: 8px; padding: 8px 0;
+    font-size: 0.78rem; color: var(--text-dim); border-bottom: 1px solid #111820;
+  }
+  .safety-check input[type="checkbox"] { margin-top: 3px; flex-shrink: 0; }
+
+  /* ============ 0-10 STATE SCALE ============ */
+  .state-scale { margin: 12px 0 6px; text-align: center; }
+  .state-scale input[type="range"] { width: 200px; max-width: 80%; }
+  .state-scale-labels { display: flex; justify-content: space-between; width: 200px; max-width: 80%; margin: 0 auto; }
+  .state-scale-labels span { font-size: 0.58rem; color: var(--text-faint); }
+  .state-scale-value { font-size: 1.1rem; font-weight: 300; color: var(--text); margin-bottom: 4px; }
+
+  /* ============ SPARKLINE CHART ============ */
+  .sparkline-wrap { margin: 12px 0; text-align: center; }
+  .sparkline-canvas { width: 100%; height: 60px; border-radius: 6px; }
+
+  /* ============ WARM SLEEP OVERLAY ============ */
+  .sleep-overlay {
+    position: fixed; inset: 0; pointer-events: none; z-index: 15;
+    background: rgba(255,120,30,0.12); mix-blend-mode: multiply;
+    display: none;
+  }
+  .sleep-overlay.active { display: block; }
+
+  /* ============ JOURNAL ============ */
+  .journal-area {
+    width: 100%; min-height: 60px; max-height: 120px;
     background: var(--bg-soft); border: 1px solid #1a2230;
-    border-radius: 8px; padding: 8px 12px; font-size: 1.3rem;
-    cursor: pointer; transition: all 0.2s; opacity: 0.5;
+    border-radius: 8px; padding: 10px; margin: 10px 0;
+    font-size: 0.78rem; color: var(--text-dim); resize: vertical;
+    font-family: inherit; line-height: 1.5;
   }
-  .mood-btn:hover { opacity: 0.8; border-color: var(--accent-soft); }
-  .mood-btn.selected { opacity: 1; border-color: var(--accent); background: #131c28; transform: scale(1.15); }
+  .journal-area::placeholder { color: var(--text-faint); }
+
+  /* ============ MOOD CHECK-IN ============ */
   .mood-label { font-size: 0.7rem; color: var(--text-faint); text-align: center; margin-bottom: 10px; }
 
   /* ============ GROUNDING EXERCISE ============ */
@@ -770,11 +799,6 @@ body.in-session .footer {
     letter-spacing: 0.12em; text-transform: uppercase;
     margin: 16px 0 6px; font-weight: 500;
   }
-  .transcript-panel .t-active {
-    color: var(--text); font-weight: 400;
-    background: rgba(107,148,184,0.08);
-    padding: 2px 4px; border-radius: 3px;
-  }
   .transcript-toggle {
     background: transparent; border: 1px solid #2a3340;
     color: var(--text-faint); border-radius: 6px;
@@ -835,22 +859,11 @@ body.in-session .footer {
   .live-panel-overlay.open { display: block; }
 
   /* ============ SHARE MODAL ============ */
-  .share-url-box {
-    background: var(--bg); border: 1px solid #1a2230;
-    border-radius: 6px; padding: 10px; word-break: break-all;
-    font-family: ui-monospace, monospace; font-size: 0.72rem;
-    color: var(--text); margin: 10px 0; max-height: 80px;
-    overflow-y: auto; user-select: all;
-  }
 
   /* ============ COOLDOWN OVERLAY ============ */
-  .cooldown-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-    z-index: 50; display: none; align-items: center; justify-content: center;
     text-align: center;
   }
-  .cooldown-overlay.visible { display: flex; }
-  .cooldown-timer {
     font-size: 2.5rem; font-weight: 200; color: var(--accent);
     margin-bottom: 8px;
   }
@@ -1235,13 +1248,11 @@ body.in-session .footer {
       </div>
 
       <div style="text-align:center; margin-top: 16px;" id="preMoodSection">
-        <div class="mood-label">how are you feeling right now? (optional — helps track progress)</div>
-        <div class="mood-row" id="preMoodRow">
-          <button class="mood-btn" data-mood="1">😔</button>
-          <button class="mood-btn" data-mood="2">😐</button>
-          <button class="mood-btn" data-mood="3">🙂</button>
-          <button class="mood-btn" data-mood="4">😊</button>
-          <button class="mood-btn" data-mood="5">✨</button>
+        <div class="mood-label">how are you feeling right now? (0 = worst, 10 = best)</div>
+        <div class="state-scale">
+          <div class="state-scale-value" id="preStateVal">5</div>
+          <input type="range" id="preStateSlider" min="0" max="10" value="5">
+          <div class="state-scale-labels"><span>worst</span><span>best</span></div>
         </div>
       </div>
 
@@ -1391,17 +1402,31 @@ body.in-session .footer {
       <div class="post-summary" id="postSummary"></div>
       <div id="postTriggerBox"></div>
 
-      <!-- Mood check-in -->
+      <!-- State check-in (0-10 scale) -->
       <div id="moodCheckIn" style="margin-top: 16px;">
-        <div class="mood-label">how do you feel right now?</div>
-        <div class="mood-row" id="moodRow">
-          <button class="mood-btn" data-mood="1">😔</button>
-          <button class="mood-btn" data-mood="2">😐</button>
-          <button class="mood-btn" data-mood="3">🙂</button>
-          <button class="mood-btn" data-mood="4">😊</button>
-          <button class="mood-btn" data-mood="5">✨</button>
+        <div class="mood-label">how do you feel right now? (0 = worst, 10 = best)</div>
+        <div class="state-scale">
+          <div class="state-scale-value" id="postStateVal">5</div>
+          <input type="range" id="postStateSlider" min="0" max="10" value="5">
+          <div class="state-scale-labels"><span>worst</span><span>best</span></div>
         </div>
         <div class="mood-label" id="moodFeedback"></div>
+      </div>
+
+      <!-- Alertness check (Howard Alertness Scale) -->
+      <div id="alertnessCheck" style="margin-top: 10px;">
+        <div class="mood-label">how alert do you feel? (0 = very drowsy, 10 = fully alert)</div>
+        <div class="state-scale">
+          <div class="state-scale-value" id="alertnessVal">7</div>
+          <input type="range" id="alertnessSlider" min="0" max="10" value="7">
+          <div class="state-scale-labels"><span>drowsy</span><span>alert</span></div>
+        </div>
+      </div>
+
+      <!-- Journal -->
+      <div style="margin-top: 12px;">
+        <div class="mood-label">reflection (optional — saved with your session)</div>
+        <textarea class="journal-area" id="journalText" placeholder="What did you notice? Any sensations, images, thoughts, or shifts?"></textarea>
       </div>
 
       <div style="display: flex; gap: 10px; justify-content: center; margin-top: 24px; flex-wrap: wrap;">
@@ -1433,14 +1458,29 @@ body.in-session .footer {
 
 <div id="toastContainer"></div>
 
-<div class="cooldown-overlay" id="cooldownOverlay">
-  <div>
-    <div class="cooldown-timer" id="cooldownTimer">30</div>
-    <div class="cooldown-label">seconds before next session</div>
-    <div class="sublabel" style="margin-top: 10px; color: var(--text-faint);">Give yourself time to re-orient.</div>
+<!-- Warm overlay for sleep sessions (blue-light reduction) -->
+<div class="sleep-overlay" id="sleepOverlay"></div>
+
+<!-- First-run safety/contraindication screen -->
+<div class="safety-screen" id="safetyScreen" style="display:none;">
+  <div class="safety-inner">
+    <h2>Before you begin</h2>
+    <p>This tool generates AI-powered self-hypnosis sessions with narration, visuals, and audio — all running locally in your browser. It is a <strong>wellness self-help aid</strong>, not therapy or medical treatment. Content is generated by AI and is not reviewed by a human therapist.</p>
+    <p style="color:var(--accent);">Please confirm you do not currently have any of these conditions:</p>
+    <div class="safety-check"><input type="checkbox" id="sc1"><label for="sc1">Active psychosis, schizophrenia, or severe personality disorder</label></div>
+    <div class="safety-check"><input type="checkbox" id="sc2"><label for="sc2">Dissociative Identity Disorder (DID) or severe dissociative symptoms</label></div>
+    <div class="safety-check"><input type="checkbox" id="sc3"><label for="sc3">Photosensitive epilepsy or seizure disorder</label></div>
+    <div class="safety-check"><input type="checkbox" id="sc4"><label for="sc4">Active suicidal ideation or self-harm</label></div>
+    <div class="safety-check"><input type="checkbox" id="sc5"><label for="sc5">Under 18 without a caregiver present</label></div>
+    <div class="safety-check"><input type="checkbox" id="sc6"><label for="sc6">Currently intoxicated or under the influence</label></div>
+    <p style="margin-top:12px; font-size:0.72rem; color:var(--text-faint);">If any apply, please consult a licensed hypnotherapist rather than using a self-help tool. This screen appears once and can be re-viewed in session history.</p>
+    <div style="margin-top:12px;">
+      <label class="safety-check" style="border:none;font-weight:500;color:var(--text);"><input type="checkbox" id="scConfirm"> I confirm none of the above apply, and I understand this is not a substitute for professional care.</label>
+    </div>
+    <button class="btn" id="safetyAcceptBtn" disabled style="margin-top:16px;width:100%;">continue</button>
   </div>
 </div>
- 
+
 <script>
   // ====================================================================
   // IDB STORAGE (ported from Adaptive Session Studio — MIT)
@@ -1511,7 +1551,7 @@ body.in-session .footer {
   const TOAST_DURATION = { info: 3500, success: 3000, warn: 5000, error: 0 };
 
   function toast(type, message, ms) {
-    const container = document.getElementById('toastContainer');
+    const container = $('toastContainer');
     if (!container) return;
     const duration = ms !== undefined ? ms : TOAST_DURATION[type] || 3500;
     const el = document.createElement('div');
@@ -1719,8 +1759,10 @@ body.in-session .footer {
     long:   { settling: 120, induction: 420, deepener: 300, work: 540, emergence: 90 },
   };
  
-  const getMethod = () => METHODS.find(m => m.id === state.selectedMethodId) || METHODS[0];
-  const getPersona = () => state.personas.find(p => p.id === state.selectedPersonaId) || state.personas[0];
+  const _FALLBACK_PERSONA = { id: 'fallback', name: 'Guide', tagline: '', category: 'contemplative', systemPrompt: '' };
+  const _FALLBACK_METHOD = METHODS[0];
+  const getMethod = () => METHODS.find(m => m.id === state.selectedMethodId) || _FALLBACK_METHOD;
+  const getPersona = () => (state.personas.find(p => p.id === state.selectedPersonaId) || state.personas[0]) ?? _FALLBACK_PERSONA;
   const PERSONA_KEY = 'stillness_personas_v1';
   const LIBRARY_KEY = 'stillness_library_v1';
 
@@ -1762,7 +1804,55 @@ body.in-session .footer {
     state.personas = [...BUILTIN_PERSONAS, ...custom];
   }
   const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+
+  // ── Reusable helpers ─────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+
+  /** Set button to loading state or restore it */
+  function setLoading(btnOrId, loading, originalText) {
+    const btn = typeof btnOrId === 'string' ? $(btnOrId) : btnOrId;
+    if (!btn) return;
+    btn.disabled = loading;
+    if (loading) btn.classList.add('loading');
+    else { btn.classList.remove('loading'); if (originalText) btn.textContent = originalText; }
+  }
+
+  /** Start an elapsed-seconds timer. Returns a stop function. */
+  function makeElapsedTimer(callback) {
+    const start = Date.now();
+    const id = setInterval(() => callback(Math.round((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(id);
+  }
+
+  /** Show or hide an element by ID */
+  function showEl(id, vis) {
+    const el = typeof id === 'string' ? $(id) : id;
+    if (el) el.style.display = vis === false ? 'none' : '';
+  }
+
+  /** Toggle a play/stop preview button pair. prefix = 'voice'|'sound'|'viz' */
+  function togglePreviewBtns(prefix, playing) {
+    showEl(prefix + 'PreviewBtn', !playing);
+    showEl(prefix + 'StopBtn', playing);
+  }
  
+
+  /** Update phase dot indicators: -1=reset, >4=all done, N=active */
+  function updatePhaseDots(activeIdx) {
+    document.querySelectorAll('.phase-dot').forEach((d, i) => {
+      d.classList.remove('active', 'done');
+      if (activeIdx >= 0 && i < activeIdx) d.classList.add('done');
+      if (i === activeIdx) d.classList.add('active');
+      if (activeIdx > 4) d.classList.add('done');
+    });
+  }
+
+  /** Switch between the three main screens */
+  function switchScreen(id) {
+    ['setup-wizard', 'session-screen', 'post-screen'].forEach(s => {
+      const el = $(s); if (el) el.style.display = s === id ? 'block' : 'none';
+    });
+  }
   // ====================================================================
   // STEP MANAGEMENT
   // ====================================================================
@@ -1797,7 +1887,7 @@ body.in-session .footer {
 
     // Accessibility: announce step change and move focus
     const stepNames = { 1: 'Choose Your Guide', 2: 'Choose Your Method', 3: 'Set Your Intention', 4: 'Configure the Session', 5: 'Generate Your Session' };
-    const announce = document.getElementById('ariaStepAnnounce');
+    const announce = $('ariaStepAnnounce');
     if (announce) announce.textContent = `Step ${n} of ${TOTAL_STEPS}: ${stepNames[n] || ''}`;
     // Move focus to step heading
     const heading = document.querySelector(`.step-content[data-step="${n}"] .step-title`);
@@ -1822,28 +1912,28 @@ body.in-session .footer {
       el.classList.toggle('completed', from < state.currentStep);
     });
     // Step values under circles
-    document.getElementById('stepValue1').textContent = state.stepsCompleted[1] ? getPersona().name : '';
-    document.getElementById('stepValue2').textContent = state.stepsCompleted[2] ? getMethod().name : '';
+    $('stepValue1').textContent = state.stepsCompleted[1] ? getPersona().name : '';
+    $('stepValue2').textContent = state.stepsCompleted[2] ? getMethod().name : '';
     let s3 = '';
     if (state.stepsCompleted[3]) {
       if (state.craftedSuggestion) s3 = 'crafted ✓';
       else if (state.intentionType === 'trance') s3 = 'pure trance';
     }
-    document.getElementById('stepValue3').textContent = s3;
-    document.getElementById('stepValue4').textContent = state.stepsCompleted[4] ? state.length : '';
-    document.getElementById('stepValue5').textContent = state.fullScript ? 'ready ✓' : '';
+    $('stepValue3').textContent = s3;
+    $('stepValue4').textContent = state.stepsCompleted[4] ? state.length : '';
+    $('stepValue5').textContent = state.fullScript ? 'ready ✓' : '';
     // Nav
-    document.getElementById('btnBack').hidden = state.currentStep === 1;
-    document.getElementById('btnNext').hidden = state.currentStep === TOTAL_STEPS;
-    document.getElementById('btnNext').disabled = !validateStep(state.currentStep);
+    $('btnBack').hidden = state.currentStep === 1;
+    $('btnNext').hidden = state.currentStep === TOTAL_STEPS;
+    $('btnNext').disabled = !validateStep(state.currentStep);
   }
  
   function refreshSummary() {
-    document.getElementById('summaryGuide').textContent = getPersona().name;
-    document.getElementById('summaryMethod').textContent = getMethod().name;
-    document.getElementById('summaryLength').textContent = state.length.charAt(0).toUpperCase() + state.length.slice(1);
-    const intent = document.getElementById('intentionInput').value.trim() || '(trance only)';
-    document.getElementById('summaryIntention').textContent = intent.length > 60 ? intent.substring(0, 57) + '...' : intent;
+    $('summaryGuide').textContent = getPersona().name;
+    $('summaryMethod').textContent = getMethod().name;
+    $('summaryLength').textContent = state.length.charAt(0).toUpperCase() + state.length.slice(1);
+    const intent = $('intentionInput').value.trim() || '(trance only)';
+    $('summaryIntention').textContent = intent.length > 60 ? intent.substring(0, 57) + '...' : intent;
     updateBriefPreview();
   }
  
@@ -1851,7 +1941,7 @@ body.in-session .footer {
   // RENDERING
   // ====================================================================
   function renderPersonaGrid() {
-    const grid = document.getElementById('personaGrid');
+    const grid = $('personaGrid');
     grid.innerHTML = '';
     const filtered = state.personaFilter === 'all' ? state.personas : state.personas.filter(p => p.category === state.personaFilter);
     filtered.forEach(p => {
@@ -1874,12 +1964,12 @@ body.in-session .footer {
   }
   function renderPersonaDetail() {
     const p = getPersona();
-    const el = document.getElementById('personaDetail');
+    const el = $('personaDetail');
     if (!p) { el.innerHTML = ''; return; }
     el.innerHTML = `<div class="detail-title">${escapeHtml(p.name)}</div><div>${escapeHtml(p.systemPrompt)}</div>`;
   }
   function renderMethodGrid() {
-    const grid = document.getElementById('methodGrid');
+    const grid = $('methodGrid');
     grid.innerHTML = '';
     const filtered = state.methodFilter === 'all' ? METHODS : METHODS.filter(m => m.category === state.methodFilter);
     filtered.forEach(m => {
@@ -1891,7 +1981,7 @@ body.in-session .footer {
         // Update soundscape default when method changes
         state.soundscape = m.drone ? 'drone' : 'none';
         state.droneEnabled = m.drone;
-        const ssSelect = document.getElementById('soundscapeSelect');
+        const ssSelect = $('soundscapeSelect');
         if (ssSelect) ssSelect.value = state.soundscape;
         renderMethodGrid(); renderMethodDetail(); hideScript(); updateStepUI();
       });
@@ -1900,21 +1990,21 @@ body.in-session .footer {
   }
   function renderMethodDetail() {
     const m = getMethod();
-    const el = document.getElementById('methodDetail');
+    const el = $('methodDetail');
     if (!m) { el.innerHTML = ''; return; }
     el.innerHTML = `<div class="detail-title">${escapeHtml(m.name)}</div><div>${escapeHtml(m.detail)}</div>`;
   }
   function updateIntentionHint() {
-    const type = document.getElementById('intentionType').value;
+    const type = $('intentionType').value;
     state.intentionType = type;
     const typeData = INTENTION_TYPES[type];
-    document.getElementById('intentionTypeHint').textContent = typeData ? typeData.hint : '';
+    $('intentionTypeHint').textContent = typeData ? typeData.hint : '';
     hideCrafted();
 
     // Types that skip crafting — hide the craft button and intention input
     const skipCraft = ['trance', 'sleep'].includes(type);
-    const craftBtn = document.getElementById('craftBtn');
-    const intentionInput = document.getElementById('intentionInput');
+    const craftBtn = $('craftBtn');
+    const intentionInput = $('intentionInput');
     const intentionLabel = intentionInput?.previousElementSibling;
 
     if (skipCraft) {
@@ -1933,8 +2023,8 @@ body.in-session .footer {
   }
   function updateBriefPreview() {
     const p = getPersona(); const m = getMethod();
-    const intention = document.getElementById('intentionInput').value.trim() || '[no theme]';
-    const el = document.getElementById('briefPreview');
+    const intention = $('intentionInput').value.trim() || '[no theme]';
+    const el = $('briefPreview');
     if (!p) { el.textContent = ''; return; }
     const action = m.category === 'demonstration' ? `demonstrate the <strong>${escapeHtml(m.name)}</strong> effect` : `use the <strong>${escapeHtml(m.name)}</strong> method`;
     el.innerHTML = `<strong>Hey ${escapeHtml(p.name)}</strong> — ${action} for a <strong>${escapeHtml(state.length)}</strong> session on the theme: <strong>"${escapeHtml(intention)}"</strong>${state.craftedSuggestion ? ' (with the crafted suggestion embedded)' : ''}. Write the full script.`;
@@ -1945,7 +2035,7 @@ body.in-session .footer {
   // ====================================================================
   function renderConfigSummary() {
     const p = getPersona(), m = getMethod();
-    const el = document.getElementById('configSummary');
+    const el = $('configSummary');
     if (!el || !p || !m) return;
 
     // Category badges
@@ -1973,8 +2063,8 @@ body.in-session .footer {
       </div>`;
 
     // Auto-select recommended soundscape based on method
-    const ssSelect = document.getElementById('soundscapeSelect');
-    const ssHint = document.getElementById('soundscapeHint');
+    const ssSelect = $('soundscapeSelect');
+    const ssHint = $('soundscapeHint');
     if (ssSelect && ssHint) {
       // Recommend a soundscape based on method
       const recommendations = {
@@ -1993,7 +2083,7 @@ body.in-session .footer {
     }
 
     // Speed hint based on method category
-    const speedHint = document.getElementById('speechRateHint');
+    const speedHint = $('speechRateHint');
     if (speedHint) {
       if (m.category === 'rapid') speedHint.textContent = 'Rapid methods work well at normal or slightly faster speed.';
       else if (m.category === 'advanced') speedHint.textContent = 'Advanced methods benefit from a slow, deliberate pace.';
@@ -2002,7 +2092,7 @@ body.in-session .footer {
     }
 
     // Length recommendation hint
-    const lengthHint = document.getElementById('lengthHint');
+    const lengthHint = $('lengthHint');
     if (lengthHint) {
       if (m.category === 'rapid') lengthHint.textContent = 'Rapid methods are designed to be short. "Short" is usually plenty.';
       else if (m.category === 'advanced') lengthHint.textContent = 'Advanced methods benefit from longer sessions to build depth.';
@@ -2011,7 +2101,7 @@ body.in-session .footer {
     }
 
     // Warnings for specific combinations
-    const warnEl = document.getElementById('configWarning');
+    const warnEl = $('configWarning');
     if (warnEl) {
       const warnings = [];
       if (m.category === 'advanced' && state.length === 'short') {
@@ -2037,7 +2127,7 @@ body.in-session .footer {
   // ====================================================================
   function loadVoices() {
     const voices = speechSynthesis.getVoices();
-    const select = document.getElementById('voiceSelect');
+    const select = $('voiceSelect');
     select.innerHTML = '';
     const scored = voices.filter(v => v.lang.startsWith('en')).map(v => {
       let s = 0;
@@ -2082,8 +2172,8 @@ body.in-session .footer {
     updateVoiceInfo();
   }
   function updateVoiceInfo() {
-    const select = document.getElementById('voiceSelect');
-    const info = document.getElementById('voiceInfo');
+    const select = $('voiceSelect');
+    const info = $('voiceInfo');
     if (!info || !select.selectedOptions[0]) return;
     const opt = select.selectedOptions[0];
     const tier = opt.dataset.tier || 'local';
@@ -2092,7 +2182,7 @@ body.in-session .footer {
     info.textContent = (labels[tier] || '') + (local ? ' · runs offline' : ' · requires internet');
   }
   if (typeof speechSynthesis !== 'undefined') { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
-  const getSelectedVoice = () => { const name = document.getElementById('voiceSelect').value; return speechSynthesis.getVoices().find(v => v.name === name) || null; };
+  const getSelectedVoice = () => { const name = $('voiceSelect').value; return speechSynthesis.getVoices().find(v => v.name === name) || null; };
  
   // ====================================================================
   // SOUNDSCAPE ENGINE — procedural ambient audio (replaces AudioDrone)
@@ -2632,14 +2722,14 @@ body.in-session .footer {
   let _previewDroneTimeout = null;
 
   async function previewSoundscape() {
-    const type = document.getElementById('soundscapeSelect')?.value;
+    const type = $('soundscapeSelect')?.value;
     if (!type || type === 'none') { notify.info('Select a soundscape first.'); return; }
     await stopSoundscapePreview();
     try {
       await _previewDrone.start(state.droneVolume, type);
-      document.getElementById('soundPreviewBtn').style.display = 'none';
-      document.getElementById('soundStopBtn').style.display = '';
-      document.getElementById('soundPreviewHint').textContent = 'playing ' + type + '...';
+      togglePreviewBtns('sound', true);
+      
+      $('soundPreviewHint').textContent = 'playing ' + type + '...';
       // Auto-stop after 10 seconds
       _previewDroneTimeout = setTimeout(() => stopSoundscapePreview(), 10000);
     } catch(e) { notify.warn('Could not start audio preview.'); }
@@ -2648,9 +2738,9 @@ body.in-session .footer {
   async function stopSoundscapePreview() {
     clearTimeout(_previewDroneTimeout);
     await _previewDrone.stop();
-    document.getElementById('soundPreviewBtn').style.display = '';
-    document.getElementById('soundStopBtn').style.display = 'none';
-    document.getElementById('soundPreviewHint').textContent = 'Listen to a 10-second preview.';
+    togglePreviewBtns('sound', false);
+    
+    $('soundPreviewHint').textContent = 'Listen to a 10-second preview.';
   }
 
   // Viz preview — renders to the mini canvas with its own rAF loop
@@ -2659,23 +2749,23 @@ body.in-session .footer {
 
   function startVizPreview() {
     stopVizPreview();
-    const sel = document.getElementById('vizSelect')?.value;
+    const sel = $('vizSelect')?.value;
     const vizKey = sel === 'auto' ? (getMethod().visual) : sel;
     const renderer = VIZ_RENDERERS[vizKey];
     if (!renderer) {
       // Non-canvas types (highway, spiral, pulse, none) — show a label instead
-      const wrap = document.getElementById('vizPreviewWrap');
+      const wrap = $('vizPreviewWrap');
       if (wrap) { wrap.style.display = 'block'; }
-      const canvas = document.getElementById('vizPreviewCanvas');
+      const canvas = $('vizPreviewCanvas');
       if (canvas) { const ctx = canvas.getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#4a6a84'; ctx.font = '13px -apple-system, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(vizKey === 'none' ? 'Black screen — no visual' : vizKey + ' (non-canvas preview)', canvas.width/2, canvas.height/2); }
-      document.getElementById('vizPreviewLabel').textContent = vizKey;
-      document.getElementById('vizPreviewBtn').style.display = 'none';
-      document.getElementById('vizStopBtn').style.display = '';
+      $('vizPreviewLabel').textContent = vizKey;
+      togglePreviewBtns('viz', true);
+      
       return;
     }
 
-    const wrap = document.getElementById('vizPreviewWrap');
-    const canvas = document.getElementById('vizPreviewCanvas');
+    const wrap = $('vizPreviewWrap');
+    const canvas = $('vizPreviewCanvas');
     if (!wrap || !canvas) return;
     wrap.style.display = 'block';
     canvas.width = canvas.offsetWidth || 300;
@@ -2683,9 +2773,9 @@ body.in-session .footer {
     const ctx = canvas.getContext('2d', { alpha: false });
     const color = '#6b94b8';
     _vizPreviewStart = performance.now();
-    document.getElementById('vizPreviewLabel').textContent = vizKey;
-    document.getElementById('vizPreviewBtn').style.display = 'none';
-    document.getElementById('vizStopBtn').style.display = '';
+    $('vizPreviewLabel').textContent = vizKey;
+    togglePreviewBtns('viz', true);
+    
 
     function frame() {
       const t = (performance.now() - _vizPreviewStart) / 1000;
@@ -2697,17 +2787,17 @@ body.in-session .footer {
 
   function stopVizPreview() {
     if (_vizPreviewRaf) { cancelAnimationFrame(_vizPreviewRaf); _vizPreviewRaf = null; }
-    const wrap = document.getElementById('vizPreviewWrap');
+    const wrap = $('vizPreviewWrap');
     if (wrap) wrap.style.display = 'none';
-    document.getElementById('vizPreviewBtn').style.display = '';
-    document.getElementById('vizStopBtn').style.display = 'none';
+    togglePreviewBtns('viz', false);
+    
   }
 
   // Voice preview state
   let _voicePreviewing = false;
 
   function setupVisual(visualType) {
-    const stage = document.getElementById('stage');
+    const stage = $('stage');
     // Clean up previous visuals
     if (vizRAF) { cancelAnimationFrame(vizRAF); vizRAF = null; }
     if (highwayRAF) { cancelAnimationFrame(highwayRAF); highwayRAF = null; }
@@ -2784,27 +2874,27 @@ body.in-session .footer {
   // ====================================================================
   function openPersonaEditor(id) {
     state.editingPersonaId = id;
-    document.getElementById('personaModalTitle').textContent = id ? 'edit persona' : 'create custom persona';
+    $('personaModalTitle').textContent = id ? 'edit persona' : 'create custom persona';
     if (id) {
       const p = state.personas.find(x => x.id === id);
-      document.getElementById('personaFormName').value = p.name;
-      document.getElementById('personaFormTagline').value = p.tagline;
-      document.getElementById('personaFormPrompt').value = p.systemPrompt;
-      document.getElementById('personaFormCategory').value = p.category || 'contemplative';
+      $('personaFormName').value = p.name;
+      $('personaFormTagline').value = p.tagline;
+      $('personaFormPrompt').value = p.systemPrompt;
+      $('personaFormCategory').value = p.category || 'contemplative';
     } else {
-      document.getElementById('personaFormName').value = '';
-      document.getElementById('personaFormTagline').value = '';
-      document.getElementById('personaFormPrompt').value = '';
-      document.getElementById('personaFormCategory').value = 'contemplative';
+      $('personaFormName').value = '';
+      $('personaFormTagline').value = '';
+      $('personaFormPrompt').value = '';
+      $('personaFormCategory').value = 'contemplative';
     }
-    document.getElementById('personaModal').classList.add('visible');
+    $('personaModal').classList.add('visible');
   }
-  const closePersonaEditor = () => { document.getElementById('personaModal').classList.remove('visible'); state.editingPersonaId = null; };
+  const closePersonaEditor = () => { $('personaModal').classList.remove('visible'); state.editingPersonaId = null; };
   function savePersonaFromForm() {
-    const name = document.getElementById('personaFormName').value.trim();
-    const tagline = document.getElementById('personaFormTagline').value.trim();
-    const systemPrompt = document.getElementById('personaFormPrompt').value.trim();
-    const category = document.getElementById('personaFormCategory').value || 'contemplative';
+    const name = $('personaFormName').value.trim();
+    const tagline = $('personaFormTagline').value.trim();
+    const systemPrompt = $('personaFormPrompt').value.trim();
+    const category = $('personaFormCategory').value || 'contemplative';
     if (!name || !systemPrompt) { notify.warn('Name and voice instruction required.'); return; }
     let custom = loadCustomPersonas();
     if (state.editingPersonaId) {
@@ -2827,26 +2917,22 @@ body.in-session .footer {
   // ====================================================================
   // CRAFTER
   // ====================================================================
+  let _aiInProgress = false; // Prevents double-click firing two concurrent AI calls
+
   async function craftSuggestion() {
-    const rough = document.getElementById('intentionInput').value.trim();
+    if (_aiInProgress) { notify.info('An AI call is already in progress.'); return; }
+    const rough = $('intentionInput').value.trim();
     const skipTypes = ['trance', 'sleep'];
     if (!rough && !skipTypes.includes(state.intentionType)) { notify.warn('Describe what you want first.'); return; }
     const type = INTENTION_TYPES[state.intentionType];
     if (!type) { notify.warn('Select an intention type first.'); return; }
-    const btn = document.getElementById('craftBtn');
-    const progress = document.getElementById('craftProgress');
-    const progressLabel = document.getElementById('craftProgressLabel');
-
-    btn.disabled = true; btn.classList.add('loading');
-    progress.classList.add('visible');
+    _aiInProgress = true;
+    const progressLabel = $('craftProgressLabel');
+    setLoading('craftBtn', true);
+    setLoading('recraftBtn', true);
+    $('craftProgress').classList.add('visible');
     progressLabel.textContent = 'crafting your suggestion — this takes 1–3 minutes...';
-
-    // Elapsed timer so user sees activity
-    const startTime = Date.now();
-    const timerInterval = setInterval(() => {
-      const elapsed = Math.round((Date.now() - startTime) / 1000);
-      progressLabel.textContent = `crafting... ${elapsed}s elapsed`;
-    }, 1000);
+    const stopTimer = makeElapsedTimer(s => { progressLabel.textContent = `crafting... ${s}s elapsed`; });
 
     const instruction = `You are a master hypnotherapist converting a user's rough intention into a technically-precise hypnotic suggestion.
 
@@ -2887,28 +2973,30 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       notify.success('Suggestion crafted successfully.');
     } catch (e) { console.error(e); notify.warn('Crafting failed: ' + e.message + '. Try again.'); }
     finally {
-      clearInterval(timerInterval);
-      btn.disabled = false; btn.classList.remove('loading'); btn.textContent = 'craft hypnotic suggestion →';
-      progress.classList.remove('visible');
+      _aiInProgress = false;
+      stopTimer();
+      setLoading('craftBtn', false, 'craft hypnotic suggestion →');
+      setLoading('recraftBtn', false);
+      $('craftProgress').classList.remove('visible');
     }
   }
   function showCrafted() {
     const c = state.craftedSuggestion;
-    document.getElementById('craftedText').textContent = c.craftedSuggestion;
-    document.getElementById('craftedText').style.display = 'block';
-    document.getElementById('craftedEditable').style.display = 'none';
-    document.getElementById('saveEditBtn').style.display = 'none';
-    document.getElementById('craftedMeta').innerHTML = `<strong>trigger:</strong> ${escapeHtml(c.trigger||'—')}  ·  <strong>effect:</strong> ${escapeHtml(c.coreResponse||'—')}<br><strong>technique:</strong> ${escapeHtml(c.explanation||'—')}`;
-    document.getElementById('craftedPreview').classList.add('visible');
+    $('craftedText').textContent = c.craftedSuggestion;
+    $('craftedText').style.display = 'block';
+    $('craftedEditable').style.display = 'none';
+    $('saveEditBtn').style.display = 'none';
+    $('craftedMeta').innerHTML = `<strong>trigger:</strong> ${escapeHtml(c.trigger||'—')}  ·  <strong>effect:</strong> ${escapeHtml(c.coreResponse||'—')}<br><strong>technique:</strong> ${escapeHtml(c.explanation||'—')}`;
+    $('craftedPreview').classList.add('visible');
   }
-  function hideCrafted() { state.craftedSuggestion = null; document.getElementById('craftedPreview').classList.remove('visible'); hideScript(); }
+  function hideCrafted() { state.craftedSuggestion = null; $('craftedPreview').classList.remove('visible'); hideScript(); }
   function toggleEditCrafted() {
-    const t = document.getElementById('craftedText'), e = document.getElementById('craftedEditable'), s = document.getElementById('saveEditBtn');
+    const t = $('craftedText'), e = $('craftedEditable'), s = $('saveEditBtn');
     e.value = state.craftedSuggestion.craftedSuggestion;
     t.style.display = 'none'; e.style.display = 'block'; s.style.display = 'inline-block';
   }
   function saveEditCrafted() {
-    state.craftedSuggestion.craftedSuggestion = document.getElementById('craftedEditable').value.trim();
+    state.craftedSuggestion.craftedSuggestion = $('craftedEditable').value.trim();
     showCrafted(); hideScript();
   }
  
@@ -2916,28 +3004,26 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   // SCRIPT GEN
   // ====================================================================
   async function generateFullScript() {
+    if (_aiInProgress) { notify.info('An AI call is already in progress.'); return; }
     // Guard: if user has edited the script textarea, confirm before clobbering
-    const editedText = document.getElementById('scriptText').value.trim();
+    const editedText = $('scriptText').value.trim();
     if (state.fullScript && editedText && editedText !== state.fullScript.trim()) {
       if (!confirm('Your manual edits to the script will be discarded. Regenerate anyway?')) return;
     }
+    _aiInProgress = true;
     const persona = getPersona();
     const method = getMethod();
     const durations = PHASE_DURATIONS[state.length];
-    const rough = document.getElementById('intentionInput').value.trim();
+    const rough = $('intentionInput').value.trim();
     const wpm = 50;
     const targetWords = Object.fromEntries(Object.entries(durations).map(([k,v]) => [k, Math.round(v * wpm / 60)]));
- 
-    const btn = document.getElementById('generateScriptBtn');
-    btn.disabled = true; btn.classList.add('loading');
 
-    // Elapsed timer
-    const genStart = Date.now();
-    const genTimer = setInterval(() => {
-      const elapsed = Math.round((Date.now() - genStart) / 1000);
-      btn.classList.remove('loading');
-      btn.textContent = `generating script... ${elapsed}s`;
-    }, 1000);
+    setLoading('generateScriptBtn', true);
+    setLoading('regenScriptBtn', true);
+    const progressLabel = $('craftProgressLabel');
+    $('craftProgress').classList.add('visible');
+    progressLabel.textContent = 'generating full script...';
+    const stopTimer = makeElapsedTimer(s => { progressLabel.textContent = `generating script... ${s}s elapsed`; });
  
     const craftedBlock = state.craftedSuggestion ? `
 CRAFTED HYPNOTIC SUGGESTION (deliver verbatim in WORK phase):
@@ -3012,7 +3098,7 @@ Begin:`;
     } catch (e) {
       console.error(e);
       notify.error('Script generation failed: ' + e.message);
-    } finally { clearInterval(genTimer); btn.disabled = false; btn.classList.remove('loading'); btn.textContent = 'generate full script'; }
+    } finally { _aiInProgress = false; stopTimer(); setLoading('generateScriptBtn', false, 'generate full script'); setLoading('regenScriptBtn', false); $('craftProgress').classList.remove('visible'); }
   }
  
   function parseScript(text) {
@@ -3035,7 +3121,7 @@ Begin:`;
   }
  
   function showScript() {
-    document.getElementById('scriptText').value = state.fullScript;
+    $('scriptText').value = state.fullScript;
     // Strip phase markers and pause markers before counting actual spoken words
     const spokenOnly = state.fullScript
       .replace(/===\s*\w+\s*===/gi, ' ')
@@ -3043,16 +3129,16 @@ Begin:`;
     const words = spokenOnly.split(/\s+/).filter(w => w.length > 0).length;
     const pauses = (state.fullScript.match(/\[PAUSE\s+\d+\]/gi) || []).length;
     const pauseSecs = (state.fullScript.match(/\[PAUSE\s+(\d+)\]/gi) || []).reduce((sum, m) => sum + parseInt(m.match(/\d+/)[0], 10), 0);
-    document.getElementById('scriptStats').innerHTML = `<strong>${words}</strong> words · <strong>${pauses}</strong> pauses (${pauseSecs}s) · estimated: <strong>${Math.round(words / 50 + pauseSecs / 60)} min</strong><br>Edit below before starting.`;
-    document.getElementById('scriptPreview').classList.add('visible');
+    $('scriptStats').innerHTML = `<strong>${words}</strong> words · <strong>${pauses}</strong> pauses (${pauseSecs}s) · estimated: <strong>${Math.round(words / 50 + pauseSecs / 60)} min</strong><br>Edit below before starting.`;
+    $('scriptPreview').classList.add('visible');
   }
-  function hideScript() { state.fullScript = null; state.parsedScript = null; document.getElementById('scriptPreview').classList.remove('visible'); updateStepUI(); }
+  function hideScript() { state.fullScript = null; state.parsedScript = null; $('scriptPreview').classList.remove('visible'); updateStepUI(); }
  
   // ====================================================================
   // LIBRARY
   // ====================================================================
   function renderLibrary() {
-    const list = document.getElementById('libraryList');
+    const list = $('libraryList');
     const lib = loadLibrary();
     if (lib.length === 0) { list.innerHTML = '<div class="library-empty">no saved scripts yet</div>'; return; }
     list.innerHTML = '';
@@ -3077,14 +3163,14 @@ Begin:`;
     state.parsedScript = parseScript(entry.script);
     if (entry.personaId) state.selectedPersonaId = entry.personaId;
     if (entry.methodId) state.selectedMethodId = entry.methodId;
-    if (entry.length) { state.length = entry.length; document.getElementById('lengthSelect').value = entry.length; }
+    if (entry.length) { state.length = entry.length; $('lengthSelect').value = entry.length; }
     // Restore intention trail so user can navigate back to step 3 without breaking validation
     if (entry.craftedSuggestion) state.craftedSuggestion = entry.craftedSuggestion;
-    if (entry.roughIntention !== undefined) document.getElementById('intentionInput').value = entry.roughIntention;
+    if (entry.roughIntention !== undefined) $('intentionInput').value = entry.roughIntention;
     if (entry.intentionType) {
       state.intentionType = entry.intentionType;
-      document.getElementById('intentionType').value = entry.intentionType;
-      document.getElementById('intentionTypeHint').textContent = (INTENTION_TYPES[entry.intentionType] || {}).hint || '';
+      $('intentionType').value = entry.intentionType;
+      $('intentionTypeHint').textContent = (INTENTION_TYPES[entry.intentionType] || {}).hint || '';
     }
     if (state.craftedSuggestion) showCrafted();
     // Jump straight to step 5
@@ -3096,15 +3182,15 @@ Begin:`;
  
   function openSaveScriptModal() {
     if (!state.fullScript) { notify.warn('Generate a script first.'); return; }
-    const suggested = (document.getElementById('intentionInput').value.trim() || 'session') + ' · ' + getMethod().name;
-    document.getElementById('saveScriptName').value = suggested;
-    document.getElementById('saveScriptModal').classList.add('visible');
+    const suggested = ($('intentionInput').value.trim() || 'session') + ' · ' + getMethod().name;
+    $('saveScriptName').value = suggested;
+    $('saveScriptModal').classList.add('visible');
   }
-  const closeSaveScriptModal = () => document.getElementById('saveScriptModal').classList.remove('visible');
+  const closeSaveScriptModal = () => $('saveScriptModal').classList.remove('visible');
   function confirmSaveScript() {
-    const name = document.getElementById('saveScriptName').value.trim();
+    const name = $('saveScriptName').value.trim();
     if (!name) return;
-    const script = document.getElementById('scriptText').value.trim();
+    const script = $('scriptText').value.trim();
     const entry = {
       id: 'lib_' + Date.now(),
       name,
@@ -3117,7 +3203,7 @@ Begin:`;
       savedAt: Date.now(),
       // Persist the intention trail so loading a script restores all wizard state
       craftedSuggestion: state.craftedSuggestion,
-      roughIntention: document.getElementById('intentionInput').value,
+      roughIntention: $('intentionInput').value,
       intentionType: state.intentionType,
     };
     const lib = loadLibrary(); lib.unshift(entry);
@@ -3129,8 +3215,8 @@ Begin:`;
   // SESSION HISTORY & STATS
   // ====================================================================
   async function renderSessionHistory() {
-    const panel = document.getElementById('sessionStatsPanel');
-    const list = document.getElementById('sessionHistoryList');
+    const panel = $('sessionStatsPanel');
+    const list = $('sessionHistoryList');
     if (!panel || !list) return;
 
     const history = (await idbGet('stillness_history_v1')) || [];
@@ -3145,20 +3231,20 @@ Begin:`;
     const totalMinutes = Math.round(history.reduce((sum, s) => sum + (s.durationSec || 0), 0) / 60);
     const completed = history.filter(s => s.completed).length;
 
-    // Streak calculation
+    // Compassionate streak — allows 1-day gaps (auto-freeze) per Lally et al.
     const today = new Date(); today.setHours(0,0,0,0);
     const dayMs = 86400000;
     const sessionDays = [...new Set(history.map(s => {
       const d = new Date(s.date); d.setHours(0,0,0,0); return d.getTime();
     }))].sort((a,b) => b - a);
 
-    let streak = 0;
+    let streak = 0, freezesUsed = 0;
     let checkDay = today.getTime();
     for (const day of sessionDays) {
-      if (day === checkDay || day === checkDay - dayMs) {
-        streak++;
-        checkDay = day;
-      } else break;
+      const gap = (checkDay - day) / dayMs;
+      if (gap <= 1) { streak++; checkDay = day; } // consecutive or same day
+      else if (gap === 2 && freezesUsed < 2) { streak++; freezesUsed++; checkDay = day; } // 1-day gap auto-freeze
+      else break;
     }
 
     // Favorite guide
@@ -3192,7 +3278,7 @@ Begin:`;
   // EXPORT, SHARE, BACKUP/RESTORE
   // ====================================================================
   function exportScript() {
-    const script = document.getElementById('scriptText')?.value?.trim();
+    const script = $('scriptText')?.value?.trim();
     if (!script) { notify.warn('No script to export.'); return; }
     const persona = getPersona(), method = getMethod();
     const header = `# Hypnosis Script\n# Guide: ${persona.name} | Method: ${method.name} | Length: ${state.length}\n# Generated: ${new Date().toLocaleDateString()}\n\n`;
@@ -3209,7 +3295,7 @@ Begin:`;
       p: state.selectedPersonaId, m: state.selectedMethodId,
       i: state.intentionType, l: state.length, s: state.soundscape,
       r: state.speechRate,
-      t: document.getElementById('intentionInput')?.value?.trim() || '',
+      t: $('intentionInput')?.value?.trim() || '',
     };
     const json = JSON.stringify(config);
     let encoded;
@@ -3240,11 +3326,11 @@ Begin:`;
       const cfg = JSON.parse(json);
       if (cfg.p && state.personas.find(p => p.id === cfg.p)) state.selectedPersonaId = cfg.p;
       if (cfg.m && METHODS.find(m => m.id === cfg.m)) state.selectedMethodId = cfg.m;
-      if (cfg.i && INTENTION_TYPES[cfg.i]) { state.intentionType = cfg.i; document.getElementById('intentionType').value = cfg.i; }
-      if (cfg.l && PHASE_DURATIONS[cfg.l]) { state.length = cfg.l; document.getElementById('lengthSelect').value = cfg.l; }
+      if (cfg.i && INTENTION_TYPES[cfg.i]) { state.intentionType = cfg.i; $('intentionType').value = cfg.i; }
+      if (cfg.l && PHASE_DURATIONS[cfg.l]) { state.length = cfg.l; $('lengthSelect').value = cfg.l; }
       if (cfg.s) state.soundscape = cfg.s;
       if (cfg.r) state.speechRate = Math.max(0.5, Math.min(1, cfg.r));
-      if (cfg.t) document.getElementById('intentionInput').value = String(cfg.t).slice(0, 500);
+      if (cfg.t) $('intentionInput').value = String(cfg.t).slice(0, 500);
       renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail(); updateStepUI();
       notify.info('Shared session config loaded. Review and adjust before starting.');
       history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -3280,7 +3366,7 @@ Begin:`;
   // TRANSCRIPT
   // ====================================================================
   function populateTranscript() {
-    const panel = document.getElementById('transcriptPanel');
+    const panel = $('transcriptPanel');
     if (!panel || !state.parsedScript) return;
     const phases = ['settling','induction','deepener','work','emergence'];
     const labels = { settling:'Settling', induction:'Induction', deepener:'Deepener', work:'Work', emergence:'Emergence' };
@@ -3295,10 +3381,10 @@ Begin:`;
   }
 
   function toggleTranscript() {
-    const panel = document.getElementById('transcriptPanel');
+    const panel = $('transcriptPanel');
     if (!panel) return;
     panel.classList.toggle('visible');
-    const btn = document.getElementById('transcriptToggle');
+    const btn = $('transcriptToggle');
     if (btn) btn.textContent = panel.classList.contains('visible') ? '✕ close' : '📜 script';
   }
 
@@ -3313,7 +3399,7 @@ Begin:`;
       return;
     }
 
-    const scriptText = document.getElementById('scriptText').value.trim();
+    const scriptText = $('scriptText').value.trim();
     if (!scriptText) { notify.warn('Generate or paste a script first.'); return; }
 
     // Check TTS availability
@@ -3329,6 +3415,7 @@ Begin:`;
     state.parsedScript = parseScript(scriptText);
     state.voice = getSelectedVoice();
     state.abortFlag = false;
+    state._finishing = false;
     state._sessionStartTime = Date.now();
     state._currentPhase = 'settling';
     const method = getMethod();
@@ -3348,19 +3435,18 @@ Begin:`;
       }
     }
 
-    document.getElementById('setup-wizard').style.display = 'none';
-    document.getElementById('session-screen').style.display = 'block';
+    switchScreen('session-screen');
     document.body.classList.add('in-session');
-    document.getElementById('personaIndicator').textContent = '· ' + getPersona().name.toLowerCase() + ' ·';
-    document.getElementById('methodIndicator').textContent = '· ' + method.name.toLowerCase() + ' ·';
+    $('personaIndicator').textContent = '· ' + getPersona().name.toLowerCase() + ' ·';
+    $('methodIndicator').textContent = '· ' + method.name.toLowerCase() + ' ·';
 
     // Reset progress UI
-    document.getElementById('sessionProgressFill').style.width = '0%';
-    document.querySelectorAll('.phase-dot').forEach(d => { d.classList.remove('active','done'); });
+    $('sessionProgressFill').style.width = '0%';
+    updatePhaseDots(-1);
 
     // Apply HUD visibility toggles from Configure tab
     const h = state.hud;
-    const $s = (id, vis) => { const el = document.getElementById(id); if (el) el.style.display = vis ? '' : 'none'; };
+    const $s = (id, vis) => { const el = $(id); if (el) el.style.display = vis ? '' : 'none'; };
     $s('fixationDot', h.fixationDot);
     $s('textDisplay', h.textDisplay);
     $s('phaseDots', h.phaseDots);
@@ -3375,7 +3461,7 @@ Begin:`;
     const vizChoice = state.vizOverride === 'auto' ? method.visual : state.vizOverride;
     if (vizChoice === 'none') {
       // Black screen only — skip visual setup
-      const stage = document.getElementById('stage');
+      const stage = $('stage');
       Array.from(stage.children).forEach(c => {
         if (!c.classList.contains('fixation-dot') && !c.classList.contains('audio-indicator')
           && !c.classList.contains('persona-indicator') && !c.classList.contains('method-indicator')
@@ -3385,15 +3471,15 @@ Begin:`;
       setupVisual(vizChoice);
     }
     populateTranscript();
-    document.getElementById('transcriptPanel')?.classList.remove('visible');
-    const tBtn = document.getElementById('transcriptToggle');
+    $('transcriptPanel')?.classList.remove('visible');
+    const tBtn = $('transcriptToggle');
     if (tBtn) tBtn.textContent = '📜 script';
 
     // Start soundscape (replaces old drone toggle)
     if (state.soundscape && state.soundscape !== 'none') {
       try {
         await drone.start(state.droneVolume, state.soundscape);
-        document.getElementById('audioIndicator').textContent = '· ' + state.soundscape + ' ·';
+        $('audioIndicator').textContent = '· ' + state.soundscape + ' ·';
       } catch(e) {
         notify.info('Audio unavailable — tap the screen to enable audio, then try again.');
       }
@@ -3401,6 +3487,16 @@ Begin:`;
 
     // Haptic marker — double-pulse on session start (Android/Chrome)
     vibrateSessionMarker();
+
+    // Warm overlay for sleep sessions (blue-light reduction)
+    setSleepOverlay(state.intentionType === 'sleep');
+
+    // Reset post-session controls for fresh state
+    const postSlider = $('postStateSlider'); if (postSlider) { postSlider.value = 5; }
+    const postVal = $('postStateVal'); if (postVal) postVal.textContent = '5';
+    const alertSlider = $('alertnessSlider'); if (alertSlider) { alertSlider.value = 7; }
+    const alertVal = $('alertnessVal'); if (alertVal) alertVal.textContent = '7';
+    const journal = $('journalText'); if (journal) journal.value = '';
 
     // Wake Lock — prevent screen timeout during session
     try {
@@ -3422,8 +3518,7 @@ Begin:`;
         resolve(proceed);
       });
       if (!warningShown) {
-        document.getElementById('session-screen').style.display = 'none';
-        document.getElementById('setup-wizard').style.display = 'block';
+        switchScreen('setup-wizard');
         document.body.classList.remove('in-session');
         await drone.stop(); stopVisuals();
         try { state._wakeLock?.release(); } catch(e) {}
@@ -3437,12 +3532,25 @@ Begin:`;
       const elapsed = Math.round((Date.now() - state._sessionStartTime) / 1000);
       const mins = Math.floor(elapsed / 60);
       const secs = elapsed % 60;
-      const timeEl = document.getElementById('sessionTime');
+      const timeEl = $('sessionTime');
       if (timeEl) timeEl.textContent = `${mins}:${String(secs).padStart(2,'0')} elapsed`;
     }, 1000);
 
     const phases = ['settling','induction','deepener','work','emergence'];
     const phaseLabels = { settling: 'settling', induction: 'going inward', deepener: 'deeper', work: method.category === 'demonstration' ? 'the effect' : 'transformation', emergence: 're-alerting' };
+
+    // Safety timeout — absolute max session duration (expected × 2 + 5 min buffer)
+    const durations = PHASE_DURATIONS[state.length] || PHASE_DURATIONS.medium;
+    const expectedSec = Object.values(durations).reduce((a, b) => a + b, 0);
+    state._safetyTimeout = setTimeout(() => {
+      if (!state._finishing && state._sessionStartTime) {
+        notify.warn('Session exceeded maximum expected duration — auto-finishing.');
+        state._finishing = true;
+        state.abortFlag = true;
+        speechSynthesis.cancel();
+        finishSession(false);
+      }
+    }, (expectedSec * 2 + 300) * 1000);
 
     for (let pi = 0; pi < phases.length; pi++) {
       const phase = phases[pi];
@@ -3452,17 +3560,14 @@ Begin:`;
 
       // Update phase state
       state._currentPhase = phase;
-      document.getElementById('phaseIndicator').textContent = phaseLabels[phase];
+      $('phaseIndicator').textContent = phaseLabels[phase];
 
       // Update phase dots
-      document.querySelectorAll('.phase-dot').forEach((d, i) => {
-        if (i < pi) d.classList.add('done');
-        d.classList.toggle('active', i === pi);
-      });
+      updatePhaseDots(pi);
 
       // Update progress bar
       const pct = Math.round((pi / phases.length) * 100);
-      document.getElementById('sessionProgressFill').style.width = pct + '%';
+      $('sessionProgressFill').style.width = pct + '%';
 
       // Modulate drone frequency per phase
       if (state.droneEnabled && drone.running) drone.setPhaseFreq(phase);
@@ -3472,10 +3577,16 @@ Begin:`;
     }
 
     // Complete progress bar
-    document.getElementById('sessionProgressFill').style.width = '100%';
-    document.querySelectorAll('.phase-dot').forEach(d => { d.classList.remove('active'); d.classList.add('done'); });
+    $('sessionProgressFill').style.width = '100%';
+    updatePhaseDots(5);
 
-    if (!state.abortFlag) finishSession(false);
+    // Always finish the session — if abortFlag was set by emergencyEnd,
+    // that path calls finishSession(true) itself, so only call if not aborting.
+    // Guard against double-finish with a flag.
+    if (!state.abortFlag && !state._finishing) {
+      state._finishing = true;
+      finishSession(false);
+    }
   }
 
   // Interruptible sleep — checks abortFlag & paused state in 200ms chunks so
@@ -3486,7 +3597,7 @@ Begin:`;
     let elapsed = 0;
     while (elapsed < totalMs) {
       if (!bypassAbort && state.abortFlag) return;
-      while (state.paused) { await sleep(CHUNK); }
+      while (state.paused && !state.abortFlag) { await sleep(CHUNK); }
       const remaining = totalMs - elapsed;
       await sleep(Math.min(CHUNK, remaining));
       elapsed += CHUNK;
@@ -3503,17 +3614,19 @@ Begin:`;
     });
 
     const parts = canonical.split(/\[PAUSE\s+(\d+)\]/i);
-    const display = document.getElementById('textDisplay');
+    const display = $('textDisplay');
     for (let i = 0; i < parts.length; i++) {
       if (!bypassAbort && state.abortFlag) return;
-      while (state.paused) await sleep(200);
+      while (state.paused && !state.abortFlag) await sleep(200);
+      if (!bypassAbort && state.abortFlag) return;
       if (i % 2 === 0) {
         const segment = parts[i].trim();
         if (!segment) continue;
         const chunks = segment.split(/(?<=[.!?])\s+/).filter(s => s.trim());
         for (const chunk of chunks) {
           if (!bypassAbort && state.abortFlag) return;
-          while (state.paused) await sleep(200);
+          while (state.paused && !state.abortFlag) await sleep(200);
+          if (!bypassAbort && state.abortFlag) return;
           display.style.opacity = 0;
           await sleep(350);
           display.textContent = chunk;
@@ -3532,12 +3645,9 @@ Begin:`;
   function speak(text) {
     return new Promise(resolve => {
       if (!('speechSynthesis' in window)) { setTimeout(resolve, text.length * 80); return; }
-      if (speechSynthesis.speaking && !speechSynthesis.paused) {
-        speechSynthesis.cancel();
-        setTimeout(() => _doSpeak(text, resolve), 50);
-      } else {
-        _doSpeak(text, resolve);
-      }
+      // Always cancel before speaking to reset Chrome's internal state
+      speechSynthesis.cancel();
+      setTimeout(() => _doSpeak(text, resolve), 60);
     });
   }
   function _doSpeak(text, resolve) {
@@ -3545,13 +3655,15 @@ Begin:`;
     u.voice = state.voice || getSelectedVoice();
     u.rate = state.speechRate; u.pitch = state.voicePitch || 0.85; u.volume = state.voiceVolume ?? 1.0;
     let settled = false;
-    const done = () => { if (!settled) { settled = true; resolve(); } };
+    let lastBoundaryAt = Date.now();
+    const done = () => { if (!settled) { settled = true; clearInterval(silenceWatch); resolve(); } };
     u.onend = done;
     u.onerror = done;
 
     // Word-level highlighting via onboundary (Chrome/Safari desktop)
-    const display = document.getElementById('textDisplay');
+    const display = $('textDisplay');
     u.onboundary = (e) => {
+      lastBoundaryAt = Date.now();
       if (e.name === 'word' && display) {
         const before = text.slice(0, e.charIndex);
         const word = text.slice(e.charIndex, e.charIndex + e.charLength);
@@ -3562,19 +3674,33 @@ Begin:`;
 
     speechSynthesis.speak(u);
 
-    // Double induction: fire a second utterance with a different voice simultaneously
+    // Double induction: fire a second utterance simultaneously
     if (state._doubleInduction && state._secondVoice) {
       const u2 = new SpeechSynthesisUtterance(text);
       u2.voice = state._secondVoice;
-      u2.rate = state.speechRate * 0.92; // Slightly offset tempo
-      u2.pitch = 0.75; u2.volume = 0.7;
+      u2.rate = state.speechRate * 0.92; u2.pitch = 0.75; u2.volume = 0.7;
       u2.onend = () => {}; u2.onerror = () => {};
       speechSynthesis.speak(u2);
     }
 
-    const maxWait = Math.max(8000, text.length * 200);
-    setTimeout(() => { if (!settled && !speechSynthesis.speaking) done(); }, maxWait);
-    setTimeout(done, Math.max(15000, text.length * 250));
+    // ACTIVE SILENCE WATCHDOG — every 2s, check if speech has made progress.
+    // If speaking but no onboundary fired in 5s, Chrome is stuck. Force-resolve.
+    const silenceWatch = setInterval(() => {
+      if (settled) { clearInterval(silenceWatch); return; }
+      const silentFor = Date.now() - lastBoundaryAt;
+      if (speechSynthesis.speaking && silentFor > 5000) {
+        // Chrome is stuck — cancel and move on
+        speechSynthesis.cancel();
+        done();
+      }
+      if (!speechSynthesis.speaking && !speechSynthesis.pending) {
+        // Speech finished without firing onend (Firefox edge case)
+        done();
+      }
+    }, 2000);
+
+    // Hard ceiling — absolute maximum wait per chunk (shorter than before)
+    setTimeout(() => { speechSynthesis.cancel(); done(); }, Math.max(10000, text.length * 150));
   }
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -3603,7 +3729,7 @@ Begin:`;
       };
       _recorder.start();
       notify.info('Recording ambience...');
-      const btn = document.getElementById('recordBtn');
+      const btn = $('recordBtn');
       if (btn) { btn.textContent = '⏹ stop recording'; btn.classList.add('recording'); }
     } catch(e) { notify.error('Recording not supported in this browser.'); }
   }
@@ -3611,7 +3737,7 @@ Begin:`;
   function stopRecording() {
     if (_recorder && _recorder.state === 'recording') {
       _recorder.stop(); _recorder = null;
-      const btn = document.getElementById('recordBtn');
+      const btn = $('recordBtn');
       if (btn) { btn.textContent = '⏺ record ambience'; btn.classList.remove('recording'); }
     }
   }
@@ -3623,12 +3749,12 @@ Begin:`;
 
   async function finishSession(wasEmergency = false) {
     clearInterval(state._timeInterval);
+    clearTimeout(state._safetyTimeout);
     closeLivePanel();
     stopRecording(); // Stop any active recording before tearing down audio
     await drone.stop(); stopVisuals(); speechSynthesis.cancel();
     document.body.classList.remove('in-session');
-    document.getElementById('session-screen').style.display = 'none';
-    document.getElementById('post-screen').style.display = 'block';
+    switchScreen('post-screen');
 
     // Release wake lock
     try { state._wakeLock?.release(); } catch(e) {}
@@ -3652,14 +3778,18 @@ Begin:`;
     if (history.length > 50) history.length = 50; // Keep last 50
     await idbSet('stillness_history_v1', history);
     renderHeatmap(); // Refresh activity heatmap
+    renderSparkline(); // Refresh rising-score sparkline
 
     // Haptic marker — double-pulse on session end
     vibrateSessionMarker();
 
+    // Remove warm overlay
+    setSleepOverlay(false);
+
     // Build post-session summary
     const mins = Math.floor(elapsed / 60), secs = elapsed % 60;
     const persona = getPersona(), method = getMethod();
-    const summaryEl = document.getElementById('postSummary');
+    const summaryEl = $('postSummary');
     summaryEl.innerHTML = `
       <h3>session summary</h3>
       <div class="post-row"><span class="post-label">guide</span><span class="post-value">${escapeHtml(persona.name)}</span></div>
@@ -3669,7 +3799,7 @@ Begin:`;
     `;
 
     // Show trigger/suggestion reminder if relevant
-    const triggerBox = document.getElementById('postTriggerBox');
+    const triggerBox = $('postTriggerBox');
     if (state.craftedSuggestion && state.craftedSuggestion.trigger && state.craftedSuggestion.trigger !== 'ongoing state') {
       triggerBox.innerHTML = `
         <div class="post-trigger">
@@ -3699,20 +3829,19 @@ Begin:`;
     if (wasEmergency) {
       state._cooldownUntil = Date.now() + 30000;
       // Show grounding exercise after emergency end
-      const groundingBox = document.getElementById('groundingBox');
+      const groundingBox = $('groundingBox');
       if (groundingBox) groundingBox.style.display = 'block';
-      const postMsg = document.getElementById('postMessage');
+      const postMsg = $('postMessage');
       if (postMsg) postMsg.innerHTML = 'You ended the session early.<br>That\'s okay — take a moment to re-orient.';
     } else {
-      const groundingBox = document.getElementById('groundingBox');
+      const groundingBox = $('groundingBox');
       if (groundingBox) groundingBox.style.display = 'none';
-      const postMsg = document.getElementById('postMessage');
+      const postMsg = $('postMessage');
       if (postMsg) postMsg.innerHTML = 'Take a moment.<br>Notice how you feel.<br>Sip some water if you have it.';
     }
 
-    // Reset mood selection
-    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
-    const moodFeedback = document.getElementById('moodFeedback');
+    // Reset post-session state controls
+    const moodFeedback = $('moodFeedback');
     if (moodFeedback) moodFeedback.textContent = '';
   }
 
@@ -3750,6 +3879,8 @@ Begin:`;
   };
 
   function emergencyEnd() {
+    if (state._finishing) return; // Already finishing — prevent double-call
+    state._finishing = true;
     state.abortFlag = true;
     speechSynthesis.cancel();
     // Use persona-matched re-alert if available
@@ -3760,7 +3891,7 @@ Begin:`;
   }
   function togglePause() {
     state.paused = !state.paused;
-    document.getElementById('pauseBtn').textContent = state.paused ? 'resume' : 'pause';
+    $('pauseBtn').textContent = state.paused ? 'resume' : 'pause';
     if (state.paused) speechSynthesis.pause(); else speechSynthesis.resume();
   }
  
@@ -3768,22 +3899,22 @@ Begin:`;
   // HANDLERS + INIT
   // ====================================================================
   // Stepper clicks (only backward)
-  document.getElementById('stepper').addEventListener('click', e => {
+  $('stepper').addEventListener('click', e => {
     const item = e.target.closest('.step-item');
     if (!item || !item.classList.contains('clickable')) return;
     goToStep(parseInt(item.dataset.step));
   });
-  document.getElementById('btnNext').addEventListener('click', () => goToStep(state.currentStep + 1));
-  document.getElementById('btnBack').addEventListener('click', () => goToStep(state.currentStep - 1));
+  $('btnNext').addEventListener('click', () => goToStep(state.currentStep + 1));
+  $('btnBack').addEventListener('click', () => goToStep(state.currentStep - 1));
  
   // Filter tabs
-  document.getElementById('personaFilterTabs').addEventListener('click', e => {
+  $('personaFilterTabs').addEventListener('click', e => {
     if (!e.target.dataset.filter) return;
     state.personaFilter = e.target.dataset.filter;
     document.querySelectorAll('#personaFilterTabs .filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === state.personaFilter));
     renderPersonaGrid();
   });
-  document.getElementById('methodFilterTabs').addEventListener('click', e => {
+  $('methodFilterTabs').addEventListener('click', e => {
     if (!e.target.dataset.filter) return;
     state.methodFilter = e.target.dataset.filter;
     document.querySelectorAll('#methodFilterTabs .filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === state.methodFilter));
@@ -3791,49 +3922,49 @@ Begin:`;
   });
  
   // Step 3
-  document.getElementById('intentionType').addEventListener('change', updateIntentionHint);
-  document.getElementById('intentionInput').addEventListener('input', () => { hideCrafted(); updateStepUI(); });
-  document.getElementById('craftBtn').addEventListener('click', craftSuggestion);
-  document.getElementById('recraftBtn').addEventListener('click', craftSuggestion);
-  document.getElementById('editCraftedBtn').addEventListener('click', toggleEditCrafted);
-  document.getElementById('saveEditBtn').addEventListener('click', saveEditCrafted);
+  $('intentionType').addEventListener('change', updateIntentionHint);
+  $('intentionInput').addEventListener('input', () => { hideCrafted(); updateStepUI(); });
+  $('craftBtn').addEventListener('click', craftSuggestion);
+  $('recraftBtn').addEventListener('click', craftSuggestion);
+  $('editCraftedBtn').addEventListener('click', toggleEditCrafted);
+  $('saveEditBtn').addEventListener('click', saveEditCrafted);
  
   // Step 4 — audio controls
-  document.getElementById('lengthSelect').addEventListener('change', () => { state.length = document.getElementById('lengthSelect').value; hideScript(); });
-  document.getElementById('soundscapeSelect')?.addEventListener('change', e => {
+  $('lengthSelect').addEventListener('change', () => { state.length = $('lengthSelect').value; hideScript(); });
+  $('soundscapeSelect')?.addEventListener('change', e => {
     state.soundscape = e.target.value;
     state.droneEnabled = e.target.value !== 'none';
-    const hint = document.getElementById('soundscapeHint');
+    const hint = $('soundscapeHint');
     if (hint) {
       if (e.target.value === 'binaural') hint.textContent = '⚠ Binaural beats require stereo headphones. Efficacy is contested in peer-reviewed literature.';
       else hint.textContent = 'Procedurally generated — never loops. Use headphones for best experience.';
     }
   });
-  document.getElementById('droneVolume').addEventListener('input', e => {
+  $('droneVolume').addEventListener('input', e => {
     state.droneVolume = parseInt(e.target.value,10)/100; drone.setVolume(state.droneVolume);
-    const v = document.getElementById('droneVolVal'); if (v) v.textContent = e.target.value;
+    const v = $('droneVolVal'); if (v) v.textContent = e.target.value;
   });
-  document.getElementById('speechRate').addEventListener('input', e => {
+  $('speechRate').addEventListener('input', e => {
     state.speechRate = parseInt(e.target.value,10)/100;
-    const v = document.getElementById('speechRateVal'); if (v) v.textContent = (parseInt(e.target.value,10)/100).toFixed(2) + '×';
+    const v = $('speechRateVal'); if (v) v.textContent = (parseInt(e.target.value,10)/100).toFixed(2) + '×';
   });
-  document.getElementById('voicePitch')?.addEventListener('input', e => {
+  $('voicePitch')?.addEventListener('input', e => {
     state.voicePitch = parseInt(e.target.value,10)/100;
-    const v = document.getElementById('voicePitchVal'); if (v) v.textContent = (parseInt(e.target.value,10)/100).toFixed(2);
+    const v = $('voicePitchVal'); if (v) v.textContent = (parseInt(e.target.value,10)/100).toFixed(2);
   });
-  document.getElementById('voiceVolume')?.addEventListener('input', e => {
+  $('voiceVolume')?.addEventListener('input', e => {
     state.voiceVolume = parseInt(e.target.value,10)/100;
-    const v = document.getElementById('voiceVolVal'); if (v) v.textContent = e.target.value;
+    const v = $('voiceVolVal'); if (v) v.textContent = e.target.value;
   });
 
   // Step 4 — visual controls
-  document.getElementById('vizSelect')?.addEventListener('change', e => {
+  $('vizSelect')?.addEventListener('change', e => {
     state.vizOverride = e.target.value;
   });
 
   // Step 4 — HUD element toggles
   ['cfgFixationDot','cfgTextDisplay','cfgPhaseDots','cfgPhaseLabel','cfgProgressBar','cfgSessionTime','cfgLabels'].forEach(id => {
-    document.getElementById(id)?.addEventListener('change', e => {
+    $(id)?.addEventListener('change', e => {
       const key = id.replace('cfg','').replace(/^./, c => c.toLowerCase());
       // Map checkbox IDs to state.hud keys
       const keyMap = { fixationDot:'fixationDot', textDisplay:'textDisplay', phaseDots:'phaseDots', phaseLabel:'phaseLabel', progressBar:'progressBar', sessionTime:'sessionTime', labels:'labels' };
@@ -3843,41 +3974,70 @@ Begin:`;
   });
  
   // Step 5
-  document.getElementById('generateScriptBtn').addEventListener('click', generateFullScript);
-  document.getElementById('regenScriptBtn').addEventListener('click', generateFullScript);
-  document.getElementById('saveScriptBtn').addEventListener('click', openSaveScriptModal);
-  document.getElementById('exportScriptBtn').addEventListener('click', exportScript);
-  document.getElementById('shareConfigBtn').addEventListener('click', shareConfig);
-  document.getElementById('saveScriptCancelBtn').addEventListener('click', closeSaveScriptModal);
-  document.getElementById('saveScriptConfirmBtn').addEventListener('click', confirmSaveScript);
-  document.getElementById('saveScriptModal').addEventListener('click', e => { if (e.target.id === 'saveScriptModal') closeSaveScriptModal(); });
-  document.getElementById('beginBtn').addEventListener('click', startSession);
+  $('generateScriptBtn').addEventListener('click', generateFullScript);
+  $('regenScriptBtn').addEventListener('click', generateFullScript);
+  $('saveScriptBtn').addEventListener('click', openSaveScriptModal);
+  $('exportScriptBtn').addEventListener('click', exportScript);
+  $('shareConfigBtn').addEventListener('click', shareConfig);
+  $('saveScriptCancelBtn').addEventListener('click', closeSaveScriptModal);
+  $('saveScriptConfirmBtn').addEventListener('click', confirmSaveScript);
+  $('saveScriptModal').addEventListener('click', e => { if (e.target.id === 'saveScriptModal') closeSaveScriptModal(); });
+  $('beginBtn').addEventListener('click', startSession);
 
-  // Pre-session mood
-  document.getElementById('preMoodRow')?.addEventListener('click', e => {
-    const btn = e.target.closest('.mood-btn');
-    if (!btn) return;
-    document.querySelectorAll('#preMoodRow .mood-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    state._preMood = parseInt(btn.dataset.mood, 10);
+  // Pre-session state scale (0-10)
+  $('preStateSlider')?.addEventListener('input', e => {
+    state._preMood = parseInt(e.target.value, 10);
+    const el = $('preStateVal'); if (el) el.textContent = e.target.value;
+  });
+
+  // Post-session state scale (0-10)
+  $('postStateSlider')?.addEventListener('input', async e => {
+    const val = parseInt(e.target.value, 10);
+    const el = $('postStateVal'); if (el) el.textContent = e.target.value;
+    const fb = $('moodFeedback');
+    const delta = val - (state._preMood ?? 5);
+    if (fb) fb.textContent = delta > 0 ? `+${delta} improvement` : delta === 0 ? 'same as before' : `${delta} — be gentle with yourself`;
+    // Save to most recent session record
+    const history = (await idbGet('stillness_history_v1')) || [];
+    if (history.length > 0) { history[0].postMood = val; history[0].preMood = state._preMood ?? null; await idbSet('stillness_history_v1', history); }
+  });
+
+  // Alertness check — auto-trigger grounding if low
+  $('alertnessSlider')?.addEventListener('input', e => {
+    const val = parseInt(e.target.value, 10);
+    const el = $('alertnessVal'); if (el) el.textContent = e.target.value;
+    // Howard Alertness Scale: if alertness < 5, show grounding exercise
+    const groundingBox = $('groundingBox');
+    if (groundingBox && val < 5) {
+      groundingBox.style.display = 'block';
+      if ($('moodFeedback')) $('moodFeedback').textContent = 'You seem drowsy — please do the grounding exercise before standing up.';
+    }
+  });
+
+  // Journal save
+  $('journalText')?.addEventListener('blur', async () => {
+    const text = $('journalText')?.value?.trim();
+    if (!text) return;
+    const history = (await idbGet('stillness_history_v1')) || [];
+    if (history.length > 0) { history[0].journal = text; await idbSet('stillness_history_v1', history); }
   });
 
   // Backup/restore
-  document.getElementById('backupBtn')?.addEventListener('click', exportBackup);
-  document.getElementById('restoreInput')?.addEventListener('change', e => {
+  $('backupBtn')?.addEventListener('click', exportBackup);
+  $('restoreInput')?.addEventListener('change', e => {
     const file = e.target.files?.[0];
     if (file) importBackup(file);
     e.target.value = ''; // Reset so same file can be re-imported
   });
  
   // Session
-  document.getElementById('pauseBtn').addEventListener('click', togglePause);
-  document.getElementById('endBtn').addEventListener('click', emergencyEnd);
-  document.getElementById('restartBtn').addEventListener('click', () => location.reload());
-  document.getElementById('transcriptToggle')?.addEventListener('click', toggleTranscript);
-  document.getElementById('recordBtn')?.addEventListener('click', toggleRecording);
-  document.getElementById('fullscreenBtn')?.addEventListener('click', () => {
-    const stage = document.getElementById('stage');
+  $('pauseBtn').addEventListener('click', togglePause);
+  $('endBtn').addEventListener('click', emergencyEnd);
+  $('restartBtn').addEventListener('click', () => location.reload());
+  $('transcriptToggle')?.addEventListener('click', toggleTranscript);
+  $('recordBtn')?.addEventListener('click', toggleRecording);
+  $('fullscreenBtn')?.addEventListener('click', () => {
+    const stage = $('stage');
     if (!stage) return;
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
@@ -3886,54 +4046,54 @@ Begin:`;
     }
   });
   document.addEventListener('fullscreenchange', () => {
-    const btn = document.getElementById('fullscreenBtn');
+    const btn = $('fullscreenBtn');
     if (btn) btn.textContent = document.fullscreenElement ? '⛶ exit' : '⛶ fullscreen';
   });
 
   // ── Live Settings Panel ────────────────────────────────────────────
   function openLivePanel() {
-    const panel = document.getElementById('livePanel');
-    const overlay = document.getElementById('livePanelOverlay');
+    const panel = $('livePanel');
+    const overlay = $('livePanelOverlay');
     if (!panel) return;
     // Sync controls to current state before opening
-    const $v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    const $v = (id, val) => { const el = $(id); if (el) el.value = val; };
     $v('liveVizSelect', state.vizOverride === 'auto' ? (getMethod().visual) : state.vizOverride);
     $v('liveSoundscapeSelect', state.soundscape);
     $v('liveSoundVol', Math.round(state.droneVolume * 100));
     $v('liveVoiceSpeed', Math.round(state.speechRate * 100));
     $v('liveVoicePitch', Math.round((state.voicePitch || 0.85) * 100));
     $v('liveVoiceVol', Math.round((state.voiceVolume ?? 1) * 100));
-    document.getElementById('liveSoundVolVal').textContent = Math.round(state.droneVolume * 100);
-    document.getElementById('liveVoiceSpeedVal').textContent = state.speechRate.toFixed(2) + '×';
-    document.getElementById('liveVoicePitchVal').textContent = (state.voicePitch || 0.85).toFixed(2);
-    document.getElementById('liveVoiceVolVal').textContent = Math.round((state.voiceVolume ?? 1) * 100);
+    $('liveSoundVolVal').textContent = Math.round(state.droneVolume * 100);
+    $('liveVoiceSpeedVal').textContent = state.speechRate.toFixed(2) + '×';
+    $('liveVoicePitchVal').textContent = (state.voicePitch || 0.85).toFixed(2);
+    $('liveVoiceVolVal').textContent = Math.round((state.voiceVolume ?? 1) * 100);
     // Sync HUD toggles
     const hudMap = { liveFixDot:'fixationDot', liveText:'textDisplay', livePhaseDots:'phaseDots', livePhaseLabel:'phaseLabel', liveProgress:'progressBar', liveTime:'sessionTime', liveLabels:'labels' };
     for (const [elId, key] of Object.entries(hudMap)) {
-      const el = document.getElementById(elId); if (el) el.checked = state.hud[key] !== false;
+      const el = $(elId); if (el) el.checked = state.hud[key] !== false;
     }
     panel.classList.add('open');
     if (overlay) overlay.classList.add('open');
   }
   function closeLivePanel() {
-    document.getElementById('livePanel')?.classList.remove('open');
-    document.getElementById('livePanelOverlay')?.classList.remove('open');
+    $('livePanel')?.classList.remove('open');
+    $('livePanelOverlay')?.classList.remove('open');
   }
 
-  document.getElementById('liveSettingsBtn')?.addEventListener('click', () => {
-    const panel = document.getElementById('livePanel');
+  $('liveSettingsBtn')?.addEventListener('click', () => {
+    const panel = $('livePanel');
     if (panel?.classList.contains('open')) closeLivePanel(); else openLivePanel();
   });
-  document.getElementById('livePanelClose')?.addEventListener('click', closeLivePanel);
-  document.getElementById('livePanelOverlay')?.addEventListener('click', closeLivePanel);
+  $('livePanelClose')?.addEventListener('click', closeLivePanel);
+  $('livePanelOverlay')?.addEventListener('click', closeLivePanel);
 
   // Live visual switch — tear down and rebuild mid-session
-  document.getElementById('liveVizSelect')?.addEventListener('change', e => {
+  $('liveVizSelect')?.addEventListener('change', e => {
     const viz = e.target.value;
     state.vizOverride = viz;
     if (viz === 'none') {
       stopVisuals();
-      const stage = document.getElementById('stage');
+      const stage = $('stage');
       Array.from(stage.children).forEach(c => {
         if (!c.classList.contains('fixation-dot') && !c.classList.contains('audio-indicator')
           && !c.classList.contains('persona-indicator') && !c.classList.contains('method-indicator')
@@ -3947,37 +4107,37 @@ Begin:`;
   });
 
   // Live soundscape switch — stop and restart with new type
-  document.getElementById('liveSoundscapeSelect')?.addEventListener('change', async e => {
+  $('liveSoundscapeSelect')?.addEventListener('change', async e => {
     const type = e.target.value;
     state.soundscape = type;
     state.droneEnabled = type !== 'none';
     await drone.stop();
     if (type !== 'none') {
       await drone.start(state.droneVolume, type);
-      const ai = document.getElementById('audioIndicator');
+      const ai = $('audioIndicator');
       if (ai) ai.textContent = '· ' + type + ' ·';
     } else {
-      const ai = document.getElementById('audioIndicator');
+      const ai = $('audioIndicator');
       if (ai) ai.textContent = '';
     }
   });
 
   // Live audio sliders
-  document.getElementById('liveSoundVol')?.addEventListener('input', e => {
+  $('liveSoundVol')?.addEventListener('input', e => {
     state.droneVolume = parseInt(e.target.value,10)/100; drone.setVolume(state.droneVolume);
-    document.getElementById('liveSoundVolVal').textContent = e.target.value;
+    $('liveSoundVolVal').textContent = e.target.value;
   });
-  document.getElementById('liveVoiceSpeed')?.addEventListener('input', e => {
+  $('liveVoiceSpeed')?.addEventListener('input', e => {
     state.speechRate = parseInt(e.target.value,10)/100;
-    document.getElementById('liveVoiceSpeedVal').textContent = (parseInt(e.target.value,10)/100).toFixed(2) + '×';
+    $('liveVoiceSpeedVal').textContent = (parseInt(e.target.value,10)/100).toFixed(2) + '×';
   });
-  document.getElementById('liveVoicePitch')?.addEventListener('input', e => {
+  $('liveVoicePitch')?.addEventListener('input', e => {
     state.voicePitch = parseInt(e.target.value,10)/100;
-    document.getElementById('liveVoicePitchVal').textContent = (parseInt(e.target.value,10)/100).toFixed(2);
+    $('liveVoicePitchVal').textContent = (parseInt(e.target.value,10)/100).toFixed(2);
   });
-  document.getElementById('liveVoiceVol')?.addEventListener('input', e => {
+  $('liveVoiceVol')?.addEventListener('input', e => {
     state.voiceVolume = parseInt(e.target.value,10)/100;
-    document.getElementById('liveVoiceVolVal').textContent = e.target.value;
+    $('liveVoiceVolVal').textContent = e.target.value;
   });
 
   // Live HUD toggles — apply immediately during session
@@ -3985,15 +4145,15 @@ Begin:`;
   const liveHudElements = { fixationDot:'fixationDot', textDisplay:'textDisplay', phaseDots:'phaseDots', phaseLabel:'phaseIndicator', progressBar:null, sessionTime:'sessionTime', labels:null };
 
   for (const [elId, key] of Object.entries(liveHudMap)) {
-    document.getElementById(elId)?.addEventListener('change', e => {
+    $(elId)?.addEventListener('change', e => {
       state.hud[key] = e.target.checked;
       // Also update the Step 4 checkboxes to stay in sync
       const cfgId = 'cfg' + key.charAt(0).toUpperCase() + key.slice(1);
-      const cfgEl = document.getElementById(cfgId); if (cfgEl) cfgEl.checked = e.target.checked;
+      const cfgEl = $(cfgId); if (cfgEl) cfgEl.checked = e.target.checked;
       // Apply visibility immediately
       const targetId = liveHudElements[key];
       if (targetId) {
-        const el = document.getElementById(targetId); if (el) el.style.display = e.target.checked ? '' : 'none';
+        const el = $(targetId); if (el) el.style.display = e.target.checked ? '' : 'none';
       }
       // Special cases
       if (key === 'progressBar') {
@@ -4001,7 +4161,7 @@ Begin:`;
       }
       if (key === 'labels') {
         ['personaIndicator','methodIndicator','audioIndicator'].forEach(id => {
-          const el = document.getElementById(id); if (el) el.style.display = e.target.checked ? '' : 'none';
+          const el = $(id); if (el) el.style.display = e.target.checked ? '' : 'none';
         });
       }
     });
@@ -4009,7 +4169,7 @@ Begin:`;
 
   // Keyboard controls during session
   document.addEventListener('keydown', e => {
-    if (document.getElementById('session-screen').style.display === 'none') return;
+    if ($('session-screen').style.display === 'none') return;
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (e.code === 'Space') { e.preventDefault(); togglePause(); }
     if (e.key === 'Escape') { e.preventDefault(); emergencyEnd(); }
@@ -4033,33 +4193,14 @@ Begin:`;
     }
   });
 
-  // Mood check-in
-  document.getElementById('moodRow')?.addEventListener('click', async e => {
-    const btn = e.target.closest('.mood-btn');
-    if (!btn) return;
-    const mood = parseInt(btn.dataset.mood, 10);
-    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    const labels = { 1: 'noted — be gentle with yourself', 2: 'that\'s okay', 3: 'good', 4: 'nice', 5: 'wonderful' };
-    const fb = document.getElementById('moodFeedback');
-    if (fb) fb.textContent = labels[mood] || '';
-
-    // Save mood to most recent session record
-    const history = (await idbGet('stillness_history_v1')) || [];
-    if (history.length > 0) {
-      history[0].postMood = mood;
-      await idbSet('stillness_history_v1', history);
-    }
-  });
-
   // Post-session save
-  document.getElementById('postSaveBtn').addEventListener('click', () => {
+  $('postSaveBtn').addEventListener('click', () => {
     if (!state.fullScript) { notify.warn('No script to save.'); return; }
     openSaveScriptModal();
   });
 
   // Voice preview with stop
-  document.getElementById('voicePreviewBtn').addEventListener('click', () => {
+  $('voicePreviewBtn').addEventListener('click', () => {
     const voice = getSelectedVoice();
     const samples = [
       "And now... noticing the weight of your hands... just resting there...",
@@ -4072,33 +4213,31 @@ Begin:`;
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(sample);
     u.voice = voice; u.rate = state.speechRate; u.pitch = state.voicePitch || 0.85; u.volume = state.voiceVolume ?? 1.0;
-    u.onend = () => { _voicePreviewing = false; document.getElementById('voicePreviewBtn').style.display = ''; document.getElementById('voiceStopBtn').style.display = 'none'; };
+    u.onend = () => { _voicePreviewing = false; togglePreviewBtns('voice', false); };
     u.onerror = u.onend;
     speechSynthesis.speak(u);
     _voicePreviewing = true;
-    document.getElementById('voicePreviewBtn').style.display = 'none';
-    document.getElementById('voiceStopBtn').style.display = '';
+    togglePreviewBtns('voice', true);
   });
-  document.getElementById('voiceStopBtn')?.addEventListener('click', () => {
+  $('voiceStopBtn')?.addEventListener('click', () => {
     speechSynthesis.cancel();
     _voicePreviewing = false;
-    document.getElementById('voicePreviewBtn').style.display = '';
-    document.getElementById('voiceStopBtn').style.display = 'none';
+    togglePreviewBtns('voice', false);
   });
 
   // Voice select change → update info
-  document.getElementById('voiceSelect').addEventListener('change', updateVoiceInfo);
+  $('voiceSelect').addEventListener('change', updateVoiceInfo);
 
   // Soundscape preview
-  document.getElementById('soundPreviewBtn')?.addEventListener('click', previewSoundscape);
-  document.getElementById('soundStopBtn')?.addEventListener('click', stopSoundscapePreview);
+  $('soundPreviewBtn')?.addEventListener('click', previewSoundscape);
+  $('soundStopBtn')?.addEventListener('click', stopSoundscapePreview);
 
   // Viz preview
-  document.getElementById('vizPreviewBtn')?.addEventListener('click', startVizPreview);
-  document.getElementById('vizStopBtn')?.addEventListener('click', stopVizPreview);
+  $('vizPreviewBtn')?.addEventListener('click', startVizPreview);
+  $('vizStopBtn')?.addEventListener('click', stopVizPreview);
 
   // Stop all previews when leaving Step 4
-  const _stopAllPreviews = () => { stopVizPreview(); stopSoundscapePreview(); if (_voicePreviewing) { speechSynthesis.cancel(); _voicePreviewing = false; document.getElementById('voicePreviewBtn').style.display = ''; document.getElementById('voiceStopBtn').style.display = 'none'; } };
+  const _stopAllPreviews = () => { stopVizPreview(); stopSoundscapePreview(); if (_voicePreviewing) { speechSynthesis.cancel(); _voicePreviewing = false; togglePreviewBtns('voice', false); } };
 
   // ====================================================================
   // CAPABILITY DETECTION (from Studio capabilities.js)
@@ -4119,6 +4258,98 @@ Begin:`;
   // ====================================================================
   // QUICK-START PRESETS
   // ====================================================================
+  // ====================================================================
+  // FIRST-RUN SAFETY / CONTRAINDICATION SCREEN
+  // ====================================================================
+  const SAFETY_KEY = 'stillness_safety_v1';
+  function shouldShowSafety() { try { return !localStorage.getItem(SAFETY_KEY); } catch { return false; } }
+  function markSafetySeen() { try { localStorage.setItem(SAFETY_KEY, '1'); } catch {} }
+
+  $('scConfirm')?.addEventListener('change', e => {
+    const btn = $('safetyAcceptBtn');
+    if (btn) btn.disabled = !e.target.checked;
+  });
+  $('safetyAcceptBtn')?.addEventListener('click', () => {
+    if (!$('scConfirm')?.checked) return;
+    // Verify NONE of the condition checkboxes are checked
+    for (let i = 1; i <= 6; i++) {
+      if ($('sc' + i)?.checked) {
+        notify.warn('If any condition applies, please consult a licensed professional before using this tool.');
+        return;
+      }
+    }
+    markSafetySeen();
+    $('safetyScreen').style.display = 'none';
+  });
+
+  // ====================================================================
+  // RISING-SCORE SPARKLINE (renders pre/post improvement over sessions)
+  // ====================================================================
+  async function renderSparkline() {
+    const wrap = $('sessionStatsPanel');
+    if (!wrap) return;
+    const history = (await idbGet('stillness_history_v1')) || [];
+    // Filter sessions with both pre and post scores
+    const scored = history.filter(s => s.preMood != null && s.postMood != null).slice(0, 20).reverse();
+    if (scored.length < 2) return; // Need at least 2 data points
+
+    // Append canvas if not already there
+    let sparkWrap = $('sparklineWrap');
+    if (!sparkWrap) {
+      sparkWrap = document.createElement('div');
+      sparkWrap.id = 'sparklineWrap';
+      sparkWrap.className = 'sparkline-wrap';
+      sparkWrap.innerHTML = '<div class="mood-label">your state improvement over sessions</div><canvas class="sparkline-canvas" id="sparklineCanvas"></canvas>';
+      wrap.appendChild(sparkWrap);
+    }
+    const canvas = $('sparklineCanvas');
+    if (!canvas) return;
+    canvas.width = canvas.offsetWidth || 280;
+    canvas.height = 60;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    // Pre scores (grey), post scores (accent), delta line (green)
+    const pad = 8;
+    const xStep = (W - pad * 2) / (scored.length - 1);
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Draw pre scores (dim)
+    ctx.beginPath();
+    scored.forEach((s, i) => {
+      const x = pad + i * xStep, y = H - pad - (s.preMood / 10) * (H - pad * 2);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = 'rgba(107,148,184,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+
+    // Draw post scores (bright)
+    ctx.beginPath();
+    scored.forEach((s, i) => {
+      const x = pad + i * xStep, y = H - pad - (s.postMood / 10) * (H - pad * 2);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = 'rgba(107,184,130,0.7)'; ctx.lineWidth = 2; ctx.stroke();
+
+    // Dots on post scores
+    scored.forEach((s, i) => {
+      const x = pad + i * xStep, y = H - pad - (s.postMood / 10) * (H - pad * 2);
+      ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(107,184,130,0.9)'; ctx.fill();
+    });
+  }
+
+  // ====================================================================
+  // WARM OVERLAY FOR SLEEP SESSIONS
+  // ====================================================================
+  function setSleepOverlay(active) {
+    const overlay = $('sleepOverlay');
+    if (overlay) overlay.classList.toggle('active', active);
+  }
+
+  // ====================================================================
+  // QUICK-START PRESETS — expanded to 12 clinical verticals
+  // ====================================================================
   const PRESETS = [
     { id: 'sleep', icon: '🌙', name: 'Sleep', desc: 'Drift off naturally',
       persona: 'therapist', method: 'progressive', intention: 'sleep', length: 'long', soundscape: 'ocean' },
@@ -4132,10 +4363,22 @@ Begin:`;
       persona: 'bodyworker', method: 'pain-dial', intention: 'pain', length: 'medium', soundscape: 'bowls' },
     { id: 'micro', icon: '⚡', name: 'Micro Reset', desc: '2-min state shift',
       persona: 'driver', method: 'highway', intention: 'trance', length: 'micro', soundscape: 'drone' },
+    { id: 'anxiety', icon: '🌊', name: 'Anxiety Relief', desc: 'Calm the nervous system',
+      persona: 'yoga-teacher', method: 'breath-478', intention: 'release', length: 'medium', soundscape: 'ocean' },
+    { id: 'confidence', icon: '🦁', name: 'Confidence', desc: 'Unshakable self-belief',
+      persona: 'commander', method: 'staircase', intention: 'emotional', length: 'medium', soundscape: 'drone' },
+    { id: 'flow', icon: '🏆', name: 'Peak Flow', desc: 'Sports & performance',
+      persona: 'martial-artist', method: 'ericksonian', intention: 'performance', length: 'medium', soundscape: 'heartbeat' },
+    { id: 'habits', icon: '🔄', name: 'Habit Change', desc: 'Break or build a habit',
+      persona: 'therapist', method: 'staircase', intention: 'behavior', length: 'medium', soundscape: 'rain' },
+    { id: 'creativity', icon: '🎨', name: 'Creative Flow', desc: 'Dissolve creative blocks',
+      persona: 'mystic', method: 'ericksonian', intention: 'creativity', length: 'medium', soundscape: 'fire' },
+    { id: 'energy', icon: '☀️', name: 'Energy Boost', desc: 'Wake up & activate',
+      persona: 'drill-instructor', method: 'dave-elman', intention: 'energy', length: 'quick', soundscape: 'white' },
   ];
 
   function renderPresets() {
-    const grid = document.getElementById('presetGrid');
+    const grid = $('presetGrid');
     if (!grid) return;
     grid.innerHTML = '';
     PRESETS.forEach(p => {
@@ -4151,9 +4394,9 @@ Begin:`;
     state.selectedPersonaId = p.persona; state.selectedMethodId = p.method;
     state.intentionType = p.intention; state.length = p.length;
     state.soundscape = p.soundscape; state.droneEnabled = p.soundscape !== 'none';
-    document.getElementById('intentionType').value = p.intention;
-    document.getElementById('lengthSelect').value = p.length;
-    const ssSelect = document.getElementById('soundscapeSelect');
+    $('intentionType').value = p.intention;
+    $('lengthSelect').value = p.length;
+    const ssSelect = $('soundscapeSelect');
     if (ssSelect) ssSelect.value = p.soundscape;
     renderPersonaGrid(); renderPersonaDetail(); renderMethodGrid(); renderMethodDetail();
     updateIntentionHint(); updateStepUI();
@@ -4167,7 +4410,7 @@ Begin:`;
   // ACTIVITY HEATMAP (from Studio metrics-history.js)
   // ====================================================================
   async function renderHeatmap() {
-    const wrap = document.getElementById('heatmapWrap');
+    const wrap = $('heatmapWrap');
     if (!wrap) return;
     const history = (await idbGet('stillness_history_v1')) || [];
     if (history.length === 0) { wrap.innerHTML = ''; return; }
@@ -4243,9 +4486,9 @@ Begin:`;
             <button class="tour-next" id="tourNext">${isLast ? 'done ✓' : 'next →'}</button>
           </div>
         </div>`;
-      document.getElementById('tourSkip')?.addEventListener('click', dismiss);
-      document.getElementById('tourBack')?.addEventListener('click', () => { step--; render(); });
-      document.getElementById('tourNext')?.addEventListener('click', () => { if (isLast) dismiss(); else { step++; render(); } });
+      $('tourSkip')?.addEventListener('click', dismiss);
+      $('tourBack')?.addEventListener('click', () => { step--; render(); });
+      $('tourNext')?.addEventListener('click', () => { if (isLast) dismiss(); else { step++; render(); } });
     }
 
     function dismiss() {
@@ -4269,17 +4512,17 @@ Begin:`;
   }
 
   // Persona modal
-  document.getElementById('personaCancelBtn').addEventListener('click', closePersonaEditor);
-  document.getElementById('personaSaveBtn').addEventListener('click', savePersonaFromForm);
-  document.getElementById('personaModal').addEventListener('click', e => { if (e.target.id === 'personaModal') closePersonaEditor(); });
+  $('personaCancelBtn').addEventListener('click', closePersonaEditor);
+  $('personaSaveBtn').addEventListener('click', savePersonaFromForm);
+  $('personaModal').addEventListener('click', e => { if (e.target.id === 'personaModal') closePersonaEditor(); });
 
   // Hypnotic Induction Profile quiz
-  document.getElementById('hipAssessBtn')?.addEventListener('click', () => {
-    const q1 = parseInt(document.getElementById('hipQ1')?.value || '1', 10);
-    const q2 = parseInt(document.getElementById('hipQ2')?.value || '1', 10);
-    const q3 = parseInt(document.getElementById('hipQ3')?.value || '1', 10);
+  $('hipAssessBtn')?.addEventListener('click', () => {
+    const q1 = parseInt($('hipQ1')?.value || '1', 10);
+    const q2 = parseInt($('hipQ2')?.value || '1', 10);
+    const q3 = parseInt($('hipQ3')?.value || '1', 10);
     const total = q1 + q2 + q3; // 0-9 range
-    const el = document.getElementById('hipResult');
+    const el = $('hipResult');
     if (!el) return;
 
     let tier, desc, recMethods, recGuide;
@@ -4327,7 +4570,7 @@ Begin:`;
     const defaultMethod = getMethod();
     state.soundscape = defaultMethod.drone ? 'drone' : 'none';
     state.droneEnabled = defaultMethod.drone;
-    const ssSelect = document.getElementById('soundscapeSelect');
+    const ssSelect = $('soundscapeSelect');
     if (ssSelect) ssSelect.value = state.soundscape;
     updateStepUI();
 
@@ -4342,5 +4585,11 @@ Begin:`;
 
     // Onboarding tour for first-time visitors
     if (shouldShowTour()) setTimeout(startTour, 800);
+
+    // First-run safety screen
+    if (shouldShowSafety()) $('safetyScreen').style.display = 'flex';
+
+    // Rising-score sparkline
+    renderSparkline();
   })();
 </script>
