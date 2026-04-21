@@ -188,8 +188,8 @@
   .btn.secondary:hover { border-color: var(--neon-amber); color: var(--neon-amber); box-shadow: var(--glow-amber); }
   .btn.warm { background: var(--neon-amber); }
   .btn.warm:hover { box-shadow: var(--glow-amber); }
-  .btn.green { background: var(--accent-green); }
-  .btn.green:hover { box-shadow: 0 0 8px rgba(57,255,142,0.4); }
+  .btn.green { background: #a08840; color: #0d0a07; }
+  .btn.green:hover { box-shadow: 0 0 10px rgba(160,136,64,0.35); filter: brightness(1.08); }
   .btn:disabled { opacity: 0.3; cursor: wait; filter: none; box-shadow: none; }
   .btn.loading { position: relative; color: transparent !important; }
   .btn.loading::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.15); border-top-color: rgba(255,255,255,0.7); border-radius: 50%; animation: btn-spin 0.8s linear infinite; }
@@ -1202,7 +1202,7 @@ body.in-session .footer {
         <div class="gen-eta" id="genEta"></div>
       </div>
       <button class="btn green full" id="generateScriptBtn">generate full script</button>
-      <div class="sublabel" style="text-align: center; margin-top: 6px;">Generates each phase individually for higher quality. ~2–3 minutes total.</div>
+      <div class="sublabel" style="text-align: center; margin-top: 6px;">Generates each phase individually for higher quality. ~6–7 minutes total.</div>
  
       <div class="script-preview" id="scriptPreview">
         <h3>session script</h3>
@@ -3067,10 +3067,10 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     });
 
     // Show initial progress
-    renderGenProgress(phases, 0, doneMask, `Estimated: ~${phases.length * 30}s remaining`);
+    renderGenProgress(phases, 0, doneMask, `Estimated: ~${phases.length * 60}s remaining`);
     const genStartTime = Date.now();
     const stopTimer = makeElapsedTimer(s => {
-      const avgTime = phaseTimes.length > 0 ? phaseTimes.reduce((a,b)=>a+b,0) / phaseTimes.length : 30;
+      const avgTime = phaseTimes.length > 0 ? phaseTimes.reduce((a,b)=>a+b,0) / phaseTimes.length : 60;
       const remaining = Math.max(0, Math.round(avgTime * (phases.length - phaseTimes.length) - (Date.now() - genStartTime) / 1000 + phaseTimes.reduce((a,b)=>a+b,0)));
       const remSec = Math.max(0, Math.round(avgTime * (phases.length - phaseTimes.length)));
       $('genEta').textContent = `${s}s elapsed · ~${remSec}s remaining`;
