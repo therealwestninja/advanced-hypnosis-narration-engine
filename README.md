@@ -2,7 +2,7 @@
 
 **A free, AI-driven, fully browser-native hypnosis experience generator.**
 
-Generate personalised induction scripts with AI, hear them narrated by the browser's text-to-speech engine, and experience guided sessions with procedural soundscapes, 16 hypnotic visual effects, and real-time customisation — all running locally in your browser with zero server dependencies.
+Generate personalized induction scripts with AI, hear them narrated by the browser's text-to-speech engine, and experience guided sessions with procedural soundscapes, 16 hypnotic visual effects, and real-time customization — all running locally in your browser with zero server dependencies.
 
 Live here: [Perchance.org/advanced-hypnosis-narration-engine](https://perchance.org/advanced-hypnosis-narration-engine). No account required. No downloads. No data leaves your device.
 
@@ -21,6 +21,8 @@ Live here: [Perchance.org/advanced-hypnosis-narration-engine](https://perchance.
 5. **Generate & Begin** — Per-phase AI generation produces each section individually for higher quality, with live neon progress indicators (dark → amber streaming → green complete → red/yellow error with click-to-retry). Edit the script, then begin a fully narrated, visually guided session with real-time controls.
 
 **Or** — click "I already have a script" on Step 1 to skip configuration entirely, paste your own script, and begin immediately.
+
+The system learns from every session. An invisible adaptive intelligence layer observes user behavior, builds a hidden personality model, and progressively shapes future AI generation to match what works best for each individual.
 
 ---
 
@@ -62,6 +64,68 @@ Live here: [Perchance.org/advanced-hypnosis-narration-engine](https://perchance.
 - **Suggestion crafter** — converts rough intentions into technically-precise hypnotic suggestions.
 - **20 intention types** with specific AI guidance for each (trigger-response links, pain-dial metaphors, conditioning protocols, amnesia framing, etc.).
 
+### Pipeline
+
+```
+OBSERVE → INFER → ADAPT → REINFORCE → EVOLVE
+```
+
+### How It Works
+
+| Phase | Function | What It Does |
+|---|---|---|
+| 1. Signals | `deriveSignals()` | Computes 9 normalized behavioral signals from analytics + history |
+| 2. Traits | `updateTraits()` | Lerps 8 hidden personality traits toward signals (rate: 0.15) |
+| 3. Reward | `computeReward()` | Scores each session: mood delta + completion − emergency |
+| 4. Weights | `updateWeights()` | Reward-weighted preference maps for personas, methods, sounds, lengths (0.98 decay) |
+| 5. Memory | `updateMemorySummary()` | AI-generated 1–2 sentence behavioral summary every 5 sessions |
+| 6. Difficulty | `computeDifficulty()` | 0–1 ramp (beginner → intermediate → advanced) at 0.1 rate |
+| 7. Equilibrium | `checkEquilibrium()` | Detects overload → triggers recovery mode (simplify, ground, reduce intensity) |
+| 8. Prediction | `getRecommendation()` | Returns top-weighted session configuration |
+| 9. Integration | `getAdaptivePromptBlock()` | Translates traits into plain-English AI directives injected into generation |
+
+### Hidden Personality Traits
+
+| Trait | Measures |
+|---|---|
+| Compliance | Does the user finish sessions? |
+| Sensitivity | Does mood respond to sessions? |
+| Stability | Is improvement consistent? |
+| Novelty-seeking | Does user explore or repeat? |
+| Depth tolerance | Handles long/deep sessions? |
+| Control preference | Authoritative vs gentle? |
+| Sensory audio | Uses soundscapes? |
+| Sensory visual | Uses visual effects? |
+
+### Storage
+
+Single IDB key (`stillness_adaptive_v1`), ~400 bytes, fixed-size. Included in backup export/import.
+
+---
+
+## Analytics & Stats
+
+### Data Collection
+
+O(1) aggregated store (`stillness_analytics_v1`, ~500 bytes). Frequency maps for personas, methods, intentions, soundscapes, visuals, lengths. 24-bucket hourly + 7-bucket weekly time patterns. Running mood sums, completion counts, duration totals, settings averages, 8-bit feature discovery bitmask.
+
+### Stats Charts Modal
+
+10 Canvas 2D charts in a responsive auto-fill grid. Click any tile to expand full-width.
+
+- **Guides / Methods / Intentions / Soundscapes** — ranked bar charts
+- **By Hour** — area + line chart with peak annotation
+- **By Day** — bar chart (Sun–Sat)
+- **Mood Shift** — pre vs post comparison bars
+- **Outcomes** — donut chart (finished / emergency / incomplete)
+- **Audio Profile** — horizontal bars (rate, pitch, volume, drone)
+- **Features Tried** — checklist grid from bitmask
+
+### Sidebar Stats
+
+Compact KPI display: sessions, minutes, streak (compassionate, allows 2 one-day gaps), completion rate. Plus analytics insights after 2+ sessions (avg improvement, peak time, favorite guide, favorite sound). Activity heatmap (16-week GitHub-style). Rising-score sparkline (last 20 sessions).
+
+
 ### Clinical Features (Research-Backed)
 - **First-run contraindication checklist** — 6 clinical conditions (psychosis, DID, epilepsy, suicidality, under-18 unaccompanied, intoxication) with explicit attestation. Re-displays monthly.
 - **0-10 state scale** — pre-session and post-session wellbeing measurement matching clinical VAS/NRS scales.
@@ -91,6 +155,29 @@ Live here: [Perchance.org/advanced-hypnosis-narration-engine](https://perchance.
 - **Script library** — save, name, load, and delete generated scripts.
 - **Full backup/restore** — export all personas, scripts, history, and active program state as a single JSON file. Import merges without overwriting.
 - **Settings persistence** — all Configure tab settings (audio levels, voice selection, visual effect, viz tuning sliders, HUD toggles, ducking preference, soundscape) auto-save to localStorage with debounced batch writes. Slider saves fire only on release, text inputs debounce at 1500ms.
+
+## Data Persistence
+
+### Dual-Write Settings
+
+Primary: `root.kv` (Perchance cloud). Fallback: `localStorage`. 1500ms debounce for text inputs, immediate for sliders/checkboxes.
+
+### Backup System
+
+`.gz` export/import with gzip compression and JSON fallback. Includes: custom personas, session history, program state, user profile, analytics store, adaptive intelligence profile.
+
+### Session History
+
+Last 50 sessions stored with full reproducibility: complete script text, all settings, mood scores, journal entries. Play/Edit/Delete buttons on each history card.
+
+---
+
+## User Profile
+
+7-field bio in sidebar: Display Name, Pronouns, Age Range, Experience Level, About, Appearance, Goals. Injected into AI generation prompts as `SUBJECT PROFILE:` context block. Persisted via KV + localStorage.
+
+---
+
 
 ### Sharing & Export
 - **Script export** — download any generated script as a `.txt` file with metadata header.
