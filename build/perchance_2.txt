@@ -4117,14 +4117,15 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       const isDirective = DIRECTIVE_RX.test(sentence);
       const hasEllipsis = ELLIPSIS_RX.test(sentence);
       const isQuestion = sentence.endsWith('?');
-      if (isDirective && words <= 8) return 5;  // short command: long breath
-      if (isDirective) return 4;                 // longer directive
-      if (hasEllipsis) return 3;                 // trailing thought
-      if (isQuestion) return 3;                  // let question land
-      if (words <= 2) return 2;                  // single beat
-      if (words <= 5) return 2;                  // short phrase
-      if (words >= 20) return 3;                 // long sentence needs air
-      return 2;                                  // default
+      // Directives: hold for the suggestion to land
+      if (isDirective && words <= 8) return 5;
+      if (isDirective) return Math.min(6, 4 + Math.floor(words / 10));
+      // Ellipsis / questions: moderate + scale
+      if (hasEllipsis) return Math.min(5, 3 + Math.floor(words / 10));
+      if (isQuestion) return Math.min(5, 3 + Math.floor(words / 8));
+      // Everything else: scale with sentence length
+      // 1-4w → 2s, 5-9w → 3s, 10-14w → 4s, 15+w → 5s
+      return Math.min(5, 2 + Math.floor(words / 5));
     }
 
     // Process a text segment (no existing pauses inside it)
