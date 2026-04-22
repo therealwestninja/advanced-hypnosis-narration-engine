@@ -1394,9 +1394,8 @@ body.in-session .footer {
         <textarea class="script-text" id="scriptText" spellcheck="false"></textarea>
         <div class="script-actions">
           <button class="btn secondary" id="regenScriptBtn">regenerate</button>
-          <button class="btn secondary" id="fixTimingsBtn" style="display:none;">⏱ fix timings</button>
+          <button class="btn secondary" id="autoTempoBtn">⏱ auto-tempo</button>
           <button class="btn secondary" id="exportScriptBtn">↓ download .txt</button>
-          <button class="btn secondary" id="shareConfigBtn">⚯ share config</button>
           <button class="btn green" id="beginBtn">begin session →</button>
         </div>
       </div>
@@ -4084,7 +4083,6 @@ Output EXACTLY this JSON, no other text, no markdown fences:
  
   function showScript() {
     _scriptEditedSinceGen = false;
-    updateFixTimingsVisibility();
     $('scriptText').value = state.fullScript;
     // Strip phase markers and pause markers before counting actual spoken words
     const spokenOnly = state.fullScript
@@ -4197,9 +4195,6 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   }
 
   /** Show/hide the fix timings button based on edit state */
-  function updateFixTimingsVisibility() {
-    showEl('fixTimingsBtn', _scriptEditedSinceGen);
-  }
 
   // ====================================================================
   // SESSION HISTORY & STATS
@@ -4674,30 +4669,6 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     notify.success('Script downloaded.');
   }
 
-  async function shareConfig() {
-    markFeatureUsed(FEAT.SHARE);
-    // Compact URI-safe params — no gzip overhead for small payloads
-    const params = new URLSearchParams();
-    params.set('p', state.selectedPersonaId);
-    params.set('m', state.selectedMethodId);
-    params.set('i', state.intentionType);
-    params.set('l', state.length);
-    params.set('s', state.soundscape);
-    params.set('r', String(Math.round(state.speechRate * 100)));
-    params.set('v', state.vizOverride || 'auto');
-    const intentText = $('intentionInput')?.value?.trim();
-    if (intentText) params.set('t', intentText.slice(0, 200));
-    const aff = $('userAffirmations')?.value?.trim();
-    if (aff) params.set('a', aff.slice(0, 300));
-
-    const url = window.location.href.split('#')[0].split('?')[0] + '#cfg=' + params.toString();
-    if (navigator.share && navigator.canShare?.({ url })) {
-      try { await navigator.share({ title: 'Hypnosis Session Config', text: `Try this ${getMethod().name} session with ${getPersona().name}`, url }); return; } catch(e) {}
-    }
-    try { await navigator.clipboard.writeText(url); notify.success('Share link copied to clipboard.'); }
-    catch(e) { prompt('Copy this share link:', url); }
-  }
-
   async function loadSharedConfig() {
     const hash = window.location.hash;
     if (!hash.startsWith('#cfg=')) return;
@@ -4859,7 +4830,6 @@ Output EXACTLY this JSON, no other text, no markdown fences:
         notify.success('Pause timings recalculated.');
       }
       _scriptEditedSinceGen = false;
-      updateFixTimingsVisibility();
     }
 
     // Daily session cap
@@ -5436,23 +5406,21 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       state.fullScript = null;
       state.parsedScript = null;
     }
-    updateFixTimingsVisibility();
     updateStepUI();
   });
 
   // Fix Timings button
-  $('fixTimingsBtn').addEventListener('click', () => {
+  $('autoTempoBtn').addEventListener('click', () => {
     markFeatureUsed(FEAT.TIMING_FIX);
     const text = $('scriptText').value.trim();
-    if (!text) return;
+    if (!text) { notify.warn('Generate or paste a script first.'); return; }
     const fixed = fixScriptTimings(text);
     $('scriptText').value = fixed;
     state.fullScript = fixed;
     state.parsedScript = parseScript(fixed);
     _scriptEditedSinceGen = false;
-    updateFixTimingsVisibility();
     showScript();
-    notify.success('Pause timings recalculated based on sentence content.');
+    notify.success('Pause timings recalculated based on content.');
   });
  
   // Filter tabs
@@ -5571,7 +5539,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   $('generateScriptBtn').addEventListener('click', generateFullScript);
   $('regenScriptBtn').addEventListener('click', generateFullScript);
   $('exportScriptBtn').addEventListener('click', exportScript);
-  $('shareConfigBtn').addEventListener('click', shareConfig);
+
   $('beginBtn').addEventListener('click', startSession);
 
   // Pre-session state scale (0-10)
