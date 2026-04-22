@@ -1419,6 +1419,58 @@ body.in-session .footer {
       <div class="step-spacer"></div>
       <button class="btn-next" id="btnNext">next →</button>
     </div>
+  </div><!-- /setup-wizard -->
+  <!-- POST-SESSION -->
+  <div id="post-screen" style="display:none;">
+    <div class="post-wrap">
+      <div class="post-header" id="postHeader">
+        <div class="post-status" id="postStatusIcon">✓</div>
+        <p class="post-message" id="postMessage">Take a moment. Notice how you feel.</p>
+      </div>
+
+      <!-- Grounding exercise (shown after emergency end) -->
+      <div class="grounding-box" id="groundingBox" style="display:none;">
+        <h3>5-4-3-2-1 grounding</h3>
+        <div class="grounding-step"><strong>5 things</strong> you can see right now</div>
+        <div class="grounding-step"><strong>4 things</strong> you can physically touch or feel</div>
+        <div class="grounding-step"><strong>3 things</strong> you can hear</div>
+        <div class="grounding-step"><strong>2 things</strong> you can smell</div>
+        <div class="grounding-step"><strong>1 thing</strong> you can taste</div>
+        <div style="font-size:0.7rem; color:var(--text-faint); margin-top:8px; font-style:italic;">Take your time. There is no rush.</div>
+      </div>
+
+      <div class="post-cards">
+        <!-- Session summary -->
+        <div class="post-card" id="postSummary"></div>
+        <!-- Trigger/suggestion -->
+        <div class="post-card" id="postTriggerBox" style="display:none;"></div>
+      </div>
+
+      <!-- Check-in row: mood + alertness side by side -->
+      <div class="post-checkin">
+        <div class="post-checkin-item">
+          <div class="post-checkin-label">how do you feel?</div>
+          <div class="post-checkin-val" id="postStateVal">5</div>
+          <input type="range" id="postStateSlider" min="0" max="10" value="5">
+          <div class="post-checkin-ends"><span>worst</span><span>best</span></div>
+          <div class="post-checkin-feedback" id="moodFeedback"></div>
+        </div>
+        <div class="post-checkin-item">
+          <div class="post-checkin-label">how alert are you?</div>
+          <div class="post-checkin-val" id="alertnessVal">7</div>
+          <input type="range" id="alertnessSlider" min="0" max="10" value="7">
+          <div class="post-checkin-ends"><span>drowsy</span><span>alert</span></div>
+        </div>
+      </div>
+
+      <!-- Journal -->
+      <div class="post-journal">
+        <textarea class="journal-area" id="journalText" placeholder="What did you notice? Any sensations, images, thoughts, or shifts?"></textarea>
+      </div>
+
+      <button class="btn" id="restartBtn">begin a new session</button>
+    </div>
+  </div>
   <div class="footer"><span>© 2026 therealwestninja.</span> · <a href="https://www.deviantart.com/west-ninja" target="_blank" rel="noopener">DeviantArt</a> · <a href="https://github.com/therealwestninja" target="_blank" rel="noopener">GitHub</a> · <a href="#" id="crisisLink" style="color:var(--accent-green); text-shadow: 0 0 6px rgba(57,255,142,0.2);">crisis resources</a></div>
     </div><!-- /main-content -->
   </div><!-- /app-layout -->
@@ -1537,58 +1589,6 @@ body.in-session .footer {
     </div>
   </div>
  
-  <!-- POST-SESSION -->
-  <div id="post-screen" style="display:none;">
-    <div class="post-wrap">
-      <div class="post-header" id="postHeader">
-        <div class="post-status" id="postStatusIcon">✓</div>
-        <p class="post-message" id="postMessage">Take a moment. Notice how you feel.</p>
-      </div>
-
-      <!-- Grounding exercise (shown after emergency end) -->
-      <div class="grounding-box" id="groundingBox" style="display:none;">
-        <h3>5-4-3-2-1 grounding</h3>
-        <div class="grounding-step"><strong>5 things</strong> you can see right now</div>
-        <div class="grounding-step"><strong>4 things</strong> you can physically touch or feel</div>
-        <div class="grounding-step"><strong>3 things</strong> you can hear</div>
-        <div class="grounding-step"><strong>2 things</strong> you can smell</div>
-        <div class="grounding-step"><strong>1 thing</strong> you can taste</div>
-        <div style="font-size:0.7rem; color:var(--text-faint); margin-top:8px; font-style:italic;">Take your time. There is no rush.</div>
-      </div>
-
-      <div class="post-cards">
-        <!-- Session summary -->
-        <div class="post-card" id="postSummary"></div>
-        <!-- Trigger/suggestion -->
-        <div class="post-card" id="postTriggerBox" style="display:none;"></div>
-      </div>
-
-      <!-- Check-in row: mood + alertness side by side -->
-      <div class="post-checkin">
-        <div class="post-checkin-item">
-          <div class="post-checkin-label">how do you feel?</div>
-          <div class="post-checkin-val" id="postStateVal">5</div>
-          <input type="range" id="postStateSlider" min="0" max="10" value="5">
-          <div class="post-checkin-ends"><span>worst</span><span>best</span></div>
-          <div class="post-checkin-feedback" id="moodFeedback"></div>
-        </div>
-        <div class="post-checkin-item">
-          <div class="post-checkin-label">how alert are you?</div>
-          <div class="post-checkin-val" id="alertnessVal">7</div>
-          <input type="range" id="alertnessSlider" min="0" max="10" value="7">
-          <div class="post-checkin-ends"><span>drowsy</span><span>alert</span></div>
-        </div>
-      </div>
-
-      <!-- Journal -->
-      <div class="post-journal">
-        <textarea class="journal-area" id="journalText" placeholder="What did you notice? Any sensations, images, thoughts, or shifts?"></textarea>
-      </div>
-
-      <button class="btn" id="restartBtn">begin a new session</button>
-    </div>
-  </div>
-</div>
  
 <div class="modal-backdrop" id="personaModal">
   <div class="modal">
