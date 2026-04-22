@@ -4562,7 +4562,8 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       const y = 8 + i * rowH;
       const used = !!(featBitmask & f.bit);
       ctx.fillStyle = used ? CHART_COLORS.cyan : 'rgba(255,255,255,0.06)';
-      ctx.beginPath(); ctx.roundRect(20, y, W - 40, rowH - 4, 4); ctx.fill();
+      const rx = 20, ry = y, rw = W - 40, rh = rowH - 4, rr = 4;
+      ctx.beginPath(); ctx.moveTo(rx + rr, ry); ctx.lineTo(rx + rw - rr, ry); ctx.arcTo(rx + rw, ry, rx + rw, ry + rr, rr); ctx.lineTo(rx + rw, ry + rh - rr); ctx.arcTo(rx + rw, ry + rh, rx + rw - rr, ry + rh, rr); ctx.lineTo(rx + rr, ry + rh); ctx.arcTo(rx, ry + rh, rx, ry + rh - rr, rr); ctx.lineTo(rx, ry + rr); ctx.arcTo(rx, ry, rx + rr, ry, rr); ctx.closePath(); ctx.fill();
       ctx.fillStyle = used ? '#111' : CHART_COLORS.label; ctx.font = `${used ? 'bold ' : ''}11px sans-serif`; ctx.textAlign = 'left';
       ctx.fillText(`${used ? '✓' : '○'}  ${f.name}`, 30, y + rowH/2 + 1);
     });
@@ -5590,6 +5591,23 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const history = (await idbGet('stillness_history_v1')) || [];
     if (history.length > 0) { history[0].postMood = val; history[0].preMood = state._preMood ?? null; await idbSet('stillness_history_v1', history); }
     recordPostMood(val);
+    // Retroactively correct adaptive reward now that real postMood is known
+    try {
+      const adaptive = await getAdaptive();
+      const h = (await idbGet('stillness_history_v1')) || [];
+      if (h.length > 0 && adaptive.ts > 0) {
+        const rec = h[0];
+        const oldReward = ((5) - (rec.preMood ?? 5)) + (rec.completed ? 1 : -1); // original assumed postMood=5
+        const newReward = (val - (rec.preMood ?? 5)) + (rec.completed ? 1 : -1);
+        const correction = newReward - oldReward;
+        if (Math.abs(correction) > 0.01) {
+          const bump = (map, key) => { if (key) map[key] = (map[key] || 0) + correction; };
+          bump(adaptive.w.p, rec.personaId); bump(adaptive.w.m, rec.methodId);
+          bump(adaptive.w.s, rec.soundscape); bump(adaptive.w.ln, rec.length);
+          await idbSet(ADAPTIVE_KEY, adaptive);
+        }
+      }
+    } catch {}
   });
 
   // Alertness check — auto-trigger grounding if low
