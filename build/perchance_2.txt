@@ -4149,18 +4149,6 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       }
       sentences = broken;
 
-      // Combine tiny fragments (<3 words) with the previous sentence
-      const combined = [];
-      for (const sent of sentences) {
-        const words = sent.split(/\s+/).length;
-        if (words < 3 && combined.length > 0) {
-          combined[combined.length - 1] += ' ' + sent;
-        } else {
-          combined.push(sent);
-        }
-      }
-      sentences = combined;
-
       // Build result with calculated pauses
       const result = [];
       for (let i = 0; i < sentences.length; i++) {
