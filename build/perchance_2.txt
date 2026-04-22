@@ -4111,84 +4111,78 @@ Output EXACTLY this JSON, no other text, no markdown fences:
   function fixScriptTimings(scriptText) {
     const phaseRx = /(===\s*\w+\s*===)/gi;
 
-    // Process a text segment that has NO pause markers inside it:
-    // split into sentences, add between-sentence pauses, add micro-pauses at punctuation
-    function processSegment(text) {
-      const clean = text.trim();
-      if (!clean) return text;
-      let sentences = clean.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
-      // Break long sentences (>30 words) at clause boundaries
-      const broken = [];
-      for (const sent of sentences) {
-        const words = sent.split(/\s+/).length;
-        if (words > 30) {
-          const clauses = sent.split(/(?<=[;—–])\s+|(?<=,)\s+(?=\w)/);
-          let buffer = '';
-          for (const clause of clauses) {
-            const combined = buffer ? buffer + ' ' + clause : clause;
-            if (combined.split(/\s+/).length > 22 && buffer) { broken.push(buffer.trim()); buffer = clause; }
-            else { buffer = combined; }
-          }
-          if (buffer.trim()) broken.push(buffer.trim());
-        } else { broken.push(sent); }
-      }
-      sentences = broken;
-      const result = [];
-      for (let i = 0; i < sentences.length; i++) {
-        const raw = sentences[i].trim();
-        const words = raw.split(/\s+/).length;
-        const sent = raw.replace(/([,;:])\s+/g, '$1 [PAUSE 1] ');
-        result.push(sent);
-        if (i === sentences.length - 1) continue;
-        const isDirective = DIRECTIVE_RX.test(raw);
-        const hasEllipsis = ELLIPSIS_RX.test(raw);
-        const isQuestion = raw.endsWith('?');
-        let pause;
-        if (isDirective && words <= 8) pause = 5;
-        else if (isDirective) pause = 4;
-        else if (hasEllipsis) pause = 3;
-        else if (isQuestion) pause = 3;
-        else if (words <= 5) pause = 2;
-        else if (words >= 20) pause = 3;
-        else pause = 2;
-        result.push(`[PAUSE ${pause}]`);
-      }
-      return result.join(' ');
+    // Compute pause duration based on sentence content
+    function pauseFor(sentence) {
+      const words = sentence.split(/\s+/).length;
+      const isDirective = DIRECTIVE_RX.test(sentence);
+      const hasEllipsis = ELLIPSIS_RX.test(sentence);
+      const isQuestion = sentence.endsWith('?');
+      if (isDirective && words <= 8) return 5;  // short command: long breath
+      if (isDirective) return 4;                 // longer directive
+      if (hasEllipsis) return 3;                 // trailing thought
+      if (isQuestion) return 3;                  // let question land
+      if (words <= 2) return 2;                  // single beat
+      if (words <= 5) return 2;                  // short phrase
+      if (words >= 20) return 3;                 // long sentence needs air
+      return 2;                                  // default
     }
 
-    const phaseParts = scriptText.split(phaseRx);
+    // Process a text segment (no existing pauses inside it)
+    function processSegment(text) {
+      const clean = text.trim();
+      if (!clean) return '';
 
-    const processed = phaseParts.map((part) => {
-      if (/(===\s*\w+\s*===)/i.test(part)) return part;
-      // Split by existing [PAUSE N] markers, PRESERVING them
+      // Split into sentences at . ! ?
+      let sentences = clean.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+
+      // Break sentences over 30 words at clause boundaries
+      const broken = [];
+      for (const sent of sentences) {
+        if (sent.split(/\s+/).length > 30) {
+          const clauses = sent.split(/(?<=[;—–])\s+|(?<=,)\s+(?=\w)/);
+          let buf = '';
+          for (const cl of clauses) {
+            const combined = buf ? buf + ' ' + cl : cl;
+            if (combined.split(/\s+/).length > 22 && buf) { broken.push(buf.trim()); buf = cl; }
+            else buf = combined;
+          }
+          if (buf.trim()) broken.push(buf.trim());
+        } else broken.push(sent);
+      }
+      sentences = broken;
+      if (!sentences.length) return clean;
+
+      // Build output: sentence [PAUSE N] sentence [PAUSE N] ... sentence
+      const out = [sentences[0]];
+      for (let i = 1; i < sentences.length; i++) {
+        out.push(`[PAUSE ${pauseFor(sentences[i - 1])}]`);
+        out.push(sentences[i]);
+      }
+      return out.join(' ');
+    }
+
+    // Split by phase markers, process each non-marker section
+    const phaseParts = scriptText.split(phaseRx);
+    const processed = phaseParts.map(part => {
+      if (phaseRx.test(part)) { phaseRx.lastIndex = 0; return part; }
+      // Split by existing [PAUSE N] — preserve author pauses as boundaries
       const chunks = part.split(/(\[PAUSE\s+\d+\])/gi);
-      // chunks alternates: [text, pause_marker, text, pause_marker, text, ...]
-      return chunks.map(chunk => {
-        if (/\[PAUSE\s+\d+\]/i.test(chunk)) return chunk; // preserve original pause
-        return processSegment(chunk); // add timing within this segment
-      }).join(' ');
+      return chunks.map(chunk =>
+        /\[PAUSE\s+\d+\]/i.test(chunk) ? chunk : processSegment(chunk)
+      ).join(' ');
     });
 
-    let fixed = processed.join('\n');
-    // Clean up double spaces from joins
-    fixed = fixed.replace(/  +/g, ' ');
+    let fixed = processed.join('\n').replace(/  +/g, ' ');
 
-    // Monotone detector: if all sentence-level pauses (> 1s) are identical
-    // (e.g. non-hypnotic text where no directive words triggered variance),
-    // apply jittered timing. Micro-pauses ([PAUSE 1]) are left untouched.
-    // Only jitter pauses that were COMPUTED (not original author pauses).
-    const allPauses = fixed.match(/\[PAUSE\s+(\d+)\]/gi) || [];
-    const sentencePauses = allPauses.filter(p => parseInt(p.match(/\d+/)[0], 10) > 1);
-    if (sentencePauses.length > 3) {
-      const vals = sentencePauses.map(p => parseInt(p.match(/\d+/)[0], 10));
-      const allSame = vals.every(v => v === vals[0]);
-      if (allSame) {
-        fixed = fixed.replace(/\[PAUSE\s+(\d+)\]/gi, (m, n) => {
-          if (parseInt(n, 10) <= 1) return m;
-          const jitter = Math.floor(Math.random() * 4) - 1;
-          return `[PAUSE ${Math.max(2, 3 + jitter)}]`;
-        });
-      }
+    // Monotone detector: if all computed pauses are the same value
+    // (no directive words triggered variance), apply jittered timing
+    const pauses = (fixed.match(/\[PAUSE\s+(\d+)\]/gi) || []).map(p => parseInt(p.match(/\d+/)[0], 10));
+    const unique = new Set(pauses);
+    if (pauses.length > 4 && unique.size === 1) {
+      fixed = fixed.replace(/\[PAUSE\s+\d+\]/gi, () => {
+        const jitter = Math.floor(Math.random() * 4) - 1; // -1 to +2
+        return `[PAUSE ${Math.max(2, 3 + jitter)}]`;
+      });
     }
 
     return fixed;
