@@ -1128,7 +1128,9 @@ body.in-session .footer {
  
 <div class="container">
   <h1>· advanced hypnosis narration engine · </h1>
-    <p>"The" <i>single-most</i> dangerous hypnosis app on the planet, and it's free.<br>Generate scripts with automatically narrated voiceovers and fully guided sessions.</p>
+    <div style="display: flex; justify-content: center;">
+  <div class="description" style="width:650px;">"The <i>single-most</i> dangerous hypnosis app on the planet And it's free." - Me<br>Use this to generate fully guided hypnosis, mindfulness, relaxation or meditation session scripts, or playback crafted scripts. With ease, create immersive hypnosis induction sets, mindfulness guides, or deep meditation narratives with rich voiced narration, ambient soundscapes, and hypnotic visuals.</div>
+</div>
 
   <button class="sidebar-toggle" id="sidebarToggle">☰</button>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
