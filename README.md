@@ -10,12 +10,25 @@ No account required. No downloads.
 
 ---
 
+## What's New
+
+* **Shareable links** — post a persona or a full session config as a real URL, with tailored link previews in Discord / Slack / iMessage
+* **Streaming script generation** — watch each phase appear live as the AI writes it, instead of staring at a spinner
+* **Semantic memory** — the AI recalls past sessions that are *relevant* to your current intention, not just the most recent ones
+* **Regeneration diffs** — retry a single phase and pick between the original and the new version side-by-side
+* **Community persona packs** — third-party persona collections load on demand without bloating the app
+* **Token-aware prompt assembly** — long profiles, memory, and affirmations never silently exceed the context window
+* **Multi-provider AI** — use the free built-in Perchance model, or bring your own Anthropic / OpenAI key
+* **Hardened error handling** — consistent behavior across all AI calls (HTTP failures, rate limits, empty responses)
+
+---
+
 ## What It Does
 
 ### 6-Step Guided Workflow
 
 1. **Choose a Guide**
-   25 built-in personas across four temperaments, each with distinct tone and delivery. Create unlimited custom personas.
+   25 built-in personas across four temperaments, each with distinct tone and delivery. Create unlimited custom personas. Import personas others have shared.
 
 2. **Choose a Method**
    37 induction techniques across therapeutic, somatic, demonstration, rapid, and advanced categories.
@@ -23,9 +36,9 @@ No account required. No downloads.
 3. **Set an Intention**
    Define what you want to achieve. The AI converts this into structured hypnotic suggestions.
 
-4. **Affirmations (New Step)**
+4. **Affirmations**
    Add your own affirmations.
-   These are no longer static — the AI now:
+   These are no longer static — the AI:
 
    * weaves them into sessions
    * structures them across phases
@@ -44,7 +57,7 @@ No account required. No downloads.
 
 ---
 
-## Session Model (Updated)
+## Session Model
 
 Sessions are no longer fixed to 5 phases.
 
@@ -55,48 +68,23 @@ They now include:
 * deepener
 * **multiple work blocks (up to 5 for deep sessions)**
 * affirmation phases (dynamic)
-* **lightener (NEW)**
-* **reintroduction (NEW)**
+* **lightener**
+* **reintroduction**
 
 This creates a full arc:
 **descent → work → recovery → return**
 
 ---
 
-## Features
-
-### Audio
-
-* Procedural soundscapes (no audio files)
-* narration ducking
-* voice selection + quality sorting
-* live adjustment (volume, pitch, rate)
-* mobile media controls
-
-### Visuals
-
-* multiple animated focus effects
-* real-time tuning (speed, intensity, complexity)
-* phase-reactive pacing
-* reduced-motion support
-
-### Session Player
-
-* dynamic phase playback (not fixed count)
-* progress tracking + transcript view
-* live settings panel
-* emergency exit + grounding system
-* fullscreen + wake lock
-
----
-
 ## AI Generation
 
-* **Per-phase generation** (higher quality)
-* dynamic phase counts
-* structured script system
-* affirmation integration (new system)
-* adaptive prompts based on usage
+* **Streaming per-phase generation** — each phase renders live as it's written, with an inline preview you can read as it builds
+* **Semantic memory retrieval** — the generator embeds your past session digests and pulls in the most relevant ones when writing a new script (not just the most recent)
+* **Token-aware prompt assembly** — profile, adaptive context, and memory are prioritized and trimmed as needed so long-term users don't silently blow past the context limit
+* **Adaptive intelligence** — learns what works for you (personas, methods, lengths, depth preferences) and shifts recommendations over time
+* **3-tier hierarchical memory** — per-session digests, rolling patterns (every 5 sessions), long-term profile (every 15)
+* **Per-phase regeneration with diff** — unhappy with one phase? Retry just that one and compare old vs. new side-by-side
+* **Multi-provider routing** — default free Perchance AI, or plug in your own Anthropic / OpenAI key (be aware your key lives in the browser)
 
 ---
 
@@ -108,20 +96,53 @@ You can:
 * remove or add phases
 * adjust structure
 * edit full script text
+* regenerate individual phases and compare outputs
 * control session flow directly
 
-This is now a core feature, not just a preview step.
+This is a core feature, not just a preview step.
 
 ---
 
-## UI / UX Improvements
+## Audio
+
+* Procedural soundscapes (no audio files shipped — everything synthesized)
+* narration ducking during speech
+* voice selection with quality sorting
+* live adjustment during session (volume, pitch, rate, tempo)
+* mobile lock-screen media controls
+
+---
+
+## Visuals
+
+* multiple animated focus effects (spiral, tunnel, vortex, pendulum, mandala, candle, flow-field, aurora, and more)
+* real-time tuning (speed, intensity, complexity)
+* phase-reactive pacing
+* reduced-motion support
+* background image generation (AI, static URL, or YouTube)
+
+---
+
+## Session Player
+
+* dynamic phase playback (not fixed count)
+* progress tracking + transcript view
+* live settings panel
+* emergency exit + grounding system
+* fullscreen + wake lock
+* optional ambient audio recording
+
+---
+
+## UI / UX
 
 * mobile-first layout (portrait optimized)
 * no horizontal overflow
 * responsive grid-based UI
 * improved readability (contrast + font sizing)
-* better navigation (Back buttons, step clarity)
-* consistent workflow across all steps
+* clear navigation (back buttons, step clarity)
+* onboarding tour for new users
+* toast notifications (non-blocking, non-interrupting)
 
 ---
 
@@ -129,13 +150,13 @@ This is now a core feature, not just a preview step.
 
 ### History
 
-Now stores:
+Stores per session:
 
 * full script
 * phase structure
 * affirmations + mode
 * profile snapshot
-* session metrics
+* session metrics (depth, mood delta, completion state)
 
 ### Profiles
 
@@ -144,6 +165,18 @@ User profile is injected into AI generation:
 * goals
 * preferences
 * traits
+* appearance (for personalized imagery)
+
+### Adaptive System
+
+Tracks and updates automatically:
+
+* completion rates
+* mood-delta variance
+* method/persona preferences by reward signal
+* novelty-seeking vs. repetition patterns
+* depth tolerance
+* recovery mode when sessions trend poorly
 
 ### Tracking
 
@@ -163,15 +196,30 @@ Expanded analytics:
 * mood change tracking
 * completion rates
 * feature usage maps
+* activity heatmap (GitHub-style)
+* pre/post improvement sparkline
 
 ---
 
 ## Backup & Sharing
 
-* full backup / restore (JSON)
-* script export
-* shareable config links
-* compatibility with older versions (migration included)
+### Local
+
+* full backup / restore (gzipped JSON)
+* script export to .txt
+* compatibility with older formats (automatic migration)
+
+### Shareable Links
+
+* **session configs** — share the persona, method, length, soundscape, affirmations, and optionally the generated script as a single URL
+* **custom personas** — share a persona you've built; recipients can add it to their own library with one click
+* **rich link previews** — shared URLs produce tailored titles and descriptions when pasted in chat apps
+* **community persona packs** — opt-in third-party collections load lazily when selected
+
+### Privacy-aware share flow
+
+* recipients see an age-gate prompt before importing personas with potentially sensitive content
+* URL is cleaned after import so a reload doesn't re-trigger the flow
 
 ---
 
@@ -196,11 +244,12 @@ Users may enable:
 ## Safety
 
 * contraindication screening
-* session limits
+* session limits + cooldowns
 * grounding system
 * emergency exit
 * alertness check
 * crisis resources
+* reduced-motion defaults for seizure-risk visuals
 
 ---
 
@@ -211,17 +260,22 @@ Users may enable:
 * improved contrast + readability
 * larger tap targets
 * focus indicators
+* ARIA labels on navigation
 
 ---
 
 ## Technical Stack
 
 * Perchance (single-file app)
-* Web Audio API
+* `ai-text-plugin` for streaming generation
+* `text-to-image-plugin` for backgrounds
+* `upload-plugin` for shareable content
+* `dynamic-import-plugin` for community packs
+* Web Audio API (procedural synthesis)
 * Canvas 2D rendering
-* IndexedDB storage
+* IndexedDB storage (persisted)
 * Web Speech API (TTS)
-* modern browser APIs (Wake Lock, Media Session, etc.)
+* Wake Lock, Media Session, Vibration, Clipboard APIs
 
 ---
 
@@ -229,8 +283,15 @@ Users may enable:
 
 * Chrome / Edge: full support
 * Safari: full support
-* Firefox: partial (speech differences)
-* Mobile: fully supported
+* Firefox: partial (speech-synthesis differences)
+* Mobile: fully supported (lock-screen controls on iOS 16+ / Android 10+)
+
+Features that gracefully degrade when unavailable:
+
+* semantic memory falls back to recency-based retrieval
+* streaming falls back to full-phase render
+* share links fall back to hash-URL encoding if upload service is unreachable
+* haptics silently skip on desktop
 
 ---
 
