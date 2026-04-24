@@ -107,8 +107,17 @@
 
   .prompt-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  /* Big prompt textareas — start wide enough to show 500+ chars on screen.
+     At full container width (~860px) with 0.95rem font, ~100 chars/line.
+     min-height 200px → ~9 visible rows → ~900 chars visible. User can
+     still drag to resize further. */
+  #promptPos, #promptNeg {
+    min-height: 200px;
+    font-size: 0.95rem;
+    line-height: 1.45;
   }
   .controls-grid {
     display: grid;
@@ -117,7 +126,8 @@
     margin-top: 14px;
   }
   @media (max-width: 600px) {
-    .prompt-grid, .controls-grid { grid-template-columns: 1fr; }
+    .controls-grid { grid-template-columns: 1fr; }
+    #promptPos, #promptNeg { min-height: 170px; }
   }
   .control-val {
     color: var(--accent);
@@ -662,6 +672,99 @@
   }
 
   // ══════════════════════════════════════════════════════════════════════
+  // Settings persistence — single `settings` key in the same kv store.
+  // Covers: prompt text (pos/neg), generator params, playback params,
+  // enabled transitions, order mode, auto-gen toggle.
+  //
+  // Writes are debounced so rapid slider / typing events don't thrash IDB.
+  // ══════════════════════════════════════════════════════════════════════
+  const SETTINGS_KEY = 'settings';
+
+  // DEFAULT_SETTINGS is materialised lazily (after TRANSITIONS is declared
+  // below) because it references DEFAULT_ENABLED which lives in the
+  // transitions section. We merge with these on load to forward-compat
+  // new fields with old saved states.
+  function buildDefaultSettings() {
+    return {
+      promptPos:          '',
+      promptNeg:          '',
+      orientation:        'landscape',
+      guidance:           7,
+      steps:              30,
+      interval:           8,
+      duration:           2,
+      order:              'sequential',
+      autoGen:            false,
+      enabledTransitions: Array.from(DEFAULT_ENABLED),
+    };
+  }
+
+  async function loadSettings() {
+    const saved = (await idbGet(SETTINGS_KEY)) || {};
+    const s = Object.assign(buildDefaultSettings(), saved);
+
+    // Inputs
+    $('promptPos').value = s.promptPos || '';
+    $('promptNeg').value = s.promptNeg || '';
+    $('orientation').value = s.orientation;
+
+    // Sliders + their value readouts
+    $('guidance').value = s.guidance;
+    $('guidanceVal').textContent = s.guidance;
+    $('steps').value = s.steps;
+    $('stepsVal').textContent = s.steps;
+    $('interval').value = s.interval;
+    $('intervalVal').textContent = s.interval;
+    $('duration').value = s.duration;
+    $('durationVal').textContent = Number(s.duration).toFixed(1);
+
+    // Auto-gen checkbox
+    $('autoGen').checked = !!s.autoGen;
+
+    // Segmented order control
+    currentOrder = s.order === 'random' ? 'random' : 'sequential';
+    $('orderSeg').querySelectorAll('button').forEach(b => {
+      b.classList.toggle('active', b.dataset.order === currentOrder);
+    });
+
+    // Transition checkboxes (requires grid to be built already)
+    const enabled = new Set(s.enabledTransitions || []);
+    document.querySelectorAll('#transitionGrid input[type="checkbox"]').forEach(cb => {
+      cb.checked = enabled.has(cb.value);
+    });
+  }
+
+  let _saveTimer = null;
+  function saveSettings(delay = 300) {
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => {
+      const payload = {
+        promptPos:          $('promptPos').value,
+        promptNeg:          $('promptNeg').value,
+        orientation:        $('orientation').value,
+        guidance:           Number($('guidance').value),
+        steps:              Number($('steps').value),
+        interval:           Number($('interval').value),
+        duration:           Number($('duration').value),
+        order:              currentOrder,
+        autoGen:            $('autoGen').checked,
+        enabledTransitions: getEnabledTransitions(),
+      };
+      idbSet(SETTINGS_KEY, payload);
+    }, delay);
+  }
+
+  // Ask the browser not to evict our IndexedDB data. Best-effort — the
+  // browser can still ignore the request. Safe to call more than once.
+  async function tryPersistBrowserStorageData() {
+    try {
+      if (navigator.storage && navigator.storage.persist) {
+        await navigator.storage.persist();
+      }
+    } catch {}
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
   // Generator — parallel-capable, clamped to MAX_PARALLEL (= Perchance's limit)
   // ══════════════════════════════════════════════════════════════════════
   const MAX_PARALLEL = 4;
@@ -753,7 +856,7 @@
 
   // ══════════════════════════════════════════════════════════════════════
   // Slideshow UI state — order (sequential|random) + enabled transitions.
-  // Kept out of IndexedDB on purpose; these are session-only settings.
+  // Persisted in IndexedDB via the settings layer below.
   // ══════════════════════════════════════════════════════════════════════
   let currentOrder = 'sequential';
 
@@ -1198,10 +1301,18 @@
   // ══════════════════════════════════════════════════════════════════════
   // Event wiring
   // ══════════════════════════════════════════════════════════════════════
-  $('guidance').addEventListener('input', e => $('guidanceVal').textContent = e.target.value);
-  $('steps').addEventListener('input',    e => $('stepsVal').textContent    = e.target.value);
-  $('interval').addEventListener('input', e => $('intervalVal').textContent = e.target.value);
-  $('duration').addEventListener('input', e => $('durationVal').textContent = Number(e.target.value).toFixed(1));
+  $('guidance').addEventListener('input', e => { $('guidanceVal').textContent = e.target.value; saveSettings(); });
+  $('steps').addEventListener('input',    e => { $('stepsVal').textContent    = e.target.value; saveSettings(); });
+  $('interval').addEventListener('input', e => { $('intervalVal').textContent = e.target.value; saveSettings(); });
+  $('duration').addEventListener('input', e => { $('durationVal').textContent = Number(e.target.value).toFixed(1); saveSettings(); });
+
+  // Prompts (persist on every keystroke, debounced)
+  $('promptPos').addEventListener('input', () => saveSettings());
+  $('promptNeg').addEventListener('input', () => saveSettings());
+
+  // Orientation + auto-gen
+  $('orientation').addEventListener('change', () => saveSettings(0));
+  $('autoGen').addEventListener('change', () => saveSettings(0));
 
   // Playback order — segmented control (Sequential / Random)
   $('orderSeg').addEventListener('click', e => {
@@ -1209,17 +1320,27 @@
     if (!btn) return;
     currentOrder = btn.dataset.order;
     $('orderSeg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    saveSettings(0);
   });
 
   // Transition grid bulk controls
   $('txAll').addEventListener('click', () => {
     document.querySelectorAll('#transitionGrid input[type="checkbox"]').forEach(b => b.checked = true);
+    saveSettings(0);
   });
   $('txNone').addEventListener('click', () => {
     document.querySelectorAll('#transitionGrid input[type="checkbox"]').forEach(b => b.checked = false);
+    saveSettings(0);
   });
   $('txInvert').addEventListener('click', () => {
     document.querySelectorAll('#transitionGrid input[type="checkbox"]').forEach(b => b.checked = !b.checked);
+    saveSettings(0);
+  });
+
+  // Individual transition checkbox toggles (delegated so it works even
+  // though buildTransitionGrid re-creates the DOM)
+  $('transitionGrid').addEventListener('change', e => {
+    if (e.target.matches('input[type="checkbox"]')) saveSettings(0);
   });
 
   $('gen1').addEventListener('click', async () => {
@@ -1296,8 +1417,35 @@
     if (player.running && !document.webkitFullscreenElement) player.stop();
   });
 
-  // Initial paint
-  buildTransitionGrid();
-  renderGallery();
+  // ══════════════════════════════════════════════════════════════════════
+  // Initial paint — order matters:
+  //   1. Build transition grid (creates checkbox DOM)
+  //   2. Load persisted settings (populates inputs, checks boxes)
+  //   3. Render gallery (async, independent of settings)
+  //   4. Best-effort: ask browser to keep our IndexedDB around
+  // ══════════════════════════════════════════════════════════════════════
+
+  // iOS Safari: stop the browser from auto-zooming when the user focuses
+  // a textarea on small touch screens — otherwise the big prompt box
+  // yanks the viewport around on every tap.
+  try {
+    const isTouchScreen = window.matchMedia('(pointer: coarse)').matches;
+    const isSafari = navigator.vendor && navigator.vendor.indexOf('Apple') > -1
+      && !navigator.userAgent.includes('CriOS')
+      && !navigator.userAgent.includes('FxiOS');
+    if (isSafari && window.innerWidth < 800 && isTouchScreen) {
+      const vp = document.querySelector('[name=viewport]');
+      if (vp && !vp.getAttribute('content').includes('maximum-scale')) {
+        vp.setAttribute('content', vp.getAttribute('content') + ', maximum-scale=1');
+      }
+    }
+  } catch (e) { console.error(e); }
+
+  (async () => {
+    buildTransitionGrid();
+    try { await loadSettings(); } catch (e) { console.error('loadSettings:', e); }
+    renderGallery();
+    tryPersistBrowserStorageData();
+  })();
 })();
 </script>
