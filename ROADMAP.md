@@ -82,6 +82,101 @@ Replaced the single "crossfade every 45s" with a user-controllable playback syst
 
 ---
 
+## Perchance freshness injection ✅
+
+**The problem:** AI script generation goes stale across sessions. Same profile + same persona + same method produces eerily similar metaphors and phrasings because the LLM has no reason to break pattern. Memory retrieves the past, adaptive narrows preferences — neither introduces novelty.
+
+**The fix:** a new `freshSeeds` namespace in the DSL (`perchance_1.txt`) that holds ~50 curated sensory anchor phrases across 4 categories (calm imagery, somatic cues, breath anchors, metaphor seeds). On each full script generation, the HTML panel picks 4 profile-weighted phrases and injects them into `sharedContext` as **OPTIONAL ANCHORS** — suggestions the AI can weave in if they fit, ignore if they don't.
+
+**What shipped:**
+
+- **Combinatorial DSL lane** — `root.freshSeeds` with 4 categories × ~12 entries, each entry a `{phrase, tags}` JSON object. Phrases are second-person present-tense anchor images (no "you notice…" framing; that's the AI's job).
+- **Stateless picker** — `root.freshSeeds.pick({ profileTags, n, excludeSet })` returns `n` phrases weighted by tag overlap with the profile. Base weight 1, +2 per matching tag, ×0.1 if in excludeSet. Weighted-random without replacement.
+- **HTML-side tag derivation** — `deriveProfileTags()` pulls tags from experience, goals keywords, intention keywords, and the diff-bounce image-gen log (aesthetic preferences feed freshness picks automatically).
+- **Rotation memory** — HTML panel tracks `_recentAnchors` (FIFO cap 30) and passes them as excludeSet so back-to-back sessions don't repeat.
+- **sharedContext wiring** — new `freshSeeds` block at priority 2 (drops before adaptive, after director/profile). Silent graceful degradation: empty string if the DSL namespace is missing (old perchance_1 with new perchance_2) or Smart Director is off.
+
+**Defaults:**
+```
+FRESHNESS_COUNT         = 4       phrases per generation
+FRESHNESS_MIN_TAGS      = 0       always pick, even with no tags
+FRESHNESS_ROTATION_CAP  = 30      entries remembered
+```
+
+**Deferred to a future round:**
+- User-editable freshness lists — UI to add/remove anchor phrases from Settings
+- Per-phase freshness — different anchors for Settling vs Work vs Wake
+- Community freshness packs via the existing `dynamicImport` / `communityPacks` pattern
+- Freshness A/B tracking — log whether anchors were present and whether mood delta was better, auto-tune algorithm
+- LLM-derived tags — replace hard-coded regex keyword matching in `deriveProfileTags` with periodic director distillation
+
+---
+
+## Profile ingestion + diff-bounce history ✅
+
+**DiffBouncer substrate** — new `DiffBouncer` class (one instance per tracked source) that gates commits on two conditions: temporal (8s idle) AND magnitude (threshold per source type). Sub-threshold changes accumulate; only meaningful shifts commit. All tunables live in `DIFF_BOUNCE_THRESHOLDS` — single findable constant.
+
+**5 CSV/text fields covered** — `pfGoals`, `pfAbout`, `intentionInput`, `userAffirmations`, `bgPromptInput`. Wired via `input` events to the bouncers; no existing behavior altered.
+
+**Image generation ingested** — every successful `bgEngine.generateOne()` fires-and-forgets an async summary derivation. With remote processing consent, uses `aiTextPlugin` for a 6-10 word summary + 3-6 aesthetic tags (strict JSON out, salvage-parsed, fallback-tolerant). Without consent, falls back to rule-based tokenization (nouns + adjectives, stop-list filtered). Jaccard similarity ≥ 0.70 against the last committed tag-set skips repeat-exploration batches — a user generating 20 variants of the same prompt produces one log entry, not 20.
+
+**Change log storage** — `profile.changeLog` field on the existing Profile object; ring-buffered at 200 entries newest-first; persisted through the existing IDB + localStorage path. Additive migration (old profiles seed empty array).
+
+**Session-start hard-commit** — `startSession` calls `hardCommit('sessionStart')` on every bouncer. Bypasses the magnitude gate (still requires `hasChange`) to anchor baselines at meaningful moments.
+
+**Timeline UI** — new sidebar `<details>` block "change log" rendering the log newest-first. Per-type rendering: CSV entries show green/red chips for added/removed, text entries show % changed + preview, image entries show summary + tag chips. Collapsed by default; rendered lazily on expand.
+
+**Smart Director integration** — `getProfileContext()` appends "Recent changes:" with the latest 10 entries as one-liners. Director now has a time-aware view of what the user's been exploring.
+
+**Safety** — never throws on image summarization failures (fallback path). Never blocks image generation on DiffBouncer work (fire-and-forget async). Consent-gated LLM calls only.
+
+**Defaults:**
+```
+idleMs:               8000     (8s)
+textChangePct:        0.10     (10% of chars)
+csvChangeCount:       2        (entries shifted)
+imageSimilarityMax:   0.70     (Jaccard threshold)
+commitOnSessionStart: true
+logCap:               200
+```
+
+**Deferred to a future round:**
+- Rollback UI — restore profile state from a past timeline entry
+- Per-source threshold tuning via Settings panel (currently requires editing const)
+- Export change history as CSV / JSON
+- Image-summary opt-out toggle separate from general remote processing consent
+- Tag normalization / aliasing (currently raw from LLM or regex, so "portrait" and "portraits" register as distinct tags)
+
+---
+
+## Audio-reactive visualizer ✅
+
+Made the 7 existing visualizers pulse and flow with the narrator's voice + ambient soundscape, and added a new WebGL flagship visualizer designed ground-up for audio reactivity.
+
+- **Audio signal layer** — `AnalyserNode` tap on the soundscape's WebAudio graph + synthesized envelope from `speechSynthesis.onboundary` events (with a pseudo-envelope fallback for browsers where onboundary doesn't fire). Produces `state.audioReactive = { bass, mid, treble, overall, voicePulse, voiceEnvelope }` at 60fps.
+- **Mode toggle** — `Off / Subtle / Dramatic` segmented control, persisted, mirrored between Step 5 and the Live panel. Gain is applied at visualizer read-time (`getAudioMod()`), so mode changes take effect on the next frame without restarting the engine.
+- **7 existing visualizers retrofitted** — Highway, Waveform, Mandala, Tunnel, Breathing, Smoke, Aurora. Each gets 2–4 lines added for audio modulation; zero-regression when mode is Off (the helper returns all zeros). **Breathing tempo stays locked** — audio only modulates color warmth + outer halo, never timing.
+- **Waveform draws real FFT** when audio is active; falls back to its existing idle sine when silent.
+- **Neural Bloom flagship** — WebGL2 (WebGL1 fallback, canvas 2D fallback) fullscreen visualizer with four composited layers: fBM gradient background, central breathing orb (size modulated by overall + voiceEnvelope), 300 GPU point-sprite particles orbiting at bass-modulated radius, and bloom bursts (20 petals spawned per word boundary with 3Hz cap). Phase-aware color palette interpolates over 3s between settling → deepener → work → wake.
+- **Safety constraints** (structural, not tunable):
+  - Bloom burst rate-limited to 3Hz (333ms minimum between spawns)
+  - Orb radius smoothed to max ~2Hz breathe cycle
+  - Asymmetric fade (150ms in, 850ms out) — no strobe-flashes even at Dramatic
+  - Breathing visualizer tempo never modulated by audio
+- **Accessibility** — on first load, `prefers-reduced-motion: reduce` at OS level flips the default to Off. Explicit user choice is respected thereafter.
+- **Frame-time guard** — rolling 30-frame average; if avg >33ms (<30fps), Neural Bloom halves its particle count automatically.
+
+**Deferred to a future round:**
+
+- **Per-viz custom reactivity profiles** — user sliders to fine-tune bass/voice contributions per visualizer.
+- **Microphone mode** — react to user's own voice for group-guided sessions.
+- **Audio-reactive bg transitions** — pipe `voicePulse` into the bg-image transition system so word boundaries can trigger Ken Burns shifts.
+- **Beat detection** — add an onset detector so visualizers can "know" when a drum hit happens in music-heavy soundscapes.
+- **Export session as video** — record the combined canvas + audio output to webm.
+- **Connection filaments on Neural Bloom** — the spec mentions an optional 5th layer (faint lines between nearby orbiting particles during intense audio moments). Shippable as an increment.
+
+---
+
 ## Script Block Editor — Round 2 ✅
 
 Session structure editor rework. **Shipped:**
@@ -106,6 +201,8 @@ Session structure editor rework. **Shipped:**
 - **Affirmation placement patterns** — `woven / pulses / bookend / climax / rhythmic / custom` dropdown on the Affirmations step. Currently only woven-via-prompt + the new Work-Affirm pair default.
 
 ---
+
+
 
 ## Already shipped ✅
 
