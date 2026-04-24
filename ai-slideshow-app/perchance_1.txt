@@ -1,0 +1,41 @@
+// ══════════════════════════════════════════════════════════════════════
+// AI Slideshow — top editor (Perchance DSL)
+// ══════════════════════════════════════════════════════════════════════
+// The HTML panel below contains the actual UI. This file declares
+// generator metadata and imports the text-to-image plugin.
+// ══════════════════════════════════════════════════════════════════════
+
+$meta
+  title = AI Slideshow
+  description = Generate AI images from your prompts, then watch them as a dynamic fullscreen slideshow. 12 transition effects, sequential or random playback, and optional auto-generation of new images while playing.
+  tags = ai-art, slideshow, image-generation, fullscreen, art
+  header
+    mode = minimal   // maximum room for the slideshow UI — no generator chrome
+
+  // Dynamic link-preview metadata — lets Discord/Slack/iMessage/Twitter
+  // show a nicer card when someone shares the URL. No network calls here
+  // (not permitted in $meta.dynamic), just URL param inspection.
+  async dynamic(inputs) =>
+    let defaultTitle = "AI Slideshow";
+    let defaultDesc  = "Generate AI images and play them as a fullscreen slideshow with 12 transition effects.";
+    try {
+      let params = inputs.urlParams || {};
+      // If someone someday adds a share-prompt URL like ?p=<prompt>, surface it
+      if (params.p) {
+        let prompt = String(params.p).slice(0, 120);
+        return {
+          title: "AI Slideshow · shared prompt",
+          description: "Prompt: \"" + prompt + "\" — Click to generate images and play as a slideshow.",
+          image: "",
+        };
+      }
+    } catch(e) {}
+    return { title: defaultTitle, description: defaultDesc, image: "" };
+
+// ──────────────────────────────────────────────────────────────────────
+// Plugins — only what the Slideshow actually uses.
+// The HTML panel calls root.textToImagePlugin(...) for every generation.
+// ──────────────────────────────────────────────────────────────────────
+textToImagePlugin = {import:text-to-image-plugin}
+
+$output

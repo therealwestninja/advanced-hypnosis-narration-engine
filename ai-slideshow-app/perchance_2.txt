@@ -1,0 +1,1303 @@
+<!--
+  SLIDESHOW.txt
+  ══════════════════════════════════════════════════════════════════════════
+  Stripped-down AI slideshow generator for Perchance. Fill the form,
+  generate images to the local IndexedDB, then click PLAY FULLSCREEN for a
+  continuous transitioned slideshow.
+
+  TOP-EDITOR DSL (required — paste this in the Perchance top editor):
+
+      $meta
+        title = AI Slideshow
+        description = Generate AI images and play them as a fullscreen slideshow.
+
+      textToImagePlugin = {import:text-to-image-plugin}
+
+      $output
+
+  This file goes in the HTML panel below the top editor. The HTML panel
+  renders directly — no {import-html:...} needed.
+-->
+
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg-soft: #141414;
+    --bg-softer: #1c1c1c;
+    --text: #e8e6e2;
+    --text-dim: #b9ab91;
+    --text-faint: #96876f;
+    --accent: #00e5ff;
+    --amber: #ffb300;
+    --amber-hot: #ffc940;
+    --magenta: #ff2d95;
+    --border: rgba(255,180,80,0.18);
+    --danger: #e05050;
+    --font: 'Nunito', system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  *, *::before, *::after { border-radius: 0 !important; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+  }
+  body { padding: 20px 14px 60px; line-height: 1.5; }
+
+  .container { max-width: 900px; margin: 0 auto; }
+
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin: 0 0 24px;
+    text-align: center;
+  }
+
+  .panel {
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .panel-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin: 0 0 12px;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 4px;
+  }
+
+  textarea, input[type="text"], select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.9rem;
+    padding: 8px 10px;
+    line-height: 1.4;
+  }
+  textarea {
+    min-height: 70px;
+    resize: vertical;
+  }
+  textarea:focus, input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--amber);
+  }
+
+  .prompt-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-top: 14px;
+  }
+  @media (max-width: 600px) {
+    .prompt-grid, .controls-grid { grid-template-columns: 1fr; }
+  }
+  .control-val {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.78rem;
+    margin-left: 4px;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    background: var(--amber);
+    color: #000;
+    border: 1px solid var(--amber);
+    box-shadow: 0 0 10px rgba(255,140,0,0.28);
+    padding: 10px 18px;
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, transform 0.08s;
+  }
+  .btn:hover:not(:disabled) {
+    background: var(--amber-hot);
+    border-color: var(--amber-hot);
+    box-shadow: 0 0 16px rgba(255,140,0,0.5);
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 0 6px rgba(255,140,0,0.3);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  .btn.ghost {
+    background: transparent;
+    color: var(--text-dim);
+    border-color: var(--border);
+    box-shadow: none;
+    font-weight: 600;
+  }
+  .btn.ghost:hover:not(:disabled) {
+    color: var(--amber);
+    border-color: var(--amber);
+    background: transparent;
+    box-shadow: none;
+  }
+  .btn.big {
+    padding: 16px 28px;
+    font-size: 1rem;
+    color: #000;
+    letter-spacing: 0.12em;
+    box-shadow: 0 0 18px rgba(255,140,0,0.5);
+    width: 100%;
+  }
+  .btn.big:hover:not(:disabled) {
+    box-shadow: 0 0 28px rgba(255,140,0,0.7);
+  }
+
+  .hint {
+    font-size: 0.72rem;
+    color: var(--text-faint);
+    margin-top: 8px;
+    line-height: 1.4;
+  }
+
+  .status {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 10px;
+    min-height: 1.2em;
+  }
+
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .gallery-item {
+    position: relative;
+    aspect-ratio: 1;
+    background: #111;
+    overflow: hidden;
+  }
+  .gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    opacity: 0.85;
+    transition: opacity 0.12s;
+  }
+  .gallery-item:hover img { opacity: 1; }
+  .gallery-item .del {
+    position: absolute;
+    top: 4px; right: 4px;
+    background: rgba(0,0,0,0.75);
+    color: var(--danger);
+    border: none;
+    width: 22px; height: 22px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+  .gallery-item:hover .del { opacity: 1; }
+  .gallery-item .del:hover { color: #fff; background: var(--danger); }
+  .gallery-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-faint);
+    font-size: 0.85rem;
+    font-style: italic;
+  }
+
+  .slide-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+  @media (max-width: 600px) { .slide-row { grid-template-columns: 1fr; } }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    cursor: pointer;
+  }
+  .checkbox-row input[type="checkbox"] {
+    width: 16px; height: 16px;
+    accent-color: var(--amber);
+    cursor: pointer;
+  }
+
+  /* ═══ PLAYER ═══ */
+  #player {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 9999;
+    display: none;
+    cursor: none;
+    overflow: hidden;
+  }
+  #player.active { display: block; }
+  #player .slide {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0;
+    will-change: opacity, transform, filter, clip-path;
+  }
+  #player .slide.show { opacity: 1; }
+  #player .blackout {
+    position: absolute; inset: 0;
+    background: #000;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+    z-index: 5;
+  }
+  #player .blackout.show { opacity: 1; }
+  #player .hint-overlay {
+    position: absolute;
+    bottom: 20px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,0.5);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    text-shadow: 0 0 6px rgba(0,0,0,0.8);
+    z-index: 10;
+  }
+  #player:hover { cursor: default; }
+  #player:hover .hint-overlay { opacity: 1; }
+
+  /* Segmented toggle — Sequential / Random */
+  .segmented {
+    display: inline-flex;
+    border: 1px solid var(--border);
+  }
+  .segmented button {
+    background: transparent;
+    color: var(--text-dim);
+    border: none;
+    padding: 9px 18px;
+    font-family: var(--font);
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+  }
+  .segmented button:hover { color: var(--amber); }
+  .segmented button.active {
+    background: var(--amber);
+    color: #000;
+    cursor: default;
+  }
+  .segmented button.active:hover { color: #000; }
+
+  /* Transition grid — 3 cols desktop, 2 cols mobile */
+  .transition-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 6px;
+  }
+  @media (max-width: 600px) {
+    .transition-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .transition-grid label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
+    user-select: none;
+  }
+  .transition-grid label:hover {
+    border-color: var(--amber);
+    color: var(--text);
+  }
+  .transition-grid input[type="checkbox"] {
+    width: 14px; height: 14px;
+    accent-color: var(--amber);
+    cursor: pointer;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  .transition-grid input:checked ~ span { color: var(--text); }
+  .transition-grid label:has(input:checked) {
+    border-color: var(--amber);
+    background: rgba(255,179,0,0.06);
+  }
+  .transition-bulk {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 0.7rem;
+  }
+  .transition-bulk button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-faint);
+    padding: 4px 10px;
+    font-family: var(--font);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .transition-bulk button:hover { color: var(--amber); border-color: var(--amber); }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+
+  /* Footer — attribution + external links */
+  .footer {
+    max-width: 900px;
+    margin: 40px auto 0;
+    padding: 20px 12px 0;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--text-faint);
+    letter-spacing: 0.04em;
+    line-height: 1.7;
+  }
+  .footer a {
+    color: var(--text-dim);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 1px;
+    transition: color 0.12s, border-color 0.12s;
+  }
+  .footer a:hover {
+    color: var(--amber);
+    border-bottom-color: var(--amber);
+  }
+
+  /* Toast for non-blocking messages */
+  .toast {
+    position: fixed;
+    bottom: 16px; right: 16px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    max-width: 300px;
+    z-index: 10000;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.warn { border-color: var(--amber); color: var(--amber); }
+  .toast.err  { border-color: var(--danger); color: var(--danger); }
+</style>
+
+<div class="container">
+  <h1>AI Slideshow</h1>
+
+  <!-- Generator -->
+  <div class="panel">
+    <div class="panel-title">Image generator</div>
+    <div class="prompt-grid">
+      <div>
+        <label class="field-label">Prompt <span style="color:var(--accent);">+</span></label>
+        <textarea id="promptPos" placeholder="dark ethereal misty landscape, dreamlike, soft focus..."></textarea>
+      </div>
+      <div>
+        <label class="field-label">Negative <span style="color:var(--magenta);">−</span></label>
+        <textarea id="promptNeg" placeholder="text, watermark, bright, harsh, deformed..."></textarea>
+      </div>
+    </div>
+    <div class="controls-grid">
+      <div>
+        <label class="field-label">Orientation</label>
+        <select id="orientation">
+          <option value="default">Default</option>
+          <option value="square">Square 1:1</option>
+          <option value="portrait">Portrait 2:3</option>
+          <option value="landscape" selected>Landscape 3:2</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Prompt strength <span class="control-val" id="guidanceVal">7</span></label>
+        <input type="range" id="guidance" min="1" max="20" step="0.5" value="7">
+      </div>
+      <div>
+        <label class="field-label">Quality steps <span class="control-val" id="stepsVal">30</span></label>
+        <input type="range" id="steps" min="15" max="50" step="1" value="30">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="gen1">Generate 1</button>
+      <button class="btn" id="gen4">Generate 4 (parallel)</button>
+    </div>
+    <div class="status" id="genStatus"></div>
+  </div>
+
+  <!-- Gallery -->
+  <div class="panel">
+    <div class="panel-title">Gallery <span id="galleryCount" style="color:var(--text-faint);font-weight:400;letter-spacing:0;text-transform:none;">(0)</span></div>
+    <div class="gallery" id="gallery">
+      <div class="gallery-empty">No images yet. Generate some above.</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn ghost" id="clearAll">Clear all</button>
+      <button class="btn ghost" id="downloadAll">Download all</button>
+    </div>
+  </div>
+
+  <!-- Slideshow settings -->
+  <div class="panel">
+    <div class="panel-title">Slideshow</div>
+
+    <!-- Playback order -->
+    <label class="field-label">Playback order</label>
+    <div class="segmented" id="orderSeg" role="tablist">
+      <button type="button" data-order="sequential" class="active">Sequential</button>
+      <button type="button" data-order="random">Random</button>
+    </div>
+
+    <!-- Time sliders -->
+    <div class="slide-row" style="margin-top:14px;">
+      <div>
+        <label class="field-label">Time between slides <span class="control-val"><span id="intervalVal">8</span>s</span></label>
+        <input type="range" id="interval" min="2" max="60" step="1" value="8">
+      </div>
+      <div>
+        <label class="field-label">Transition duration <span class="control-val"><span id="durationVal">2.0</span>s</span></label>
+        <input type="range" id="duration" min="0.1" max="6" step="0.1" value="2">
+      </div>
+    </div>
+
+    <!-- Transition grid -->
+    <label class="field-label" style="margin-top:6px;">Transition effects <span style="color:var(--text-faint);font-weight:400;letter-spacing:0;text-transform:none;">(random pick from the enabled ones each slide)</span></label>
+    <div class="transition-grid" id="transitionGrid"><!-- populated by JS --></div>
+    <div class="transition-bulk">
+      <button type="button" id="txAll">All</button>
+      <button type="button" id="txNone">None</button>
+      <button type="button" id="txInvert">Invert</button>
+    </div>
+
+    <label class="checkbox-row" style="margin-top:14px;">
+      <input type="checkbox" id="autoGen">
+      Keep generating new images while playing (uses current prompt)
+    </label>
+    <div style="margin-top:16px;">
+      <button class="btn big" id="playBtn">▶ Play Fullscreen</button>
+    </div>
+    <div class="hint">Press ESC or click anywhere to exit fullscreen. The player transitions through whatever images are in the gallery.</div>
+  </div>
+
+  <footer class="footer">
+    <span>© 2026 therealwestninja.</span>
+    ·
+    <a href="https://www.deviantart.com/west-ninja" target="_blank" rel="noopener">DeviantArt</a>
+    ·
+    <a href="https://github.com/therealwestninja" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+</div>
+
+<!-- Fullscreen player -->
+<div id="player">
+  <div class="slide" id="slideA"></div>
+  <div class="slide" id="slideB"></div>
+  <div class="blackout" id="blackout"></div>
+  <div class="hint-overlay">click or press ESC to exit</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ══════════════════════════════════════════════════════════════════════
+  // IndexedDB — single kv-style store for image Blobs + manifest
+  // ══════════════════════════════════════════════════════════════════════
+  const DB_NAME = 'slideshow-db';
+  const DB_STORE = 'kv';
+  const MANIFEST_KEY = 'manifest';
+  const MAX_IMAGES = 50;
+  let _db = null, _dbP = null;
+
+  function openDb() {
+    if (_db) return Promise.resolve(_db);
+    if (_dbP) return _dbP;
+    _dbP = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE);
+      };
+      req.onsuccess = e => { _db = e.target.result; resolve(_db); };
+      req.onerror = e => { _dbP = null; reject(e.target.error); };
+    });
+    return _dbP;
+  }
+  async function idbGet(key) {
+    try {
+      const db = await openDb();
+      return await new Promise((res, rej) => {
+        const r = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(key);
+        r.onsuccess = () => res(r.result ?? null);
+        r.onerror = e => rej(e.target.error);
+      });
+    } catch { return null; }
+  }
+  async function idbSet(key, val) {
+    try {
+      const db = await openDb();
+      await new Promise((res, rej) => {
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).put(val, key);
+        tx.oncomplete = res;
+        tx.onerror = e => rej(e.target.error);
+      });
+    } catch {}
+  }
+  async function idbDel(key) {
+    try {
+      const db = await openDb();
+      await new Promise((res, rej) => {
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).delete(key);
+        tx.oncomplete = res;
+        tx.onerror = e => rej(e.target.error);
+      });
+    } catch {}
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Cache — image Blobs stored individually; manifest tracks order
+  // ══════════════════════════════════════════════════════════════════════
+  async function cacheStore(dataUrl, prompt) {
+    const id = 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    const blob = await fetch(dataUrl).then(r => r.blob());
+    const manifest = (await idbGet(MANIFEST_KEY)) || [];
+    manifest.push({ id, prompt: prompt || '', createdAt: Date.now() });
+    while (manifest.length > MAX_IMAGES) {
+      const old = manifest.shift();
+      await idbDel(old.id);
+    }
+    await idbSet(id, blob);
+    await idbSet(MANIFEST_KEY, manifest);
+    return id;
+  }
+  const getManifest = () => idbGet(MANIFEST_KEY).then(m => m || []);
+  async function cacheGetUrl(id) {
+    const blob = await idbGet(id);
+    return blob ? URL.createObjectURL(blob) : null;
+  }
+  async function cacheDelete(id) {
+    await idbDel(id);
+    const m = (await getManifest()).filter(x => x.id !== id);
+    await idbSet(MANIFEST_KEY, m);
+  }
+  async function cacheClear() {
+    const m = await getManifest();
+    for (const e of m) await idbDel(e.id);
+    await idbSet(MANIFEST_KEY, []);
+  }
+  async function cacheDownload(id) {
+    const blob = await idbGet(id);
+    if (!blob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = id + '.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Generator — parallel-capable, clamped to MAX_PARALLEL (= Perchance's limit)
+  // ══════════════════════════════════════════════════════════════════════
+  const MAX_PARALLEL = 4;
+  const RESOLUTIONS = {
+    default:   null,           // plugin picks
+    square:    '512x512',
+    portrait:  '512x768',
+    landscape: '768x512',
+  };
+  let activeGens = 0;
+
+  function currentParams() {
+    return {
+      prompt: $('promptPos').value.trim() || 'abstract dreamlike ethereal',
+      negative: $('promptNeg').value.trim() || 'text, watermark, deformed',
+      resolution: RESOLUTIONS[$('orientation').value] || null,
+      guidance: Number($('guidance').value),
+      steps: Number($('steps').value),
+    };
+  }
+
+  async function generateOne() {
+    if (typeof root === 'undefined' || !root.textToImagePlugin) {
+      toast('textToImagePlugin not loaded. Check the top-editor DSL.', 'err');
+      return null;
+    }
+    // Cooperative queueing so 5+ callers don't all hammer the plugin at once
+    while (activeGens >= MAX_PARALLEL) await sleep(150);
+    activeGens++;
+    try {
+      const p = currentParams();
+      const call = {
+        prompt: p.prompt,
+        negativePrompt: p.negative,
+        negative: p.negative,
+        guidanceScale: p.guidance,
+        numInferenceSteps: p.steps,
+        steps: p.steps,
+        seed: -1,
+      };
+      if (p.resolution) call.resolution = p.resolution;
+      const result = await root.textToImagePlugin(call);
+      const dataUrl = result?.dataUrl || String(result);
+      if (!dataUrl || !dataUrl.startsWith('data:')) return null;
+      const id = await cacheStore(dataUrl, p.prompt);
+      return id;
+    } catch (e) {
+      console.error('generateOne:', e);
+      return null;
+    } finally {
+      activeGens--;
+    }
+  }
+
+  async function generateBatch(n) {
+    const cap = Math.min(Math.max(1, n), MAX_PARALLEL);
+    return Promise.all(Array.from({ length: cap }, () => generateOne()));
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Gallery rendering
+  // ══════════════════════════════════════════════════════════════════════
+  async function renderGallery() {
+    const grid = $('gallery');
+    const count = $('galleryCount');
+    const manifest = await getManifest();
+    count.textContent = `(${manifest.length})`;
+    if (!manifest.length) {
+      grid.innerHTML = '<div class="gallery-empty">No images yet. Generate some above.</div>';
+      return;
+    }
+    // Newest first
+    const items = [...manifest].reverse();
+    grid.innerHTML = items.map(e =>
+      `<div class="gallery-item" data-id="${e.id}">
+        <img alt="" loading="lazy">
+        <button class="del" data-id="${e.id}" title="delete">✕</button>
+      </div>`
+    ).join('');
+    // Lazy-load thumbnails — avoid holding 50 blob URLs forever
+    items.forEach(e => {
+      cacheGetUrl(e.id).then(url => {
+        if (!url) return;
+        const img = grid.querySelector(`[data-id="${e.id}"] img`);
+        if (img) img.src = url;
+      });
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Slideshow UI state — order (sequential|random) + enabled transitions.
+  // Kept out of IndexedDB on purpose; these are session-only settings.
+  // ══════════════════════════════════════════════════════════════════════
+  let currentOrder = 'sequential';
+
+  // Default-enabled transitions — picked to give a pleasant mix without being
+  // visually overwhelming. User can toggle individually or use the All/None buttons.
+  const DEFAULT_ENABLED = new Set([
+    'crossfade', 'fadeBlack', 'kenburns', 'slideLeft', 'zoomIn', 'blur',
+  ]);
+
+  function getEnabledTransitions() {
+    const boxes = document.querySelectorAll('#transitionGrid input[type="checkbox"]');
+    return Array.from(boxes).filter(b => b.checked).map(b => b.value);
+  }
+
+  function buildTransitionGrid() {
+    const grid = $('transitionGrid');
+    if (!grid) return;
+    const keys = Object.keys(TRANSITIONS);
+    grid.innerHTML = keys.map(k => {
+      const checked = DEFAULT_ENABLED.has(k) ? ' checked' : '';
+      return `<label>
+        <input type="checkbox" value="${k}"${checked}>
+        <span>${TRANSITIONS[k].label}</span>
+      </label>`;
+    }).join('');
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Transition registry — each transition is a function that performs the
+  // visual swap from oldEl → newEl. Called with (oldEl, newEl, url, durSec).
+  //
+  // Standard contract:
+  //   • Sets newEl's backgroundImage to url
+  //   • Arranges z-index so newEl paints on top during the transition
+  //   • Resolves only when safe to schedule the next transition (we don't
+  //     await, but the player gives each transition the interval-minus-buffer
+  //     time to finish before advancing again)
+  //
+  // Reset pattern at start: clear prior transform/filter/clipPath/transition
+  // from BOTH slides so the next transition starts from a known state.
+  // ══════════════════════════════════════════════════════════════════════
+  function prepSlides(oldEl, newEl) {
+    // newEl is going to be the incoming slide — wipe its inline styles
+    newEl.style.transition = 'none';
+    newEl.style.transform = '';
+    newEl.style.filter = '';
+    newEl.style.clipPath = '';
+    newEl.style.opacity = '0';
+    newEl.style.zIndex = '2';
+    // oldEl keeps its bg image but we ensure its z-index is below
+    oldEl.style.zIndex = '1';
+    // Force reflow so any subsequent transition actually animates
+    void newEl.offsetWidth;
+  }
+  function scheduleCleanup(el, delayMs) {
+    setTimeout(() => {
+      // Only clear if the element isn't currently the "live" slide (another
+      // transition may have promoted it in the meantime)
+      if (el.style.zIndex !== '2') {
+        el.style.transition = 'none';
+        el.style.transform = '';
+        el.style.filter = '';
+        el.style.clipPath = '';
+        el.style.opacity = '0';
+        el.style.backgroundImage = '';
+        el.classList.remove('show');
+      }
+    }, delayMs);
+  }
+
+  const TRANSITIONS = {
+    cut: {
+      label: 'Cut',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.classList.add('show');
+        oldEl.classList.remove('show');
+        oldEl.style.opacity = '0';
+      },
+    },
+    crossfade: {
+      label: 'Crossfade',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease`;
+        oldEl.style.transition = `opacity ${dur}s ease`;
+        newEl.style.opacity = '1';
+        newEl.classList.add('show');
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+      },
+    },
+    fadeBlack: {
+      label: 'Fade → black',
+      async run(oldEl, newEl, url, dur) {
+        const b = $('blackout');
+        b.style.background = '#000';
+        b.style.transition = `opacity ${dur / 2}s ease`;
+        b.classList.add('show');
+        await sleep(dur * 500);
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.classList.add('show');
+        oldEl.classList.remove('show');
+        oldEl.style.opacity = '0';
+        await sleep(50);
+        b.classList.remove('show');
+      },
+    },
+    fadeWhite: {
+      label: 'Fade → white',
+      async run(oldEl, newEl, url, dur) {
+        const b = $('blackout');
+        b.style.background = '#fff';
+        b.style.transition = `opacity ${dur / 2}s ease`;
+        b.classList.add('show');
+        await sleep(dur * 500);
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.classList.add('show');
+        oldEl.classList.remove('show');
+        oldEl.style.opacity = '0';
+        await sleep(50);
+        b.classList.remove('show');
+        setTimeout(() => { b.style.background = '#000'; }, dur * 1000 + 300);
+      },
+    },
+    slideLeft: {
+      label: 'Slide left',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'translateX(100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateX(0)';
+        oldEl.style.transform = 'translateX(-100%)';
+        newEl.classList.add('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    slideUp: {
+      label: 'Slide up',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'translateY(100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateY(0)';
+        oldEl.style.transform = 'translateY(-100%)';
+        newEl.classList.add('show');
+        scheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    zoomIn: {
+      label: 'Zoom in',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.transform = 'scale(0.3)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'scale(1)';
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease`;
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+      },
+    },
+    zoomOut: {
+      label: 'Zoom out',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.transform = 'scale(1.8)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = 'scale(1)';
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease`;
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+      },
+    },
+    kenburns: {
+      label: 'Ken Burns',
+      run(oldEl, newEl, url, dur) {
+        // Crossfade in, then slow zoom over the display interval.
+        const intervalSec = Number($('interval').value);
+        const zooms = [
+          { from: 'scale(1.0) translate(0, 0)',      to: 'scale(1.18) translate(-3%, -2%)' },
+          { from: 'scale(1.18) translate(-3%, -2%)', to: 'scale(1.0) translate(0, 0)'      },
+          { from: 'scale(1.0) translate(0, 0)',      to: 'scale(1.15) translate(3%, -2%)'  },
+          { from: 'scale(1.12) translate(2%, 2%)',   to: 'scale(1.0) translate(0, 0)'      },
+        ];
+        const z = zooms[Math.floor(Math.random() * zooms.length)];
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.transform = z.from;
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${intervalSec}s ease-in-out`;
+        newEl.style.opacity = '1';
+        newEl.style.transform = z.to;
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease`;
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+      },
+    },
+    blur: {
+      label: 'Blur',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.filter = 'blur(30px)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, filter ${dur}s ease`;
+        newEl.style.opacity = '1';
+        newEl.style.filter = 'blur(0px)';
+        newEl.classList.add('show');
+        oldEl.style.transition = `opacity ${dur}s ease, filter ${dur}s ease`;
+        oldEl.style.filter = 'blur(30px)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('show');
+        setTimeout(() => { oldEl.style.filter = ''; }, dur * 1000 + 150);
+      },
+    },
+    iris: {
+      label: 'Iris',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.clipPath = 'circle(0% at 50% 50%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `clip-path ${dur}s ease`;
+        newEl.style.clipPath = 'circle(150% at 50% 50%)';
+        newEl.classList.add('show');
+        // Old slide stays underneath until iris fully covers it, then we hide
+        setTimeout(() => {
+          oldEl.classList.remove('show');
+          oldEl.style.opacity = '0';
+          oldEl.style.backgroundImage = '';
+        }, dur * 1000 + 50);
+      },
+    },
+    wipe: {
+      label: 'Wipe',
+      run(oldEl, newEl, url, dur) {
+        prepSlides(oldEl, newEl);
+        newEl.style.backgroundImage = `url("${url}")`;
+        newEl.style.opacity = '1';
+        newEl.style.clipPath = 'inset(0 100% 0 0)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `clip-path ${dur}s ease`;
+        newEl.style.clipPath = 'inset(0 0 0 0)';
+        newEl.classList.add('show');
+        setTimeout(() => {
+          oldEl.classList.remove('show');
+          oldEl.style.opacity = '0';
+          oldEl.style.backgroundImage = '';
+        }, dur * 1000 + 50);
+      },
+    },
+  };
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Fullscreen slideshow player
+  // ══════════════════════════════════════════════════════════════════════
+  const player = {
+    running: false,
+    slides: [$('slideA'), $('slideB')],
+    slot: 0,
+    urls: [],
+    order: [],
+    cursor: 0,
+    timer: null,
+    autoGenTimer: null,
+
+    async start() {
+      const manifest = await getManifest();
+      if (!manifest.length) { toast('Gallery is empty. Generate some images first.', 'warn'); return; }
+      // Require at least one transition enabled
+      if (!getEnabledTransitions().length) {
+        toast('Enable at least one transition effect.', 'warn'); return;
+      }
+
+      toast('Loading images...');
+      this.urls = [];
+      for (const e of manifest) {
+        const url = await cacheGetUrl(e.id);
+        if (url) this.urls.push(url);
+      }
+      if (!this.urls.length) { toast('Failed to load images.', 'err'); return; }
+      this.rebuildOrder();
+      this.cursor = 0;
+      this.running = true;
+
+      // Clean initial slide state
+      this.slides.forEach(s => {
+        s.classList.remove('show');
+        s.style.cssText = '';
+      });
+      $('blackout').classList.remove('show');
+      $('blackout').style.background = '#000';
+
+      // Enter fullscreen on the player element
+      $('player').classList.add('active');
+      const el = $('player');
+      try {
+        if (el.requestFullscreen)             await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen)  el.webkitRequestFullscreen();
+      } catch { /* user dismissed fullscreen; continue inline */ }
+
+      // First slide — instant cut, no transition
+      this.slot = 0;
+      const first = this.urls[this.order[0]];
+      const s = this.slides[0];
+      s.style.backgroundImage = `url("${first}")`;
+      s.style.opacity = '1';
+      s.style.zIndex = '2';
+      s.classList.add('show');
+      this.slides[1].style.zIndex = '1';
+
+      const intervalSec = Number($('interval').value);
+      this.scheduleNext(intervalSec);
+
+      if ($('autoGen').checked) this.startAutoGen();
+    },
+
+    rebuildOrder() {
+      this.order = this.urls.map((_, i) => i);
+      if (currentOrder === 'random') {
+        for (let i = this.order.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [this.order[i], this.order[j]] = [this.order[j], this.order[i]];
+        }
+      }
+    },
+
+    scheduleNext(sec) {
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => {
+        if (!this.running) return;
+        this.advance();
+      }, sec * 1000);
+    },
+
+    async advance() {
+      if (!this.running) return;
+      this.cursor++;
+      if (this.cursor >= this.order.length) {
+        // Refresh urls at wrap in case auto-gen added images mid-play
+        const manifest = await getManifest();
+        const fresh = [];
+        for (const e of manifest) {
+          const u = await cacheGetUrl(e.id);
+          if (u) fresh.push(u);
+        }
+        if (fresh.length) this.urls = fresh;
+        this.rebuildOrder();
+        this.cursor = 0;
+      }
+      const nextUrl = this.urls[this.order[this.cursor]];
+      if (!nextUrl) { this.scheduleNext(Number($('interval').value)); return; }
+
+      // Pick a random transition from the enabled set (uniform)
+      const enabled = getEnabledTransitions();
+      const pick = enabled[Math.floor(Math.random() * enabled.length)] || 'cut';
+      const tx = TRANSITIONS[pick] || TRANSITIONS.cut;
+      const dur = Number($('duration').value);
+      const nextSlot = 1 - this.slot;
+      const oldEl = this.slides[this.slot];
+      const newEl = this.slides[nextSlot];
+
+      try {
+        await Promise.resolve(tx.run(oldEl, newEl, nextUrl, dur));
+      } catch (e) {
+        console.error('transition failed:', pick, e);
+      }
+
+      this.slot = nextSlot;
+      this.scheduleNext(Number($('interval').value));
+    },
+
+    startAutoGen() {
+      clearInterval(this.autoGenTimer);
+      this.autoGenTimer = setInterval(async () => {
+        if (!this.running) return;
+        if (activeGens >= MAX_PARALLEL) return;
+        const m = await getManifest();
+        if (m.length >= MAX_IMAGES) return;
+        generateOne(); // fire-and-forget — picked up at next wrap
+      }, Math.max(8, Number($('interval').value) * 2) * 1000);
+    },
+
+    stop() {
+      if (!this.running) return;
+      this.running = false;
+      clearTimeout(this.timer);
+      clearInterval(this.autoGenTimer);
+      this.slides.forEach(s => {
+        s.classList.remove('show');
+        s.style.cssText = '';
+      });
+      $('blackout').classList.remove('show');
+      $('player').classList.remove('active');
+      if (document.fullscreenElement)        document.exitFullscreen?.();
+      else if (document.webkitFullscreenElement) document.webkitExitFullscreen?.();
+      renderGallery();
+    },
+  };
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Utilities
+  // ══════════════════════════════════════════════════════════════════════
+  function $(id) { return document.getElementById(id); }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  let toastTimer = null;
+  function toast(msg, kind = 'info') {
+    const el = $('toast');
+    el.textContent = msg;
+    el.className = 'toast show ' + (kind === 'err' ? 'err' : kind === 'warn' ? 'warn' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), kind === 'err' ? 6000 : 3000);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Event wiring
+  // ══════════════════════════════════════════════════════════════════════
+  $('guidance').addEventListener('input', e => $('guidanceVal').textContent = e.target.value);
+  $('steps').addEventListener('input',    e => $('stepsVal').textContent    = e.target.value);
+  $('interval').addEventListener('input', e => $('intervalVal').textContent = e.target.value);
+  $('duration').addEventListener('input', e => $('durationVal').textContent = Number(e.target.value).toFixed(1));
+
+  // Playback order — segmented control (Sequential / Random)
+  $('orderSeg').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-order]');
+    if (!btn) return;
+    currentOrder = btn.dataset.order;
+    $('orderSeg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  });
+
+  // Transition grid bulk controls
+  $('txAll').addEventListener('click', () => {
+    document.querySelectorAll('#transitionGrid input[type="checkbox"]').forEach(b => b.checked = true);
+  });
+  $('txNone').addEventListener('click', () => {
+    document.querySelectorAll('#transitionGrid input[type="checkbox"]').forEach(b => b.checked = false);
+  });
+  $('txInvert').addEventListener('click', () => {
+    document.querySelectorAll('#transitionGrid input[type="checkbox"]').forEach(b => b.checked = !b.checked);
+  });
+
+  $('gen1').addEventListener('click', async () => {
+    const btn = $('gen1');
+    btn.disabled = true;
+    $('genStatus').textContent = 'Generating 1 image…';
+    const id = await generateOne();
+    btn.disabled = false;
+    if (id) {
+      $('genStatus').textContent = 'Done.';
+      renderGallery();
+    } else {
+      $('genStatus').textContent = 'Generation failed. Try again or check the console.';
+    }
+  });
+
+  $('gen4').addEventListener('click', async () => {
+    const btn = $('gen4');
+    btn.disabled = true;
+    $('genStatus').textContent = 'Generating 4 images in parallel…';
+    let done = 0;
+    const promises = Array.from({ length: 4 }, () =>
+      generateOne().then(id => {
+        done++;
+        $('genStatus').textContent = `${done} of 4 complete…`;
+        if (id) renderGallery(); // progressive render
+      })
+    );
+    await Promise.all(promises);
+    btn.disabled = false;
+    $('genStatus').textContent = 'Batch done.';
+  });
+
+  $('gallery').addEventListener('click', async e => {
+    const delBtn = e.target.closest('.del');
+    if (delBtn) {
+      e.stopPropagation();
+      await cacheDelete(delBtn.dataset.id);
+      renderGallery();
+    }
+  });
+
+  $('clearAll').addEventListener('click', async () => {
+    const m = await getManifest();
+    if (!m.length) return;
+    if (!confirm(`Delete all ${m.length} images?`)) return;
+    await cacheClear();
+    renderGallery();
+    toast('Gallery cleared.');
+  });
+
+  $('downloadAll').addEventListener('click', async () => {
+    const m = await getManifest();
+    if (!m.length) { toast('Nothing to download.', 'warn'); return; }
+    toast(`Downloading ${m.length} image${m.length === 1 ? '' : 's'}…`);
+    for (const e of m) {
+      await cacheDownload(e.id);
+      await sleep(250); // space out so the browser doesn't block
+    }
+  });
+
+  $('playBtn').addEventListener('click', () => player.start());
+
+  // Exit on click OR ESC (ESC exits fullscreen; we hook fullscreenchange too)
+  $('player').addEventListener('click', () => player.stop());
+  document.addEventListener('keydown', e => {
+    if (!player.running) return;
+    if (e.key === 'Escape') player.stop();
+  });
+  document.addEventListener('fullscreenchange', () => {
+    if (player.running && !document.fullscreenElement) player.stop();
+  });
+  document.addEventListener('webkitfullscreenchange', () => {
+    if (player.running && !document.webkitFullscreenElement) player.stop();
+  });
+
+  // Initial paint
+  buildTransitionGrid();
+  renderGallery();
+})();
+</script>
