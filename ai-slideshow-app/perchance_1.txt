@@ -7,7 +7,7 @@
 
 $meta
   title = AI Slideshow
-  description = Generate AI images from your prompts, then watch them as a dynamic fullscreen slideshow. 12 transition effects, sequential or random playback, and optional auto-generation of new images while playing.
+  description = Generate AI images from your prompts, then watch them as a dynamic fullscreen slideshow. 12 transition effects, sequential or random playback, and optional auto-generation of new images while playing. Prompts, settings and gallery all persist in your browser.
   tags = ai-art, slideshow, image-generation, fullscreen, art
   header
     mode = minimal   // maximum room for the slideshow UI — no generator chrome
@@ -17,7 +17,7 @@ $meta
   // (not permitted in $meta.dynamic), just URL param inspection.
   async dynamic(inputs) =>
     let defaultTitle = "AI Slideshow";
-    let defaultDesc  = "Generate AI images and play them as a fullscreen slideshow with 12 transition effects.";
+    let defaultDesc  = "Generate AI images live or in background, play them as a fullscreen slideshow with 12 transition effects. Your prompts and settings are saved automatically.";
     try {
       let params = inputs.urlParams || {};
       // If someone someday adds a share-prompt URL like ?p=<prompt>, surface it
