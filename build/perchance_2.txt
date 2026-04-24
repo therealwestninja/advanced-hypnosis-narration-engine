@@ -1,39 +1,42 @@
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
   :root {
-    --bg: #0d0a07;
-    --bg-soft: rgba(26,20,14,0.82);
-    --bg-softer: rgba(34,26,18,0.7);
-    --border: rgba(255,180,80,0.08);
-    --border-accent: rgba(0,229,255,0.3);
-    --text: #d4c4a8;
-    --text-dim: #7a6b55;
-    --text-faint: #3d3328;
+    /* Palette — minimal, neutral, one accent */
+    --bg: #0a0a0a;
+    --bg-soft: #141414;
+    --bg-softer: #1c1c1c;
+    --border: #2a2a2a;
+    --border-accent: #00e5ff;
+    --text: #e8e6e2;
+    --text-dim: #8a8680;
+    --text-faint: #5a5650;
     --accent: #00e5ff;
-    --accent-soft: rgba(0,229,255,0.12);
+    --accent-soft: rgba(0,229,255,0.1);
     --accent-warm: #ffb300;
     --accent-green: #39ff8e;
     --accent-purple: #b44dff;
     --fixation: #00e5ff;
+    /* Legacy aliases — kept so existing rules still resolve, now flat */
     --neon-cyan: #00e5ff;
     --neon-magenta: #ff2d95;
     --neon-amber: #ffb300;
     --neon-purple: #b44dff;
-    --wood: #1a1410;
-    --wood-light: #2a2018;
-    --glass: rgba(26,20,14,0.65);
-    --glass-border: rgba(255,180,80,0.1);
-    --radius: 8px;
-    --font-display: 'Cinzel', 'Georgia', serif;
-    --font-body: 'Nunito', system-ui, sans-serif;
-    --glow-cyan: 0 0 8px rgba(0,229,255,0.4), 0 0 20px rgba(0,229,255,0.15);
-    --glow-amber: 0 0 8px rgba(255,179,0,0.4), 0 0 20px rgba(255,179,0,0.15);
-    --glow-magenta: 0 0 8px rgba(255,45,149,0.4), 0 0 20px rgba(255,45,149,0.15);
-    --glow-purple: 0 0 8px rgba(180,77,255,0.4), 0 0 20px rgba(180,77,255,0.15);
-    /* Legacy aliases — several post-session, stats, and grounding blocks reference these */
-    --text-muted: #9a8a70;
-    --f-head: 'Cinzel', 'Georgia', serif;
-    --f-body: 'Nunito', system-ui, sans-serif;
+    --wood: #141414;
+    --wood-light: #1c1c1c;
+    --glass: #141414;
+    --glass-border: #2a2a2a;
+    --radius: 0;
+    --font-display: 'Nunito', system-ui, -apple-system, sans-serif;
+    --font-body: 'Nunito', system-ui, -apple-system, sans-serif;
+    /* Glows collapsed to none — every rule referencing these goes flat */
+    --glow-cyan: none;
+    --glow-amber: none;
+    --glow-magenta: none;
+    --glow-purple: none;
+    /* Legacy aliases referenced in post-session and stats blocks */
+    --text-muted: #8a8680;
+    --f-head: 'Nunito', system-ui, -apple-system, sans-serif;
+    --f-body: 'Nunito', system-ui, -apple-system, sans-serif;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -41,20 +44,6 @@
     background: var(--bg); color: var(--text);
     font-family: var(--font-body);
     min-height: 100vh; overflow-x: hidden;
-  }
-  /* Wood grain + noise texture */
-  body::before {
-    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    opacity: 0.06;
-    background-image:
-      url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.02 0.8' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-    background-size: 512px 512px;
-  }
-  /* Warm tavern lantern glow from above */
-  body::after {
-    content: ''; position: fixed; top: -30%; left: 50%; transform: translateX(-50%);
-    width: 800px; height: 600px; z-index: 0; pointer-events: none;
-    background: radial-gradient(ellipse, rgba(255,160,40,0.06) 0%, rgba(255,80,20,0.02) 40%, transparent 70%);
   }
   body { padding: 14px 10px 40px; position: relative; z-index: 1; }
    .container { width: 100%; max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; padding-inline: 0; }
@@ -1183,6 +1172,22 @@ body.in-session .footer {
   }
   .pf-input:focus, .pf-select:focus, .pf-textarea:focus { border-color: var(--neon-cyan); outline: none; }
   .pf-textarea { resize: vertical; min-height: 36px; line-height: 1.35; }
+
+  /* AI background controls — POS/NEG + orientation + weight sliders */
+  .ai-prompt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ai-controls-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .ai-prompt-col, .ai-control { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .ai-sublabel { font-size: 0.64rem; color: var(--text-dim); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 2px; }
+  .ai-slider-val { color: var(--neon-cyan); font-weight: 600; margin-left: 4px; }
+  .ai-control input[type="range"] { width: 100%; margin-top: 4px; }
+  .ai-preview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; }
+  .ai-preview-grid img { width: 100%; max-height: 180px; object-fit: cover; border-radius: 6px; opacity: 0.75; }
+  .ai-preview-grid img:hover { opacity: 1; }
+  @media (max-width: 560px) {
+    .ai-prompt-grid { grid-template-columns: 1fr; }
+    .ai-controls-grid { grid-template-columns: 1fr; }
+  }
+
   .sidebar-toggle {
     display: none; position: fixed; top: 12px; left: 12px; z-index: 100;
     background: var(--glass); border: 1px solid var(--glass-border);
@@ -1750,14 +1755,43 @@ I return to myself easily"></textarea>
           <option value="url">Image URL</option>
         </select>
         <div id="bgAiOptions" class="bg-options" style="display:none;margin-top:8px;">
-          <textarea id="bgPromptInput" class="pf-textarea" rows="2" placeholder="dark ethereal misty landscape, dreamlike, soft focus..."></textarea>
-          <div class="sublabel">Describe the mood/scene. Images generate before and during sessions, crossfading every 45 seconds.</div>
+          <div class="ai-prompt-grid">
+            <div class="ai-prompt-col">
+              <label class="ai-sublabel">prompt <span style="color:var(--neon-cyan);">+</span></label>
+              <textarea id="bgPromptInput" class="pf-textarea" rows="2" placeholder="dark ethereal misty landscape, dreamlike, soft focus..."></textarea>
+            </div>
+            <div class="ai-prompt-col">
+              <label class="ai-sublabel">negative <span style="color:var(--neon-coral,#e47171);">−</span></label>
+              <textarea id="bgNegativePromptInput" class="pf-textarea" rows="2" placeholder="text, words, bright, sharp, deformed..."></textarea>
+            </div>
+          </div>
+          <div class="ai-controls-grid">
+            <div class="ai-control">
+              <label class="ai-sublabel">orientation</label>
+              <select id="bgOrientationSelect" class="pf-select">
+                <option value="default">Default</option>
+                <option value="square">Square 1:1</option>
+                <option value="portrait">Portrait 2:3</option>
+                <option value="landscape" selected>Landscape 3:2</option>
+              </select>
+            </div>
+            <div class="ai-control">
+              <label class="ai-sublabel">prompt strength <span class="ai-slider-val" id="bgGuidanceVal">7</span></label>
+              <input type="range" id="bgGuidanceSlider" min="1" max="20" step="0.5" value="7">
+            </div>
+            <div class="ai-control">
+              <label class="ai-sublabel">quality steps <span class="ai-slider-val" id="bgStepsVal">30</span></label>
+              <input type="range" id="bgStepsSlider" min="15" max="50" step="1" value="30">
+            </div>
+          </div>
+          <div class="sublabel">Generates up to 4 images in parallel. Crossfades every 45 seconds during sessions.</div>
           <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
             <button class="preview-btn" id="bgPreviewBtn">generate image</button>
+            <button class="preview-btn" id="bgPreviewBatchBtn">generate 4 (parallel)</button>
             <button class="preview-btn" id="bgManageBtn">gallery (<span id="bgCacheCount">0</span>)</button>
           </div>
           <div id="bgPreviewWrap" style="display:none;margin-top:8px;text-align:center;">
-            <img id="bgPreviewImg" style="max-width:100%;max-height:200px;border-radius:6px;opacity:0.7;">
+            <div id="bgPreviewGrid" class="ai-preview-grid"></div>
             <div style="display:flex;gap:6px;justify-content:center;margin-top:6px;">
               <button class="preview-btn" id="bgSaveLastBtn" style="display:none;">save to device</button>
               <button class="preview-btn" id="bgPreviewBtn2">generate another</button>
@@ -2174,17 +2208,68 @@ I return to myself easily"></textarea>
         <input type="checkbox" id="smartDirectorEnabled">
         <span>
           Smart Director
-          <span class="hint">Local mental health tracking. Enables auto-personalization and guardrails.</span>
+          <span class="hint">Records sessions, learns preferences, personalizes future scripts.</span>
         </span>
       </label>
-      <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px;">When disabled, your profile saves locally but isn't injected into scripts.</div>
-      <!-- DEBUG: Always defaults to OFF. Intentionally NOT saved with settings.
-           For development/testing only — production users should always have safety re-alert enabled. -->
-      <label class="toggle-row" for="debugSkipRescue" style="align-items:flex-start;margin-top:10px;">
+      <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px;">When off: history still saves, but no digests/embeddings/adaptive updates are written, and no profile/memory/adaptive context is injected into AI prompts.</div>
+      <!-- DIRECTOR CALIBRATION — single slider that shifts both rule thresholds (recovery
+           mode, depth caps, re-entry treatment) AND AI tone directive. Persisted with
+           settings; disabled visually when Smart Director is off. -->
+      <div id="directorBiasRow" style="margin-top:12px;padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+          <span style="font-size:0.82rem;color:var(--text);">Director calibration</span>
+          <span id="directorBiasLabel" class="ai-slider-val" style="font-size:0.7rem;">balanced</span>
+        </div>
+        <input type="range" id="directorBiasSlider" min="-3" max="3" step="1" value="0" style="width:100%;">
+        <div style="display:flex;justify-content:space-between;font-size:0.58rem;color:var(--text-faint);margin-top:2px;letter-spacing:0.04em;text-transform:uppercase;">
+          <span>lean cautious</span>
+          <span>balanced</span>
+          <span>lean forward</span>
+        </div>
+        <div class="hint" style="font-size:0.66rem;margin-top:6px;line-height:1.4;">
+          If sessions feel too intense or the Director pushes too hard → shift cautious.
+          If the Director holds back too much or sessions feel muted → shift forward.
+          <button type="button" id="directorBiasResetBtn" style="background:none;border:none;color:var(--neon-cyan);cursor:pointer;font-size:0.66rem;padding:0;margin-left:4px;text-decoration:underline;">reset to balanced</button>
+        </div>
+      </div>
+      <!-- DEBUG SECTION — session-only, NEVER persisted. All flags reset on reload.
+           Intentionally excluded from _buildSettingsObj so these never leak to production users
+           via cloud sync, backup/restore, or share links. -->
+      <hr style="border:none;border-top:1px solid var(--glass-border);margin:14px 0 8px;">
+      <div class="pf-label" style="margin-bottom:6px;">Debug (session only, never saved)</div>
+      <label class="toggle-row" for="debugSkipRescue" style="align-items:flex-start;margin-top:4px;">
         <input type="checkbox" id="debugSkipRescue">
         <span>
-          Debug: skip rescue sequence
-          <span class="hint">For testing only. Skips emergency re-alert narration.</span>
+          Skip rescue sequence
+          <span class="hint">Skips emergency re-alert narration. Also reveals the memories-inspector button.</span>
+        </span>
+      </label>
+      <label class="toggle-row" for="debugSkipCooldown" style="align-items:flex-start;margin-top:8px;">
+        <input type="checkbox" id="debugSkipCooldown">
+        <span>
+          Skip post-emergency cooldown
+          <span class="hint">Bypasses the 30-second wait between sessions after an emergency exit.</span>
+        </span>
+      </label>
+      <label class="toggle-row" for="debugSkipSafetyGate" style="align-items:flex-start;margin-top:8px;">
+        <input type="checkbox" id="debugSkipSafetyGate">
+        <span>
+          Skip pre-session safety gate
+          <span class="hint">Bypasses the modal for missing Lightener/Wake/Reintroduction or unbalanced Deepener/Lightener.</span>
+        </span>
+      </label>
+      <label class="toggle-row" for="debugSkipMethodGating" style="align-items:flex-start;margin-top:8px;">
+        <input type="checkbox" id="debugSkipMethodGating">
+        <span>
+          Unlock all methods
+          <span class="hint">Bypasses the experience-based locks on Rapid (3 sessions) and Advanced (7 sessions) categories.</span>
+        </span>
+      </label>
+      <label class="toggle-row" for="debugVerbose" style="align-items:flex-start;margin-top:8px;">
+        <input type="checkbox" id="debugVerbose">
+        <span>
+          Verbose Smart Director logging
+          <span class="hint">Logs every injection decision, gate check, and memory update to the console.</span>
         </span>
       </label>
       <hr style="border:none;border-top:1px solid var(--glass-border);margin:12px 0;">
@@ -2546,6 +2631,10 @@ I return to myself easily"></textarea>
     tempoMultiplier: 1.0,
     bgSource: 'none',
     bgPrompt: '',
+    bgNegativePrompt: 'text, words, letters, bright, harsh, sharp, neon, ugly, deformed',
+    bgOrientation: 'landscape', // default | square | portrait | landscape
+    bgGuidance: 7,               // 1-20, controls prompt adherence
+    bgSteps: 30,                 // 15-50, quality/detail
     bgYoutubeUrl: '',
     bgStaticUrl: '',
     droneVolume: 0.35,
@@ -2569,9 +2658,50 @@ I return to myself easily"></textarea>
     scriptSections: [],
     remoteProcessingOptIn: false,
     smartDirectorEnabled: true,
+    directorBias: 0, // -3..+3. Negative = lean cautious, positive = lean forward.
     extAiProvider: 'perchance',
     _extAiKey: null,
+    // Debug flags — session-only, NEVER persisted. See _buildSettingsObj — these are
+    // deliberately excluded. Mirrored from checkboxes by _syncDebugState().
+    _debug: {
+      skipRescue: false,
+      skipCooldown: false,
+      skipSafetyGate: false,
+      skipMethodGating: false,
+      verbose: false,
+    },
   };
+
+  /** Sync state._debug from checkbox DOM. Called on load and on any debug checkbox change. */
+  function _syncDebugState() {
+    const d = state._debug;
+    d.skipRescue       = !!document.getElementById('debugSkipRescue')?.checked;
+    d.skipCooldown     = !!document.getElementById('debugSkipCooldown')?.checked;
+    d.skipSafetyGate   = !!document.getElementById('debugSkipSafetyGate')?.checked;
+    d.skipMethodGating = !!document.getElementById('debugSkipMethodGating')?.checked;
+    d.verbose          = !!document.getElementById('debugVerbose')?.checked;
+    _renderDebugBanner();
+  }
+
+  /** Show/hide the floating "DEBUG" indicator whenever any debug flag is active. */
+  function _renderDebugBanner() {
+    const anyOn = Object.values(state._debug).some(Boolean);
+    let el = document.getElementById('_debugBanner');
+    if (anyOn && !el) {
+      el = document.createElement('div');
+      el.id = '_debugBanner';
+      el.textContent = '\u26A0 DEBUG';
+      el.style.cssText = 'position:fixed;top:8px;right:8px;z-index:99999;background:rgba(220,60,60,0.92);color:#fff;font-size:0.62rem;font-weight:600;letter-spacing:0.08em;padding:4px 8px;border-radius:4px;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
+      document.body.appendChild(el);
+    } else if (!anyOn && el) {
+      el.remove();
+    }
+  }
+
+  /** Verbose Smart Director logger. No-op unless state._debug.verbose is on. */
+  function sdLog(...args) {
+    if (state._debug?.verbose) console.log('[SmartDirector]', ...args);
+  }
 
   const PHASE_DURATIONS = {
     micro:  { settling: 15,  induction: 30,  deepener: 15,  work: 60,  lightener: 15, wake: 12, reintroduction: 20 },
@@ -3074,6 +3204,10 @@ I return to myself easily"></textarea>
       tempoMultiplier: state.tempoMultiplier,
       bgSource: state.bgSource,
       bgPrompt: state.bgPrompt,
+      bgNegativePrompt: state.bgNegativePrompt,
+      bgOrientation: state.bgOrientation,
+      bgGuidance: state.bgGuidance,
+      bgSteps: state.bgSteps,
       bgYoutubeUrl: state.bgYoutubeUrl,
       bgStaticUrl: state.bgStaticUrl,
       droneVolume: state.droneVolume,
@@ -3088,6 +3222,7 @@ I return to myself easily"></textarea>
       voiceName: $('voiceSelect')?.value || '',
       remoteProcessingOptIn: !!$('remoteProcessingOptIn')?.checked,
       smartDirectorEnabled: !!$('smartDirectorEnabled')?.checked,
+      directorBias: Number($('directorBiasSlider')?.value ?? state.directorBias ?? 0),
       settingsVersion: 5,
     };
   }
@@ -3119,6 +3254,9 @@ I return to myself easily"></textarea>
     if (s.intentionInput == null && s.intentionText) s.intentionInput = s.intentionText;
     if (s.remoteProcessingOptIn == null) s.remoteProcessingOptIn = !!(s.remoteBackupOptIn || s.cloudSyncOptIn || s.serverConsent);
     if (s.smartDirectorEnabled == null) s.smartDirectorEnabled = s.profileInjectionEnabled == null ? true : !!s.profileInjectionEnabled;
+    if (s.directorBias == null) s.directorBias = 0;
+    // Clamp to -3..+3 (slider range). Tolerates legacy/bad values without breaking the app.
+    s.directorBias = Math.max(-3, Math.min(3, Math.round(Number(s.directorBias) || 0)));
     if (s.settingsVersion == null) s.settingsVersion = 1;
     return s;
   }
@@ -3228,6 +3366,24 @@ I return to myself easily"></textarea>
         if (el) { el.value = restoredSource; el.dispatchEvent(new Event('change')); }
       }
       if (s.bgPrompt) { state.bgPrompt = s.bgPrompt; const el = $('bgPromptInput'); if (el) el.value = s.bgPrompt; }
+      if (s.bgNegativePrompt != null) {
+        state.bgNegativePrompt = s.bgNegativePrompt;
+        const el = $('bgNegativePromptInput'); if (el) el.value = s.bgNegativePrompt;
+      }
+      if (s.bgOrientation) {
+        state.bgOrientation = s.bgOrientation;
+        const el = $('bgOrientationSelect'); if (el) el.value = s.bgOrientation;
+      }
+      if (s.bgGuidance != null) {
+        state.bgGuidance = Number(s.bgGuidance);
+        const el = $('bgGuidanceSlider'); if (el) el.value = state.bgGuidance;
+        const lbl = $('bgGuidanceVal'); if (lbl) lbl.textContent = state.bgGuidance;
+      }
+      if (s.bgSteps != null) {
+        state.bgSteps = Number(s.bgSteps);
+        const el = $('bgStepsSlider'); if (el) el.value = state.bgSteps;
+        const lbl = $('bgStepsVal'); if (lbl) lbl.textContent = state.bgSteps;
+      }
       if (s.bgYoutubeUrl) { state.bgYoutubeUrl = s.bgYoutubeUrl; const el = $('bgYoutubeUrl'); if (el) el.value = s.bgYoutubeUrl; }
       if (s.bgStaticUrl) { state.bgStaticUrl = s.bgStaticUrl; const el = $('bgUrlInput'); if (el) el.value = s.bgStaticUrl; }
       if (s.droneVolume != null) { state.droneVolume = s.droneVolume; const el = $('droneVolume'); if (el) el.value = Math.round(s.droneVolume * 100); const v = $('droneVolVal'); if (v) v.textContent = Math.round(s.droneVolume * 100); }
@@ -3256,6 +3412,9 @@ I return to myself easily"></textarea>
       const rpcb = $('remoteProcessingOptIn'); if (rpcb) rpcb.checked = !!state.remoteProcessingOptIn;
       state.smartDirectorEnabled = s.smartDirectorEnabled !== false;
       const sdcb = $('smartDirectorEnabled'); if (sdcb) sdcb.checked = state.smartDirectorEnabled;
+      state.directorBias = s.directorBias ?? 0;
+      const dbSlider = $('directorBiasSlider'); if (dbSlider) dbSlider.value = state.directorBias;
+      _updateDirectorBiasUI(); // update label + enabled state
       applySavedVoiceSelection();
       updateVoiceInfo();
       return true;
@@ -3328,7 +3487,10 @@ I return to myself easily"></textarea>
 
   /** Build an AI context string from the user's profile for prompt injection */
   function getProfileContext() {
-    if (state.smartDirectorEnabled === false) return '';
+    if (state.smartDirectorEnabled === false) {
+      sdLog('getProfileContext returning empty — Smart Director off');
+      return '';
+    }
     const p = getProfile();
     const parts = [];
     // Only pass the subject's name to the AI when the user has opted in.
@@ -3339,7 +3501,277 @@ I return to myself easily"></textarea>
     if (p.about) parts.push(`About the subject: ${p.about}.`);
     if (p.appearance) parts.push(`Appearance: ${p.appearance}.`);
     if (p.goals) parts.push(`Goals: ${p.goals}.`);
-    return parts.length > 0 ? '\nSUBJECT PROFILE: ' + parts.join(' ') : '';
+    const result = parts.length > 0 ? '\nSUBJECT PROFILE: ' + parts.join(' ') : '';
+    sdLog('getProfileContext built', { fieldCount: parts.length, charCount: result.length });
+    return result;
+  }
+
+  // ====================================================================
+  // PASS 2 — LIVING PROFILE + DIRECTOR BRIEF
+  // ====================================================================
+  // Merges three independent stores into one unified view of the practitioner,
+  // then runs rule-based logic to produce an actionable brief for the next
+  // session. Both are computed on-demand (no new persistence layer introduced);
+  // the source stores (profile, memory, adaptive, history, analytics) continue
+  // to own their data.
+  //
+  // Keep the director logic RULE-BASED, not AI-inferred. Rules are auditable
+  // and testable; AI-reasoned clinical judgment is a slippery slope this app
+  // should not take.
+
+  /**
+   * Build a unified "living profile" by merging user-edited profile + AI-observed
+   * memory summaries + adaptive signals + recent session snapshot.
+   *
+   * Pure read — does not write anywhere. Returns `null` when Smart Director is
+   * off OR when any underlying read fails.
+   *
+   * @returns {Promise<object|null>}
+   */
+  async function buildLivingProfile() {
+    if (state.smartDirectorEnabled === false) {
+      sdLog('buildLivingProfile skipped — Smart Director off');
+      return null;
+    }
+    try {
+      const stated = getProfile();
+      const memory = await getMemory();
+      const adaptive = await getAdaptive();
+      const history = ((await idbGet('stillness_history_v1')) || []).map(normalizeHistoryEntry);
+      const analytics = await getAnalytics();
+
+      // Recent mood trajectory — last 5 completed sessions with both pre+post scores.
+      // Index 0 = most recent. A negative value = user felt worse after the session.
+      const moodSessions = history.filter(s => s.completed && s.preMood != null && s.postMood != null).slice(0, 5);
+      const recentMoodDeltas = moodSessions.map(s => s.postMood - s.preMood);
+      const avgRecentMoodDelta = recentMoodDeltas.length > 0
+        ? recentMoodDeltas.reduce((a, b) => a + b, 0) / recentMoodDeltas.length
+        : null;
+
+      // Completion rate over last 10 — captures "bailing" patterns earlier than
+      // the lifetime rate from analytics.comp which dilutes with history.
+      const recent10 = history.slice(0, 10);
+      const completionRate = recent10.length > 0
+        ? recent10.filter(s => s.completed).length / recent10.length
+        : null;
+
+      // Average self-rated depth in recent sessions — helps calibrate next session.
+      const recentDepths = history.slice(0, 5).map(s => s.depth).filter(d => d != null);
+      const avgRecentDepth = recentDepths.length > 0
+        ? recentDepths.reduce((a, b) => a + b, 0) / recentDepths.length
+        : null;
+
+      // Top preference signals from analytics (what the user reaches for most).
+      const topKey = (map) => {
+        const entries = Object.entries(map || {});
+        if (!entries.length) return null;
+        return entries.sort((a, b) => b[1] - a[1])[0][0];
+      };
+
+      const living = {
+        version: 1,
+        updatedAt: Date.now(),
+        stated: {
+          name: stated.name,
+          useFirstName: stated.useFirstName,
+          pronouns: stated.pronouns,
+          age: stated.age,
+          experience: stated.experience,
+          about: stated.about,
+          appearance: stated.appearance,
+          goals: stated.goals,
+        },
+        observed: {
+          longTermProfile: memory.longTermProfile || '',
+          rollingPatterns: memory.rollingWindow || '',
+          digestCount: memory.sessionDigests?.length || 0,
+        },
+        adaptive: {
+          traits: adaptive.traits || {},
+          difficulty: adaptive.difficulty || {},
+          memorySummary: adaptive.memorySummary || '',
+          topPersona: topKey(analytics.p),
+          topMethod: topKey(analytics.m),
+          topIntention: topKey(analytics.i),
+        },
+        snapshot: {
+          sessionCount: history.length,
+          completedCount: history.filter(s => s.completed).length,
+          emergencyExitCount: analytics.comp?.emergency || 0,
+          completionRate,
+          recentMoodDeltas,
+          avgRecentMoodDelta,
+          avgRecentDepth,
+          lastSessionAt: history[0]?.date || null,
+          daysSinceLast: history[0]?.date
+            ? Math.floor((Date.now() - history[0].date) / 86400000)
+            : null,
+        },
+      };
+
+      sdLog('buildLivingProfile', living);
+      return living;
+    } catch (e) {
+      console.warn('buildLivingProfile failed:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Compute a structured Director Brief from the living profile. Rule-based —
+   * every recommendation includes a plain-English reason that can be surfaced
+   * to the user (Pass 3).
+   *
+   * Cold-start (fewer than 3 completed sessions): returns a brief with
+   * `coldStart: true` and no active recommendations, so the AI falls back to
+   * defaults rather than pretending expertise the app hasn't earned.
+   *
+   * @param {object|null} living     output of buildLivingProfile()
+   * @param {object}       session   { persona, method, intention, length }
+   * @returns {object|null}
+   */
+  function computeDirectorBrief(living, session = {}) {
+    if (!living) return null;
+    const snap = living.snapshot;
+    // User-adjustable bias, -3..+3. Negative = lean cautious (easier triggers,
+    // stricter caps); positive = lean forward (harder triggers, looser caps).
+    // Clamped defensively in case the setting is stale or out of range.
+    const bias = Math.max(-3, Math.min(3, Math.round(Number(state.directorBias) || 0)));
+    const brief = {
+      generatedAt: Date.now(),
+      bias,
+      forSession: {
+        persona: session.persona || null,
+        method: session.method || null,
+        intention: session.intention || null,
+        length: session.length || null,
+      },
+      coldStart: false,
+      recoveryMode: false,
+      recommendations: {}, // { suggestedDepth, suggestedLength, skipIntensification, maxDepth, preferBreath }
+      warnings: [],        // user-facing flags
+      reasoning: [],       // plain-English rationale (one entry per rule that fired)
+    };
+
+    // Bias-adjusted thresholds. The math is deliberately simple — each step
+    // moves the threshold by a human-meaningful unit, so moving one notch
+    // produces an observable shift without flipping the app's personality.
+    const coldStartLimit     = Math.max(0, 3 - bias);           // B=-3: 6, 0: 3, +3: 0 (no cold start)
+    const recoveryMoodLimit  = -2 - bias * 0.5;                  // B=-3: -0.5 (easy), 0: -2, +3: -3.5 (hard)
+    const completionFloor    = 0.5 - bias * 0.05;                // B=-3: 0.65, 0: 0.5, +3: 0.35
+    const daysSinceRentry    = 14 + bias * 3;                    // B=-3: 5, 0: 14, +3: 23
+    const positivePacingFloor = 1.5 - bias * 0.3;                // B=-3: 2.4 (harder to praise), +3: 0.6 (easier)
+    sdLog('computeDirectorBrief thresholds', { bias, coldStartLimit, recoveryMoodLimit, completionFloor, daysSinceRentry, positivePacingFloor });
+
+    // --- Cold start -----------------------------------------------------
+    if (snap.completedCount < coldStartLimit) {
+      brief.coldStart = true;
+      brief.reasoning.push(
+        snap.completedCount === 0
+          ? 'No completed sessions yet — using defaults and keeping things grounded.'
+          : `Only ${snap.completedCount} completed session${snap.completedCount === 1 ? '' : 's'} so far — still calibrating.`
+      );
+      sdLog('computeDirectorBrief: cold start', brief);
+      return brief;
+    }
+
+    // --- Recovery mode: 3+ consecutive strongly negative mood deltas -----
+    // A "strongly negative" delta is ≤ recoveryMoodLimit on the 1–10 mood scale.
+    const lastThree = snap.recentMoodDeltas.slice(0, 3);
+    if (lastThree.length === 3 && lastThree.every(d => d <= recoveryMoodLimit)) {
+      brief.recoveryMode = true;
+      brief.recommendations.suggestedDepth = 'light';
+      brief.recommendations.suggestedLength = 'short';
+      brief.recommendations.skipIntensification = true;
+      brief.warnings.push('Last 3 sessions ended with notable mood decline.');
+      brief.reasoning.push(`Recovery mode triggered — recent sessions trended mood-negative (threshold ≤ ${recoveryMoodLimit}). Recommending a gentler, shorter session and skipping intensification.`);
+      sdLog('computeDirectorBrief: recovery mode', brief);
+      return brief;
+    }
+
+    // --- Low completion rate → shorter sessions -------------------------
+    if (snap.completionRate != null && snap.completionRate < completionFloor) {
+      brief.recommendations.suggestedLength = 'short';
+      brief.warnings.push(`Recent completion rate is ${Math.round(snap.completionRate * 100)}%.`);
+      brief.reasoning.push(`Recent completion rate is low (${Math.round(snap.completionRate * 100)}% < ${Math.round(completionFloor * 100)}%) — suggest a shorter session to rebuild the habit.`);
+    }
+
+    // --- Emergency-exit history → cap depth -----------------------------
+    // Capped in both directions — emergency exits are a hard safety signal that
+    // bias shouldn't fully suppress. At bias +3, still cap if 3+ exits on short history.
+    const emergencyCap = bias >= 3 ? 3 : 2;
+    if (snap.emergencyExitCount >= emergencyCap && snap.completedCount < 10) {
+      brief.recommendations.maxDepth = 'medium';
+      brief.reasoning.push(`${snap.emergencyExitCount} emergency exits on record with limited completed history — capping suggested depth at medium.`);
+    }
+
+    // --- Beginner cap ---------------------------------------------------
+    // Beginner cap is a safety feature; bias can soften it but not skip entirely.
+    if (living.stated.experience === 'beginner' && bias < 3) {
+      brief.recommendations.maxDepth = brief.recommendations.maxDepth || 'medium';
+      brief.reasoning.push('Self-identifies as beginner — capping suggested depth at medium.');
+    }
+
+    // --- Positive reinforcement — current pacing works ------------------
+    if (snap.avgRecentMoodDelta != null && snap.avgRecentMoodDelta >= positivePacingFloor) {
+      brief.reasoning.push(`Average mood delta is +${snap.avgRecentMoodDelta.toFixed(1)} — current pacing is working; stay the course.`);
+    }
+
+    // --- Long gap since last session ------------------------------------
+    if (snap.daysSinceLast != null && snap.daysSinceLast >= daysSinceRentry) {
+      brief.recommendations.suggestedDepth = brief.recommendations.suggestedDepth || 'light';
+      brief.reasoning.push(`${snap.daysSinceLast} days since last session (≥ ${daysSinceRentry}) — treat as a re-entry and keep this one gentle.`);
+    }
+
+    sdLog('computeDirectorBrief', brief);
+    return brief;
+  }
+
+  /**
+   * Turn a Director Brief into a short prompt block for AI injection. Stays
+   * under ~300 characters so it rarely gets dropped by trimToTokenBudget.
+   *
+   * Appends a tone directive derived from the Director calibration bias so
+   * the AI's language leans cautious or forward in sympathy with the user's
+   * manual correction — even when no rule fires.
+   */
+  function formatDirectorBriefForPrompt(brief) {
+    if (!brief) return '';
+    const parts = [];
+    const bias = brief.bias || 0;
+
+    if (brief.coldStart) {
+      const coldBase = 'Early practitioner — follow defaults and keep the session welcoming and grounded.';
+      const toneNote = _toneDirectiveFromBias(bias);
+      return '\nDIRECTOR BRIEF: ' + coldBase + (toneNote ? ' ' + toneNote : '');
+    }
+
+    if (brief.recoveryMode) {
+      parts.push('Recovery mode — keep this session lighter and shorter than usual. No intensification, no peak-state work. Gentle, supportive, reassuring tone.');
+    }
+
+    const r = brief.recommendations;
+    const directives = [];
+    if (r.suggestedDepth) directives.push(`aim for ${r.suggestedDepth} depth`);
+    if (r.maxDepth)       directives.push(`do not exceed ${r.maxDepth} depth`);
+    if (r.suggestedLength)directives.push(`favor a ${r.suggestedLength}-length pacing`);
+    if (r.skipIntensification && !brief.recoveryMode) directives.push('skip intensification language');
+    if (directives.length) parts.push('Adjustments: ' + directives.join('; ') + '.');
+
+    const toneNote = _toneDirectiveFromBias(bias);
+    if (toneNote) parts.push(toneNote);
+
+    if (parts.length === 0) return '';
+    return '\nDIRECTOR BRIEF: ' + parts.join(' ');
+  }
+
+  /** Bias → plain-English tone directive for the AI. Empty at bias=0. */
+  function _toneDirectiveFromBias(bias) {
+    if (bias <= -2) return 'Tone calibration: favor grounded, careful, gently reassuring language. Avoid pushing intensity or urgency.';
+    if (bias === -1) return 'Tone calibration: lean slightly cautious and unhurried.';
+    if (bias === 1)  return 'Tone calibration: lean slightly forward with warm momentum.';
+    if (bias >= 2)  return 'Tone calibration: favor forward-momentum, energizing language. Trust the practitioner to engage fully with deeper work.';
+    return '';
   }
 
   // ====================================================================
@@ -3459,6 +3891,10 @@ I return to myself easily"></textarea>
 
   /** Record a completed session into the analytics store */
   async function recordAnalytics(record, wasEmergency) {
+    if (state.smartDirectorEnabled === false) {
+      sdLog('recordAnalytics skipped — Smart Director off');
+      return;
+    }
     try {
       const a = await getAnalytics();
 
@@ -3790,6 +4226,10 @@ I return to myself easily"></textarea>
 
   // ── Phase 9: Master update — called after each session ──
   async function updateAdaptiveProfile(sessionRecord, wasEmergency) {
+    if (state.smartDirectorEnabled === false) {
+      sdLog('updateAdaptiveProfile skipped — Smart Director off');
+      return;
+    }
     try {
       const adaptive = await getAdaptive();
       const analytics = await getAnalytics();
@@ -3994,6 +4434,10 @@ Practitioner profile (full, natural sentences):`;
 
   // Master memory update — called after each completed session
   async function updateSessionMemory(script, record) {
+    if (state.smartDirectorEnabled === false) {
+      sdLog('updateSessionMemory skipped — Smart Director off');
+      return;
+    }
     try {
       const memory = await getMemory();
       const digest = await digestSessionScript(script, record);
@@ -4829,32 +5273,75 @@ Practitioner profile (full, natural sentences):`;
   // ====================================================================
   // BACKGROUND IMAGE ENGINE
   // ====================================================================
+  // Max concurrent image generations. Perchance text-to-image-plugin handles up
+  // to 4 parallel requests well; beyond that the provider starts queuing and it
+  // just adds latency rather than throughput.
+  const BG_MAX_PARALLEL = 4;
+
+  // Orientation → resolution map. "default" delegates to the plugin default.
+  const BG_RESOLUTIONS = {
+    default: null,            // omit resolution → plugin picks
+    square: '512x512',
+    portrait: '512x768',
+    landscape: '768x512',
+  };
+
   const bgEngine = {
     source: 'none',
     prompt: '',
     queue: [],
     currentSlot: 0,
     interval: null,
-    generating: false,
+    activeGenerations: 0,   // replaces boolean `generating` — counter for parallel tracking
     rotationSec: 45,
     _localObjectUrl: null,
 
+    /** True if any generation is in flight. Preserved for UI handlers. */
+    get generating() { return this.activeGenerations > 0; },
+
+    /** Read current generation parameters from state. Pure — no DOM access.
+     *  Centralized so generateOne() + anyone else stays in sync. */
+    _currentParams() {
+      const resolution = BG_RESOLUTIONS[state.bgOrientation || 'landscape'] || null;
+      return {
+        prompt: this.prompt || state.bgPrompt || 'abstract dark ethereal misty landscape, dreamlike, hypnotic, soft focus',
+        negativePrompt: state.bgNegativePrompt || 'text, words, letters, bright, harsh, sharp, neon, ugly, deformed',
+        resolution,
+        guidanceScale: Number(state.bgGuidance) || 7,
+        numInferenceSteps: Number(state.bgSteps) || 30,
+        seed: -1,
+      };
+    },
+
+    /** Generate exactly one image. Safe to call concurrently up to BG_MAX_PARALLEL;
+     *  additional callers wait briefly for a free slot. Returns objectUrl or null. */
     async generateOne() {
-      if (this.generating) return null;
       if (typeof root === 'undefined' || !root.textToImagePlugin) { console.warn('bgEngine: textToImagePlugin not available'); return null; }
-      this.generating = true;
+      // Fairness spinlock — yield to the event loop until a slot frees up.
+      while (this.activeGenerations >= BG_MAX_PARALLEL) {
+        await new Promise(r => setTimeout(r, 150));
+      }
+      this.activeGenerations++;
       try {
-        const result = await root.textToImagePlugin({
-          prompt: this.prompt || 'abstract dark ethereal misty landscape, dreamlike, hypnotic, soft focus',
-          resolution: '768x512',
-          negativePrompt: 'text, words, letters, bright, harsh, sharp, neon, ugly, deformed',
-          guidanceScale: 7,
-          seed: -1,
-        });
+        const params = this._currentParams();
+        // resolution: null tells the plugin to use its default; omit the key entirely
+        // rather than passing null to avoid confusing the plugin.
+        // Steps is passed under both common names — Perchance's plugin accepts one
+        // or the other depending on backend; extras are silently ignored.
+        const call = {
+          prompt: params.prompt,
+          negativePrompt: params.negativePrompt,
+          negative: params.negativePrompt,
+          guidanceScale: params.guidanceScale,
+          numInferenceSteps: params.numInferenceSteps,
+          steps: params.numInferenceSteps,
+          seed: params.seed,
+        };
+        if (params.resolution) call.resolution = params.resolution;
+        const result = await root.textToImagePlugin(call);
         const dataUrl = result.dataUrl || String(result);
         if (dataUrl && dataUrl.startsWith('data:')) {
-          await bgCacheStore(dataUrl, this.prompt);
-          // Convert to object URL for display (lighter than keeping data URL in memory)
+          await bgCacheStore(dataUrl, params.prompt);
           const blob = await fetch(dataUrl).then(r => r.blob());
           const objectUrl = URL.createObjectURL(blob);
           this.queue.push(objectUrl);
@@ -4862,7 +5349,17 @@ Practitioner profile (full, natural sentences):`;
         }
         return null;
       } catch(e) { console.error('bgEngine generate:', e); return null; }
-      finally { this.generating = false; }
+      finally { this.activeGenerations--; }
+    },
+
+    /** Fire N image generations in parallel, respecting BG_MAX_PARALLEL.
+     *  Returns array of objectUrls (nulls removed) in completion order. */
+    async generateBatch(count = BG_MAX_PARALLEL) {
+      const n = Math.min(Math.max(1, count), BG_MAX_PARALLEL);
+      const results = await Promise.all(
+        Array.from({ length: n }, () => this.generateOne())
+      );
+      return results.filter(Boolean);
     },
 
     async pregenerate(count = 5) {
@@ -4871,12 +5368,16 @@ Practitioner profile (full, natural sentences):`;
       if (urls.length > 0) this.queue = urls;
       // Kick off rotation now if we have cached images and source is 'ai'
       if (this.source === 'ai' && this.queue.length > 0) this.startRotation();
-      // Generate new ones sequentially (Perchance queues concurrent requests)
+      // Generate new ones in parallel batches (up to BG_MAX_PARALLEL at a time)
       const needed = Math.max(0, count - this.queue.length);
-      for (let i = 0; i < needed; i++) {
+      if (needed === 0) return;
+      let produced = 0;
+      while (produced < needed) {
         if (state.abortFlag) break;
-        await this.generateOne();
-        // Kick off rotation as soon as the first generated image is ready
+        const batchSize = Math.min(BG_MAX_PARALLEL, needed - produced);
+        await this.generateBatch(batchSize);
+        produced += batchSize;
+        // Kick off rotation as soon as the first batch lands
         if (this.source === 'ai' && this.queue.length > 0 && !this.interval) this.startRotation();
       }
     },
@@ -6091,39 +6592,68 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     const demoNote = method.category === 'demonstration' ? '\nDEMONSTRATION METHOD: direct suggestions, build effect, include TEST.' : '';
 
     const profileCtx = getProfileContext();
+    // Smart Director gate — when off, don't pull adaptive or memory context at all.
+    // getProfileContext() already gates itself. See _debug for bypass considerations.
+    const sdOn = state.smartDirectorEnabled !== false;
     let adaptiveCtx = '';
-    try { const ap = await getAdaptive(); adaptiveCtx = getAdaptivePromptBlock(ap); } catch {}
+    if (sdOn) {
+      try { const ap = await getAdaptive(); adaptiveCtx = getAdaptivePromptBlock(ap); } catch {}
+    } else { sdLog('adaptiveCtx skipped — Smart Director off'); }
+
+    // Pass 2 — Director Brief. Built once per session generation (not per phase)
+    // so it adds ≤ 1 extra round-trip of IDB reads, no AI call. Formatted block
+    // is short (≤ 300 chars) and takes priority 3 alongside profile.
+    let directorBriefCtx = '';
+    if (sdOn) {
+      try {
+        const living = await buildLivingProfile();
+        const brief = computeDirectorBrief(living, {
+          persona: persona.name,
+          method: method.name,
+          intention: rough,
+          length: state.length,
+        });
+        directorBriefCtx = formatDirectorBriefForPrompt(brief);
+        // Stash the brief on state so the session record can capture which
+        // brief was active (useful for retrospective debugging in future).
+        state._lastDirectorBrief = brief;
+      } catch (e) { console.warn('Director brief build failed:', e); }
+    } else { sdLog('directorBriefCtx skipped — Smart Director off'); }
 
     // Memory context — prefer semantic retrieval (item #4) over pure recency.
     // Fall back to rolling window + long-term profile when embeddings aren't
     // available or no relevant matches exist.
     let memoryCtx = '';
-    try {
-      const mem = await getMemory();
-      // Top-K most semantically similar past digests (embedding-based)
-      const relevant = await findRelevantDigests(rough || (persona.name + ' ' + method.name), 3);
-      const relevantBlock = relevant.length
-        ? '\nMOST RELEVANT PAST SESSIONS (by semantic similarity to this intention):\n' +
-          relevant.map(r => `- [similarity ${((1 - r.distance) * 100).toFixed(0)}%] ${r.digest.digest}`).join('\n')
-        : '';
-      const baseBlock = (mem.rollingWindow || mem.longTermProfile)
-        ? `\nPRACTITIONER MEMORY:${mem.longTermProfile ? '\nProfile: ' + mem.longTermProfile : ''}${mem.rollingWindow ? '\nRecent patterns: ' + mem.rollingWindow : ''}`
-        : '';
-      memoryCtx = baseBlock + relevantBlock;
-    } catch (e) { console.warn('Memory context build failed:', e); }
+    if (sdOn) {
+      try {
+        const mem = await getMemory();
+        // Top-K most semantically similar past digests (embedding-based)
+        const relevant = await findRelevantDigests(rough || (persona.name + ' ' + method.name), 3);
+        const relevantBlock = relevant.length
+          ? '\nMOST RELEVANT PAST SESSIONS (by semantic similarity to this intention):\n' +
+            relevant.map(r => `- [similarity ${((1 - r.distance) * 100).toFixed(0)}%] ${r.digest.digest}`).join('\n')
+          : '';
+        const baseBlock = (mem.rollingWindow || mem.longTermProfile)
+          ? `\nPRACTITIONER MEMORY:${mem.longTermProfile ? '\nProfile: ' + mem.longTermProfile : ''}${mem.rollingWindow ? '\nRecent patterns: ' + mem.rollingWindow : ''}`
+          : '';
+        memoryCtx = baseBlock + relevantBlock;
+        sdLog('memoryCtx built', { relevantCount: relevant.length, hasRolling: !!mem.rollingWindow, hasLongTerm: !!mem.longTermProfile });
+      } catch (e) { console.warn('Memory context build failed:', e); }
+    } else { sdLog('memoryCtx skipped — Smart Director off'); }
 
     // Build sharedContext under a token budget (item #5) — priority order
     // determines what gets dropped first if the user has a huge profile +
     // long memory + many affirmations.
     const headerBlock = `You are ${persona.name}. ${persona.systemPrompt}\nMETHOD: ${method.name}. ${method.detail}\nPACING: ${PACING_RULES[method.pacing]}\nTHEME: "${rough || 'general trance experience'}"`;
     const sharedContext = trimToTokenBudget([
-      { name: 'header',    text: headerBlock,  priority: 5 }, // persona + method + theme — never drop
-      { name: 'crafted',   text: craftedBlock, priority: 4 },
-      { name: 'affirm',    text: affirmBlock,  priority: 4 },
-      { name: 'demoNote',  text: demoNote,     priority: 4 },
-      { name: 'profile',   text: profileCtx,   priority: 3 },
-      { name: 'adaptive',  text: adaptiveCtx,  priority: 2 },
-      { name: 'memory',    text: memoryCtx,    priority: 1 }, // first to drop
+      { name: 'header',    text: headerBlock,       priority: 5 }, // persona + method + theme — never drop
+      { name: 'crafted',   text: craftedBlock,      priority: 4 },
+      { name: 'affirm',    text: affirmBlock,       priority: 4 },
+      { name: 'demoNote',  text: demoNote,          priority: 4 },
+      { name: 'director',  text: directorBriefCtx,  priority: 3 }, // Pass 2 — short, actionable, high-value
+      { name: 'profile',   text: profileCtx,        priority: 3 },
+      { name: 'adaptive',  text: adaptiveCtx,       priority: 2 },
+      { name: 'memory',    text: memoryCtx,         priority: 1 }, // first to drop
     ], 1200); // leave generous headroom for per-phase task block + output
 
     // Count nested Deepener/Lightener pairs so we can produce depth-aware prompts.
@@ -7690,9 +8220,13 @@ ${s.text.trim()}`).join('\n\n').trim();
   async function startSession() {
     // Emergency cooldown check
     if (state._cooldownUntil && Date.now() < state._cooldownUntil) {
-      const remaining = Math.ceil((state._cooldownUntil - Date.now()) / 1000);
-      notify.warn(`Please wait ${remaining}s before starting another session.`);
-      return;
+      if (state._debug?.skipCooldown) {
+        sdLog('cooldown bypassed — debugSkipCooldown on');
+      } else {
+        const remaining = Math.ceil((state._cooldownUntil - Date.now()) / 1000);
+        notify.warn(`Please wait ${remaining}s before starting another session.`);
+        return;
+      }
     }
 
     let scriptText = $('scriptText').value.trim();
@@ -7702,10 +8236,15 @@ ${s.text.trim()}`).join('\n\n').trim();
     // or deepener/lightener are unbalanced. Sleep intention is exempt by design.
     const safety = validateSessionSafety();
     if (!safety.ok) {
-      const proceed = await showUnsafeSessionModal(safety);
-      if (!proceed) return;
-      // Record the unsafe-start in analytics so we can surface it in the post-session review
-      state._startedUnsafe = true;
+      if (state._debug?.skipSafetyGate) {
+        sdLog('safety gate bypassed — debugSkipSafetyGate on', safety);
+        state._startedUnsafe = true;
+      } else {
+        const proceed = await showUnsafeSessionModal(safety);
+        if (!proceed) return;
+        // Record the unsafe-start in analytics so we can surface it in the post-session review
+        state._startedUnsafe = true;
+      }
     } else {
       state._startedUnsafe = false;
     }
@@ -8370,7 +8909,8 @@ ${s.text.trim()}`).join('\n\n').trim();
     speechSynthesis.cancel();
     // DEBUG: skip rescue sequence if debug checkbox is checked
     // This setting intentionally defaults OFF and is NOT saved with settings
-    if ($('debugSkipRescue')?.checked) {
+    if (state._debug?.skipRescue || $('debugSkipRescue')?.checked) {
+      sdLog('rescue skipped — debugSkipRescue on');
       finishSession(true);
       return;
     }
@@ -8584,28 +9124,47 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     bgEngine.prompt = e.target.value;
     saveUserSettings();
   });
-  // Background generate handler (shared by both generate buttons)
+  $('bgNegativePromptInput')?.addEventListener('input', e => {
+    state.bgNegativePrompt = e.target.value;
+    saveUserSettings();
+  });
+  $('bgOrientationSelect')?.addEventListener('change', e => {
+    state.bgOrientation = e.target.value;
+    saveUserSettings();
+  });
+  $('bgGuidanceSlider')?.addEventListener('input', e => {
+    state.bgGuidance = Number(e.target.value);
+    const lbl = $('bgGuidanceVal'); if (lbl) lbl.textContent = state.bgGuidance;
+  });
+  $('bgGuidanceSlider')?.addEventListener('change', saveUserSettings);
+  $('bgStepsSlider')?.addEventListener('input', e => {
+    state.bgSteps = Number(e.target.value);
+    const lbl = $('bgStepsVal'); if (lbl) lbl.textContent = state.bgSteps;
+  });
+  $('bgStepsSlider')?.addEventListener('change', saveUserSettings);
+  // Background generate handler — single image.
   async function _bgGenerate() {
     const btn = $('bgPreviewBtn');
     const btn2 = $('bgPreviewBtn2');
     const wrap = $('bgPreviewWrap');
     const status = $('bgPreviewStatus');
-    const img = $('bgPreviewImg');
+    const grid = $('bgPreviewGrid');
     const saveBtn = $('bgSaveLastBtn');
-    if (!wrap || !status || !img || !btn) return;
-    if (bgEngine.generating) { notify.warn('Already generating — please wait.'); return; }
+    if (!wrap || !status || !grid || !btn) return;
     btn.disabled = true; btn.textContent = 'generating...';
     if (btn2) { btn2.disabled = true; btn2.textContent = 'generating...'; }
     wrap.style.display = '';
     status.textContent = 'Sending to Perchance AI... (typically 10-30 seconds)';
-    img.src = '';
+    grid.innerHTML = '';
     if (saveBtn) saveBtn.style.display = 'none';
     bgEngine.prompt = $('bgPromptInput')?.value || '';
     const url = await bgEngine.generateOne();
     btn.disabled = false; btn.textContent = 'generate image';
     if (btn2) { btn2.disabled = false; btn2.textContent = 'generate another'; }
     if (url) {
+      const img = document.createElement('img');
       img.src = url;
+      grid.appendChild(img);
       if (saveBtn) saveBtn.style.display = '';
       const manifest = await bgCacheGetManifest();
       status.textContent = `Saved. ${manifest.length} image${manifest.length === 1 ? '' : 's'} in cache.`;
@@ -8616,8 +9175,42 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
         : 'Plugin not found. Add textToImagePlugin = {import:text-to-image-plugin} to the top editor.';
     }
   }
+
+  // Batch generate — fires 4 in parallel, populates grid progressively.
+  async function _bgGenerateBatch() {
+    const batchBtn = $('bgPreviewBatchBtn');
+    const wrap = $('bgPreviewWrap');
+    const status = $('bgPreviewStatus');
+    const grid = $('bgPreviewGrid');
+    if (!batchBtn || !wrap || !status || !grid) return;
+    batchBtn.disabled = true; batchBtn.textContent = 'generating 4...';
+    wrap.style.display = '';
+    status.textContent = 'Generating 4 images in parallel...';
+    grid.innerHTML = '';
+    bgEngine.prompt = $('bgPromptInput')?.value || '';
+    // Fire 4 in parallel; render each as it arrives rather than waiting for all.
+    let completed = 0;
+    const promises = Array.from({ length: 4 }, () =>
+      bgEngine.generateOne().then(url => {
+        completed++;
+        if (url) {
+          const img = document.createElement('img');
+          img.src = url;
+          grid.appendChild(img);
+        }
+        status.textContent = `${completed} of 4 complete...`;
+      })
+    );
+    await Promise.all(promises);
+    batchBtn.disabled = false; batchBtn.textContent = 'generate 4 (parallel)';
+    const manifest = await bgCacheGetManifest();
+    status.textContent = `Batch done. ${manifest.length} image${manifest.length === 1 ? '' : 's'} in cache.`;
+    renderBgGallery();
+  }
+
   $('bgPreviewBtn')?.addEventListener('click', _bgGenerate);
   $('bgPreviewBtn2')?.addEventListener('click', _bgGenerate);
+  $('bgPreviewBatchBtn')?.addEventListener('click', _bgGenerateBatch);
   $('bgSaveLastBtn')?.addEventListener('click', async () => {
     const manifest = await bgCacheGetManifest();
     if (manifest.length > 0) {
@@ -9536,11 +10129,20 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   });
   $('extAiKey')?.addEventListener('input', e => { state._extAiKey = e.target.value || null; });
 
-  // Debug mode → show/hide memories button
+  // Debug mode — all flags session-only, never persisted. Any change triggers a
+  // re-sync of state._debug and re-renders the floating "DEBUG" banner.
   $('debugSkipRescue')?.addEventListener('change', () => {
+    _syncDebugState();
     const memBtn = $('viewMemoriesBtn');
     if (memBtn) memBtn.style.display = $('debugSkipRescue')?.checked ? '' : 'none';
   });
+  $('debugSkipCooldown')?.addEventListener('change', _syncDebugState);
+  $('debugSkipSafetyGate')?.addEventListener('change', _syncDebugState);
+  $('debugSkipMethodGating')?.addEventListener('change', () => {
+    _syncDebugState();
+    applyMethodGating(); // re-evaluate the visible tab locks immediately
+  });
+  $('debugVerbose')?.addEventListener('change', _syncDebugState);
 
   // ── Memories modal (Perchance-chat style: editable cards) ──
   async function renderMemoriesModal() {
@@ -9628,6 +10230,47 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('smartDirectorEnabled')?.addEventListener('change', e => {
     state.smartDirectorEnabled = !!e.target.checked;
     saveUserSettings();
+    _updateDirectorBiasUI(); // grey out the bias row when director is off
+  });
+  // Director calibration slider — updates label live, persists on change (release).
+  // Semantic labels are chosen to reinforce "neutral default is 0" rather than
+  // implying more-cautious-is-better or vice versa.
+  const DIRECTOR_BIAS_LABELS = {
+    '-3': 'strongly cautious',
+    '-2': 'cautious',
+    '-1': 'slightly cautious',
+     '0': 'balanced',
+     '1': 'slightly forward',
+     '2': 'forward',
+     '3': 'strongly forward',
+  };
+  function _updateDirectorBiasUI() {
+    const slider = $('directorBiasSlider');
+    const label  = $('directorBiasLabel');
+    const row    = $('directorBiasRow');
+    if (!slider || !label || !row) return;
+    label.textContent = DIRECTOR_BIAS_LABELS[String(slider.value)] || 'balanced';
+    // Grey out when Smart Director is off — bias has no effect if nothing runs.
+    const enabled = state.smartDirectorEnabled !== false;
+    row.style.opacity = enabled ? '' : '0.4';
+    slider.disabled = !enabled;
+    $('directorBiasResetBtn') && ($('directorBiasResetBtn').disabled = !enabled);
+  }
+  $('directorBiasSlider')?.addEventListener('input', e => {
+    state.directorBias = Number(e.target.value);
+    _updateDirectorBiasUI();
+    sdLog('directorBias changed (uncommitted)', state.directorBias);
+  });
+  $('directorBiasSlider')?.addEventListener('change', () => {
+    saveUserSettings();
+    sdLog('directorBias saved', state.directorBias);
+  });
+  $('directorBiasResetBtn')?.addEventListener('click', () => {
+    const slider = $('directorBiasSlider');
+    if (slider) slider.value = 0;
+    state.directorBias = 0;
+    _updateDirectorBiasUI();
+    saveUserSettings();
   });
   $('remoteConsentCancelBtn')?.addEventListener('click', () => {
     const cb = $('remoteProcessingOptIn'); if (cb) cb.checked = false;
@@ -9678,18 +10321,20 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
 
   async function applyMethodGating() {
     const count = await getSessionCount();
+    const skip = state._debug?.skipMethodGating;
+    if (skip) sdLog('method gating bypassed — debugSkipMethodGating on');
     // Thresholds: rapid unlocks at 3 sessions, advanced at 7
     document.querySelectorAll('#methodFilterTabs .filter-tab').forEach(tab => {
       const cat = tab.dataset.filter;
-      if (cat === 'rapid' && count < 3) {
+      if (!skip && cat === 'rapid' && count < 3) {
         tab.style.opacity = '0.4';
         tab.title = `Unlocks after 3 completed sessions (${count} so far)`;
-      } else if (cat === 'advanced' && count < 7) {
+      } else if (!skip && cat === 'advanced' && count < 7) {
         tab.style.opacity = '0.4';
         tab.title = `Unlocks after 7 completed sessions (${count} so far)`;
       } else {
         tab.style.opacity = '';
-        tab.title = '';
+        tab.title = skip && (cat === 'rapid' || cat === 'advanced') ? 'Debug: unlocked' : '';
       }
     });
   }
@@ -9752,6 +10397,11 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
 
     // Practice-unlock method gating
     applyMethodGating();
+
+    // Sync debug state from DOM (checkboxes default unchecked, but this guarantees
+    // state._debug matches the visible UI in all cases). Banner re-renders from here.
+    _syncDebugState();
+    _updateDirectorBiasUI();
   })();
 </script>
 
@@ -10014,6 +10664,169 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       grid-template-columns: 1fr;
     }
   }
+</style>
+
+<style id="minimal-edgy-override">
+  /* Minimal-edgy theme override. Appended last so it wins the cascade.
+     Squares every corner, strips decorative shadows from surfaces/text, but keeps
+     a deliberate amber-on-amber button treatment with a soft orange glow halo.
+     Amber drives headings; magenta surfaces for active/warning states; cyan for focus. */
+
+  /* Nuke all rounded corners globally — last word on the subject. */
+  *, *::before, *::after { border-radius: 0 !important; }
+
+  /* Flatten — no text shadows, no backdrop filters anywhere. */
+  * { text-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+
+  /* Surfaces: solid bg, 1px border, no shadow. */
+  .card, .detail-panel, .summary-card, .post-card, .toggle-row, .crafted-preview,
+  .script-preview, .modal, .modal-content, .brief-preview, .disclaimer, .history-item,
+  .preset-card, .tour-card, .safety-inner, .program-card, .sidebar, .stats-panel,
+  .live-panel, .post-trigger, .sparkline-wrap, .heatmap-wrap {
+    box-shadow: none !important;
+    border: 1px solid var(--border) !important;
+    background: var(--bg-soft) !important;
+  }
+
+  /* Inputs: crisp square, hard focus. */
+  .pf-input, .pf-select, .pf-textarea,
+  input[type="text"], input[type="number"], input[type="url"], input[type="email"],
+  select, textarea {
+    box-shadow: none !important;
+    border: 1px solid var(--border) !important;
+    background: var(--bg) !important;
+  }
+  .pf-input:focus, .pf-select:focus, .pf-textarea:focus,
+  input:focus, select:focus, textarea:focus {
+    outline: none !important;
+    border-color: var(--accent) !important;
+  }
+
+  /* Headings: uppercase, wide-tracked, sans-serif, amber for visual warmth. */
+  h1, h2,
+  .field-label, .pf-label, .sidebar-section-title,
+  .card-title, .post-card-title, .summary-card .summary-label,
+  .stats-chart-title, .stats-kpi-label {
+    font-family: var(--font-display) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    color: var(--neon-amber) !important;
+  }
+  h1 { letter-spacing: 0.14em; font-weight: 700; }
+  h3 {
+    font-family: var(--font-display) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+
+  /* Magenta as a secondary accent — pills, badges, phase active state, warnings. */
+  .card-badge, .post-trigger-title, .phase-dot.active,
+  .warning, .alert-danger, .post-warn, .notify.warn {
+    color: var(--neon-magenta) !important;
+    border-color: var(--neon-magenta) !important;
+  }
+  .phase-dot.active { background: var(--neon-magenta) !important; }
+
+  /* Buttons: amber fill, black text, soft orange glow. All buttons get this treatment
+     unless they're explicitly icon-only or a filter tab. Filter tabs keep their own
+     selected/unselected logic; icon-only buttons stay transparent. */
+  .btn, button, .preview-btn, .filter-tab {
+    transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s !important;
+  }
+  .btn, .preview-btn,
+  button:not(.icon-btn):not(.filter-tab):not(.toggle-btn):not([class*="close"]) {
+    background: var(--neon-amber) !important;
+    color: #000 !important;
+    border: 1px solid var(--neon-amber) !important;
+    box-shadow: 0 0 10px rgba(255,140,0,0.28) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+  }
+  .btn:hover:not(:disabled), .preview-btn:hover:not(:disabled),
+  button:not(.icon-btn):not(.filter-tab):not(.toggle-btn):not([class*="close"]):hover:not(:disabled) {
+    background: #ffc940 !important;
+    color: #000 !important;
+    border-color: #ffc940 !important;
+    box-shadow: 0 0 16px rgba(255,140,0,0.5) !important;
+  }
+  .btn:active, .preview-btn:active,
+  button:not(.icon-btn):not(.filter-tab):not(.toggle-btn):not([class*="close"]):active {
+    box-shadow: 0 0 6px rgba(255,140,0,0.3) !important;
+    transform: translateY(1px);
+  }
+  .btn:disabled, .preview-btn:disabled, button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none !important;
+  }
+
+  /* Primary buttons — slightly more intense halo to read as emphasis. */
+  .btn.primary, button.primary {
+    box-shadow: 0 0 14px rgba(255,140,0,0.45) !important;
+  }
+  .btn.primary:hover:not(:disabled), button.primary:hover:not(:disabled) {
+    box-shadow: 0 0 22px rgba(255,140,0,0.65) !important;
+  }
+
+  /* Focus ring: crisp outline, not glow. */
+  :focus-visible {
+    outline: 2px solid var(--accent) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 10px rgba(255,140,0,0.28) !important;
+  }
+
+  /* ---- STEP COUNTER — amber glow + trail markers ---- */
+  /* Current step: amber glow (was cyan before the rewrite; now matches the amber language). */
+  .step-item.current .step-circle {
+    border-color: var(--neon-amber) !important;
+    color: var(--neon-amber) !important;
+    background: var(--bg) !important;
+    box-shadow: 0 0 12px rgba(255,179,0,0.5), 0 0 24px rgba(255,179,0,0.22) !important;
+  }
+  /* Completed step: solid amber pill with a softer halo. */
+  .step-item.completed .step-circle {
+    background: var(--neon-amber) !important;
+    border-color: var(--neon-amber) !important;
+    color: #000 !important;
+    box-shadow: 0 0 10px rgba(255,179,0,0.45) !important;
+  }
+  /* Hover on clickable (past) steps reuses the amber glow tone. */
+  .step-item.clickable:hover .step-circle {
+    border-color: var(--neon-amber) !important;
+    box-shadow: 0 0 12px rgba(255,179,0,0.45) !important;
+  }
+
+  /* Trail markers between steps. Drawn as ::after on each .step-item except the last.
+     The original .step-connector <div>s stay display:none — they were orphaned by the
+     6-column grid. Pseudo-elements are the right tool here: they overlay on top of the
+     grid cells without needing any layout surgery. */
+  .stepper { position: relative; }
+  .step-item::after {
+    content: '';
+    position: absolute;
+    top: clamp(13px, 4vw, 18px);                  /* vertical center of circle */
+    left: calc(50% + clamp(18px, 4.5vw, 23px));   /* past circle right edge + small gap */
+    width: calc(100% - clamp(36px, 9vw, 46px));   /* to next circle's left edge */
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .step-item:last-child::after { display: none !important; }
+  /* Completed step's outgoing trail → amber. "Path taken" reads as lit. */
+  .step-item.completed::after {
+    background: var(--neon-amber);
+    box-shadow: 0 0 6px rgba(255,179,0,0.4);
+  }
+
+  /* Progress/phase dots, sliders, other accents kept flat. */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 </style>
 
 <script id="workflow-copy-polish-v9">
