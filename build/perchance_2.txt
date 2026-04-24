@@ -424,7 +424,59 @@
   @media (min-width: 640px) { .script-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .script-actions .btn { min-width: 0; width: 100%; padding: 10px 12px; font-size: 0.88rem; }
 
-  /* ============ STREAMING PHASE PREVIEW (item #6) ============ */
+  /* ============ PHASE PAIRS (editor color coding) ============ */
+  .phase-editor-row {
+    border-left: 3px solid transparent;
+    padding-left: 8px;
+    margin-left: -8px;
+    transition: background 0.15s ease;
+  }
+  .phase-editor-row.pair-trance { border-left-color: var(--neon-cyan); }
+  .phase-editor-row.pair-depth  { border-left-color: var(--neon-purple); }
+  .phase-editor-row.pair-depth[data-depth="1"] { border-left-color: rgba(180,77,255,0.4); }
+  .phase-editor-row.pair-depth[data-depth="2"] { border-left-color: rgba(180,77,255,0.6); }
+  .phase-editor-row.pair-depth[data-depth="3"] { border-left-color: rgba(180,77,255,0.85); }
+  .phase-editor-row.pair-depth[data-depth="4"] { border-left-color: var(--neon-purple); }
+  .phase-editor-row:hover { background: rgba(255,255,255,0.02); }
+  .phase-editor-row.highlight-pair { background: rgba(0,229,255,0.06); }
+  .phase-pair-tag {
+    display: inline-block; font-size: 0.58rem;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-faint); margin-left: 6px;
+    padding: 1px 4px; border: 1px solid var(--text-faint);
+    border-radius: 3px; vertical-align: middle;
+  }
+  .phase-pair-tag.tag-trance { color: var(--neon-cyan); border-color: rgba(0,229,255,0.4); }
+  .phase-pair-tag.tag-depth { color: var(--neon-purple); border-color: rgba(180,77,255,0.4); }
+
+  /* ============ UNSAFE SESSION WARNING ============ */
+  .unsafe-modal { max-width: 520px !important; }
+  .unsafe-modal .unsafe-header {
+    color: var(--neon-amber); font-size: 1.05rem; font-weight: 600;
+    margin: 0 0 10px; letter-spacing: 0.04em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .unsafe-modal .unsafe-list {
+    margin: 10px 0; padding: 10px 14px;
+    background: rgba(255,179,0,0.05); border: 1px solid rgba(255,179,0,0.2);
+    border-radius: 6px; font-size: 0.82rem; color: var(--text-dim);
+    list-style: none;
+  }
+  .unsafe-modal .unsafe-list li { margin: 4px 0; line-height: 1.45; }
+  .unsafe-modal .unsafe-list li::before { content: '▸ '; color: var(--neon-amber); }
+  .unsafe-modal .unsafe-note {
+    font-size: 0.78rem; color: var(--text-faint); line-height: 1.55;
+    margin: 10px 0 6px;
+  }
+  .unsafe-modal .modal-actions .btn-unsafe {
+    background: transparent;
+    color: var(--neon-amber);
+    border: 1px solid var(--neon-amber);
+  }
+  .unsafe-modal .modal-actions .btn-unsafe:hover {
+    background: rgba(255,179,0,0.08);
+    box-shadow: var(--glow-amber);
+  }
   .gen-stream-box {
     margin-top: 10px; padding: 10px 12px;
     background: rgba(0,229,255,0.03); border: 1px solid rgba(0,229,255,0.15);
@@ -1793,12 +1845,18 @@ I return to myself easily"></textarea>
           <div style="margin-bottom:8px; font-size:0.78rem; color:var(--text-dim);">Arrange, remove, or add phase sections. Similar controls are now clustered here instead of stretching across a single row.</div>
           <div id="phaseEditorList"></div>
           <div class="preview-row" style="margin-top:10px;">
+            <button class="preview-btn" id="addInductionPhaseBtn" title="Adds an Induction — auto-adds Wake + Reintroduction if missing">+ add induction</button>
+            <button class="preview-btn" id="addDeepenerPhaseBtn" title="Adds a Deepener — auto-adds a paired Lightener. Stackable for nested deepening.">+ add deepener (nest)</button>
             <button class="preview-btn" id="addWorkPhaseBtn">+ add work block</button>
             <button class="preview-btn" id="addAffirmPhaseBtn">+ add affirmation</button>
             <button class="preview-btn" id="addLightenerPhaseBtn">+ add lightener</button>
             <button class="preview-btn" id="addWakePhaseBtn">+ add wake</button>
             <button class="preview-btn" id="addReintroPhaseBtn">+ add reintro</button>
             <button class="preview-btn" id="normalizePhaseOrderBtn">reset to default order</button>
+          </div>
+          <div class="sublabel" id="phaseStructureHint" style="margin-top:8px; font-size:0.72rem; color:var(--text-faint);">
+            Default structure: <span style="color:var(--text-dim);">[Settling][Induction][Deepener] → (Work, Affirmation)… → [Lightener][Wake][Reintroduction]</span>.
+            Deepener / Lightener pairs can be nested for progressive deepening.
           </div>
         </div>
       </div>
@@ -5653,17 +5711,120 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     return String(text || '').replace(/===\s*[A-Z0-9-]+\s*===/gi, ' ');
   }
 
+  // ====================================================================
+  // PHASE PAIRS — Induction↔Emergence, Deepener↔Lightener (nestable)
+  // ====================================================================
+  /**
+   * "Trance entry" pair: an Induction must be matched by wake + reintroduction
+   * (the two phases that together form Emergence).
+   * "Depth" pair: every Deepener must be matched by a Lightener. Multiple
+   * Deepeners can be nested; their Lighteners unwind in reverse (LIFO).
+   *
+   * Sleep sessions (state.intentionType === 'sleep') deliberately skip the
+   * trance-entry closers — the user is meant to drift into natural sleep.
+   */
+  const PHASE_BASE_RX = /-\d+$/;
+  const phaseBase = id => String(id || '').replace(PHASE_BASE_RX, '');
+
+  const PHASE_PAIR_GROUP = {
+    induction: 'trance',
+    wake: 'trance',
+    reintroduction: 'trance',
+    deepener: 'depth',
+    lightener: 'depth',
+  };
+  /** Phases that must exist at end of session for a "safe" finish. */
+  const SAFE_ENDING_PHASES = ['lightener', 'wake', 'reintroduction'];
+
+  /**
+   * Default structure per spec:
+   *   [Settling][Induction][Deepener] → (Work, Affirm)×N → [Lightener][Wake][Reintroduction]
+   * Sleep intention skips the ending trio (drifts into sleep).
+   */
   function getSessionPhaseBlueprint() {
     const phases = ['settling', 'induction', 'deepener'];
     const workCount = getWorkBlockCount();
     const userAff = $('userAffirmations')?.value?.trim();
+    const hasAff = !!userAff;
     for (let i = 1; i <= workCount; i++) {
-      if (userAff && i > 1) phases.push(`affirm-${i}`);
+      // (Work, Affirm) pair — affirm follows each work when user has affirmations
       phases.push(workCount > 1 ? `work-${i}` : 'work');
+      if (hasAff) phases.push(workCount > 1 ? `affirm-${i}` : 'affirm');
     }
     if (state.intentionType === 'sleep') return phases;
     phases.push('lightener', 'wake', 'reintroduction');
     return phases;
+  }
+
+  /**
+   * Count how many Deepener and Lightener phases are currently in sections,
+   * used to determine nesting depth when adding another.
+   */
+  function countPhaseBase(sections, base) {
+    return sections.filter(s => phaseBase(s.phaseId) === base).length;
+  }
+
+  /**
+   * Find the insertion index for a new phase of a given kind, respecting the
+   * canonical order: settling → induction → deepeners → (work/affirm) → lighteners → wake → reintro.
+   * Returns an index into `sections` where the new phase should be spliced in.
+   */
+  function findPhaseInsertionIdx(sections, kind) {
+    const idxOf = (pred) => sections.findIndex(pred);
+    const lastIdxOf = (pred) => {
+      let last = -1;
+      sections.forEach((s, i) => { if (pred(s)) last = i; });
+      return last;
+    };
+    if (kind === 'settling') {
+      return 0; // always first
+    }
+    if (kind === 'induction') {
+      // After last settling, before first deepener/work/lightener/wake/reintro
+      const afterSettling = lastIdxOf(s => phaseBase(s.phaseId) === 'settling');
+      const anchor = idxOf(s => ['deepener','work','affirm','lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (anchor >= 0) return anchor;
+      if (afterSettling >= 0) return afterSettling + 1;
+      return sections.length;
+    }
+    if (kind === 'deepener') {
+      // After last existing deepener (nesting), before first work/affirm
+      const lastDeepener = lastIdxOf(s => phaseBase(s.phaseId) === 'deepener');
+      if (lastDeepener >= 0) return lastDeepener + 1;
+      // Otherwise after induction, before work
+      const afterInduction = lastIdxOf(s => phaseBase(s.phaseId) === 'induction');
+      const beforeWork = idxOf(s => ['work','affirm','lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (beforeWork >= 0) return beforeWork;
+      if (afterInduction >= 0) return afterInduction + 1;
+      return sections.length;
+    }
+    if (kind === 'work' || kind === 'affirm') {
+      // Before first lightener/wake/reintro; after last existing work/affirm
+      const beforeReturn = idxOf(s => ['lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (beforeReturn >= 0) return beforeReturn;
+      return sections.length;
+    }
+    if (kind === 'lightener') {
+      // After last work/affirm, before wake (LIFO unwind — outermost lightener last)
+      const lastWork = lastIdxOf(s => ['work','affirm'].includes(phaseBase(s.phaseId)));
+      const firstWake = idxOf(s => ['wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (firstWake >= 0) {
+        // Insert immediately before the first wake, so the newest lightener
+        // sits closest to wake (LIFO: later-added deepeners get closed first).
+        return firstWake;
+      }
+      if (lastWork >= 0) return lastWork + 1;
+      return sections.length;
+    }
+    if (kind === 'wake') {
+      const reintroIdx = idxOf(s => phaseBase(s.phaseId) === 'reintroduction');
+      if (reintroIdx >= 0) return reintroIdx;
+      return sections.length;
+    }
+    if (kind === 'reintroduction') {
+      return sections.length;
+    }
+    return sections.length;
   }
 
   function getPhaseList() {
@@ -5792,30 +5953,73 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       { name: 'memory',    text: memoryCtx,    priority: 1 }, // first to drop
     ], 1200); // leave generous headroom for per-phase task block + output
 
-    // Phase-specific instructions
+    // Count nested Deepener/Lightener pairs so we can produce depth-aware prompts.
+    // getSessionPhaseBlueprint yields 'deepener' (unnumbered) when there's one, otherwise
+    // 'deepener-1', 'deepener-2', etc. Post-blueprint edits (user add/remove) can also
+    // produce arbitrary configurations; we look at the actual phase list.
+    const deepenerPhases = phases.filter(p => phaseBase(p) === 'deepener');
+    const lightenerPhases = phases.filter(p => phaseBase(p) === 'lightener');
+    const totalDepth = deepenerPhases.length;
+
+    // Phase-specific instructions (base kinds — expanded below for nested/numbered variants)
     const phaseInstructions = {
       settling: `Write the SETTLING phase (~${targetWords.settling} words). Orient the user. Open naturally — don't say "hello". Use \x5BPAUSE n\x5D markers. Output ONLY the script text.`,
       induction: `Write the INDUCTION phase (~${targetWords.induction} words). Move from awareness toward trance using ${method.name}. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
-      deepener: `Write the DEEPENER phase (~${targetWords.deepener} words). Take them deeper.${state.craftedSuggestion ? ' Foreshadow the suggestion.' : ''}${affirmLines.length ? ' Begin weaving affirmations.' : ''} Use \x5BPAUSE n\x5D. Output ONLY script text.`,
-      lightener: `Write the LIGHTENER phase (~${targetWords.lightener} words). Ease intensity down gradually. Keep the same narrator voice and continuity. This phase works with the narrator rather than stopping them. Use gentle return language, body awareness, orientation, breath, movement, and upward pacing. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
       wake: `Write the WAKE phase (~${targetWords.wake} words). Bring the user fully awake and alert. Use a distinct upward count or direct waking sequence. Re-alert clearly. Eyes open. Fully awake. This is the actual wake-up phase and must not be replaced by reintroduction. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
       reintroduction: `Write the REINTRODUCTION phase (~${targetWords.reintroduction} words). This phase happens AFTER wake. The user is already awake. Include a warm welcome-back, a suggestion to slowly get up only when ready, stretch, shake it off, and continue the day. If this is a demonstration method, the test can be mentioned after wake and before the final welcome-back, but the ending must fully reintroduce the user. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`,
     };
 
-    // Work phase instructions
-    const workCount = phases.filter(p => p.startsWith('work')).length;
-    const workWordsEach = Math.round(targetWords.work / workCount);
+    // Deepener instructions — depth-aware. Each level takes the user one step deeper.
+    // Total words for the deepener phase are divided across the nested deepeners.
+    const deepenerWordsEach = totalDepth > 0 ? Math.round(targetWords.deepener / totalDepth) : targetWords.deepener;
+    deepenerPhases.forEach((p, i) => {
+      const depth = i + 1; // 1-based: first deepener = depth 1
+      let intensity;
+      if (totalDepth === 1) intensity = 'light-to-medium trance';
+      else if (depth === 1) intensity = 'light trance (first layer)';
+      else if (depth === totalDepth) intensity = 'deep trance (innermost layer)';
+      else intensity = `medium trance (layer ${depth} of ${totalDepth})`;
+      const note = `Write DEEPENER phase ${depth} of ${totalDepth} (~${deepenerWordsEach} words). Target state: ${intensity}. ${depth === 1 ? 'Move from post-induction awareness into the first layer of trance.' : `The user is already at layer ${depth - 1}; take them ONE LEVEL deeper, not all the way from waking.`}${state.craftedSuggestion && depth === totalDepth ? ' Foreshadow the crafted suggestion at this innermost layer.' : ''}${affirmLines.length && depth === totalDepth ? ' Begin weaving affirmations.' : ''} Use \x5BPAUSE n\x5D. Output ONLY script text.`;
+      phaseInstructions[p] = note;
+    });
+
+    // Lightener instructions — LIFO unwind. Phases appear in the order they'll play
+    // (outermost-last), but each is paired with its deepener at the same depth.
+    const lightenerWordsEach = lightenerPhases.length > 0 ? Math.round(targetWords.lightener / lightenerPhases.length) : targetWords.lightener;
+    lightenerPhases.forEach((p, i) => {
+      // lightener[0] pairs with the DEEPEST deepener (LIFO: innermost closes first).
+      const closesDepth = lightenerPhases.length - i; // first lightener closes innermost
+      const fromDepth = closesDepth;
+      const toDepth = closesDepth - 1;
+      const note = fromDepth === 1
+        ? `Write the LIGHTENER phase (~${lightenerWordsEach} words). Ease intensity down gradually from light trance toward waking awareness. Keep the same narrator voice and continuity — this phase works with the narrator rather than stopping them. Use gentle return language, body awareness, orientation, breath, movement, and upward pacing. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`
+        : `Write LIGHTENER phase for level ${fromDepth} → ${toDepth} (~${lightenerWordsEach} words). The user is currently at depth ${fromDepth}; bring them up ONE LEVEL toward depth ${toDepth}, not all the way. Subsequent lighteners will continue the ascent. Gentle upward language, breath, light. Use \x5BPAUSE n\x5D markers. Output ONLY script text.`;
+      phaseInstructions[p] = note;
+    });
+
+    // Work phase instructions — role-tagged by position for long sessions.
+    const workCount = phases.filter(p => phaseBase(p) === 'work').length;
+    const workWordsEach = workCount > 0 ? Math.round(targetWords.work / workCount) : targetWords.work;
     phases.forEach(p => {
-      if (p.startsWith('affirm')) {
-        // Affirmation interlude — short, poetic, uses the user's exact words
+      const base = phaseBase(p);
+      if (base === 'affirm') {
+        // Affirmation interlude — short, poetic, uses the user's exact words.
+        // Follows its paired Work block per the default (Work, Affirm) structure.
         phaseInstructions[p] = `Write a brief affirmation interlude (~40-60 words). Deliver these affirmations in ${persona.name}'s voice, woven into flowing, hypnotic language:\n${affirmLines.map(l => `"${l}"`).join('\n')}\nUse the user's exact words. Add \x5BPAUSE 3\x5D between each. Poetic, rhythmic, repetitive. Output ONLY script text.`;
-      } else if (p.startsWith('work')) {
+      } else if (base === 'work') {
         const workIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
-        let note = `Write WORK phase ${workIdx} of ${workCount} (~${workWordsEach} words). `;
-        if (workIdx === 1) note += state.craftedSuggestion ? 'Deliver the crafted suggestion verbatim. Begin reinforcement.' : method.category === 'demonstration' ? 'BUILD the demonstration effect.' : 'Therapeutic deepening.';
-        else if (workIdx === workCount) note += state.craftedSuggestion ? 'Final reinforcement. Peak intensity. Future-pace.' : 'Peak deepening. Consolidation.';
-        else note += state.craftedSuggestion ? 'Continue reinforcement with variants. Intensify.' : 'Continue deepening.';
-        note += ' Use \x5BPAUSE n\x5D. Output ONLY script text.';
+        // Role assignment scales with workCount — prevents 10 blocks sounding identical.
+        let role;
+        if (workCount === 1) role = 'single-block: deliver and consolidate.';
+        else if (workIdx === 1) role = state.craftedSuggestion ? 'INTRODUCE: deliver the crafted suggestion verbatim for the first time. Plant the seed.' : method.category === 'demonstration' ? 'INTRODUCE: begin building the demonstration effect.' : 'INTRODUCE: establish the core therapeutic theme.';
+        else if (workIdx === workCount) role = state.craftedSuggestion ? 'CONSOLIDATE + FUTURE-PACE: final reinforcement at peak intensity. Project the effect forward in time.' : 'CONSOLIDATE: bring the work to its peak and anchor it for the future.';
+        else if (workIdx === workCount - 1) role = state.craftedSuggestion ? 'PEAK: most intense reinforcement of the crafted suggestion. Highest suggestibility.' : 'PEAK: highest intensity — the crux of the work.';
+        else {
+          // Middle blocks — rotate through DEVELOP / INTENSIFY / REINFORCE
+          const midRoles = ['DEVELOP: expand with a fresh metaphor you have not yet used.', 'INTENSIFY: deliver the suggestion at higher conviction and specificity.', 'REINFORCE: a different angle on the same core effect.'];
+          role = midRoles[(workIdx - 2) % midRoles.length];
+        }
+        const note = `Write WORK phase ${workIdx} of ${workCount} (~${workWordsEach} words). ROLE: ${role}${state.craftedSuggestion ? '' : ' Therapeutic deepening tied to the intention.'} Do not repeat imagery or phrasing from earlier work blocks. Use \x5BPAUSE n\x5D. Output ONLY script text.`;
         phaseInstructions[p] = note;
       }
     });
@@ -6074,6 +6278,39 @@ ${s.text.trim()}`).join('\n\n').trim();
     updateStepUI();
   }
 
+  /**
+   * For a given sections list, assign a `pairGroup` and `depth` to each phase.
+   * - pairGroup: 'trance' | 'depth' | null — drives editor color coding.
+   * - depth: integer (1-based) for deepener/lightener nesting — how deep this
+   *   pair is nested. Deepeners number outward-to-inward; their matched
+   *   Lighteners mirror that (LIFO — innermost unwinds first).
+   * Returns an array of { pairGroup, depth } parallel to sections.
+   */
+  function computePairMetadata(sections) {
+    // Walk forward: every Deepener pushes a depth level.
+    // Walk lighteners in reverse order to pair them up with the deepest unclosed deepener.
+    const deepenerStack = []; // each entry is {idx, depth}
+    const meta = sections.map(() => ({ pairGroup: null, depth: null }));
+    let curDepth = 0;
+    sections.forEach((s, i) => {
+      const base = phaseBase(s.phaseId);
+      if (base === 'deepener') {
+        curDepth++;
+        deepenerStack.push({ idx: i, depth: curDepth });
+        meta[i] = { pairGroup: 'depth', depth: curDepth };
+      } else if (base === 'lightener') {
+        // Pair with the most-recently-added unclosed deepener (LIFO).
+        const pair = deepenerStack.pop();
+        const depth = pair ? pair.depth : 1;
+        meta[i] = { pairGroup: 'depth', depth };
+        if (curDepth > 0) curDepth--;
+      } else if (base === 'induction' || base === 'wake' || base === 'reintroduction') {
+        meta[i] = { pairGroup: 'trance', depth: null };
+      }
+    });
+    return meta;
+  }
+
   function renderPhaseEditor() {
     const panel = $('phaseEditorPanel');
     const list = $('phaseEditorList');
@@ -6085,20 +6322,48 @@ ${s.text.trim()}`).join('\n\n').trim();
       return;
     }
     panel.style.display = 'block';
-    list.innerHTML = sections.map((s, i) => `
-      <div class="toggle-row" data-phase-idx="${i}" style="align-items:flex-start;">
+    const meta = computePairMetadata(sections);
+    list.innerHTML = sections.map((s, i) => {
+      const m = meta[i];
+      const rowClass = 'toggle-row phase-editor-row' + (m.pairGroup ? ' pair-' + m.pairGroup : '');
+      const depthAttr = m.depth ? ` data-depth="${m.depth}"` : '';
+      const tag = m.pairGroup === 'trance'
+        ? '<span class="phase-pair-tag tag-trance" title="Induction ↔ Wake / Reintroduction">↕ trance</span>'
+        : m.pairGroup === 'depth'
+          ? `<span class="phase-pair-tag tag-depth" title="Deepener ↔ Lightener (level ${m.depth})">↕ depth ${m.depth}</span>`
+          : '';
+      const preview = escapeHtml((s.text || '').replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 100) || 'empty');
+      return `
+      <div class="${rowClass}" data-phase-idx="${i}"${depthAttr} style="align-items:flex-start;">
         <div style="flex:1; min-width:0;">
-          <label>${escapeHtml(getPhaseLabel(s.phaseId))}<span class="hint">${escapeHtml((s.text || '').replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 100) || 'empty')}</span></label>
+          <label>${escapeHtml(getPhaseLabel(s.phaseId))}${tag}<span class="hint">${preview}</span></label>
         </div>
         <div style="display:grid; grid-template-columns:repeat(3, minmax(72px, auto)); gap:6px; margin-left:8px;">
           <button class="preview-btn phase-up" data-idx="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
           <button class="preview-btn phase-down" data-idx="${i}" ${i === sections.length - 1 ? 'disabled' : ''}>↓</button>
           <button class="preview-btn phase-remove" data-idx="${i}">remove</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     list.querySelectorAll('.phase-up').forEach(btn => btn.addEventListener('click', () => movePhaseSection(parseInt(btn.dataset.idx, 10), -1)));
     list.querySelectorAll('.phase-down').forEach(btn => btn.addEventListener('click', () => movePhaseSection(parseInt(btn.dataset.idx, 10), 1)));
     list.querySelectorAll('.phase-remove').forEach(btn => btn.addEventListener('click', () => removePhaseSection(parseInt(btn.dataset.idx, 10))));
+    // Pair-highlighting: hovering a paired phase highlights its partner(s).
+    list.querySelectorAll('.phase-editor-row').forEach((row, i) => {
+      const m = meta[i];
+      if (!m.pairGroup) return;
+      row.addEventListener('mouseenter', () => {
+        list.querySelectorAll('.phase-editor-row').forEach((other, j) => {
+          if (j === i) return;
+          const om = meta[j];
+          if (m.pairGroup === 'trance' && om.pairGroup === 'trance') other.classList.add('highlight-pair');
+          else if (m.pairGroup === 'depth' && om.pairGroup === 'depth' && om.depth === m.depth) other.classList.add('highlight-pair');
+        });
+      });
+      row.addEventListener('mouseleave', () => {
+        list.querySelectorAll('.phase-editor-row').forEach(r => r.classList.remove('highlight-pair'));
+      });
+    });
   }
 
   function movePhaseSection(idx, delta) {
@@ -6109,43 +6374,182 @@ ${s.text.trim()}`).join('\n\n').trim();
     setScriptFromSections(sections);
   }
 
-  function removePhaseSection(idx) {
+  /**
+   * Remove a phase, with pair-aware cascade:
+   *  - Removing an Induction prompts to also remove Wake + Reintroduction (and any trailing trance-cycle partners).
+   *  - Removing a Deepener auto-removes its paired Lightener (LIFO — the one that would close this depth level).
+   *  - Removing a Lightener auto-removes its paired Deepener (preserves structural integrity).
+   * User confirmation is requested when multiple phases will be removed.
+   */
+  async function removePhaseSection(idx) {
     const sections = getScriptSectionsFromState();
-    sections.splice(idx, 1);
+    if (idx < 0 || idx >= sections.length) return;
+    const target = sections[idx];
+    const base = phaseBase(target.phaseId);
+
+    // Indexes of partners to remove alongside the primary target.
+    const partnerIndexes = [];
+
+    if (base === 'induction') {
+      // Remove this induction PLUS any remaining wake + reintroduction (the Emergence pair).
+      sections.forEach((s, i) => {
+        if (i === idx) return;
+        const b = phaseBase(s.phaseId);
+        if (b === 'wake' || b === 'reintroduction') partnerIndexes.push(i);
+      });
+    } else if (base === 'deepener') {
+      // Find the matching Lightener for THIS deepener using LIFO pairing.
+      const meta = computePairMetadata(sections);
+      const targetDepth = meta[idx]?.depth;
+      if (targetDepth != null) {
+        // Walk forward from idx: the first Lightener at this depth is the partner.
+        for (let k = idx + 1; k < sections.length; k++) {
+          if (meta[k].pairGroup === 'depth' && phaseBase(sections[k].phaseId) === 'lightener' && meta[k].depth === targetDepth) {
+            partnerIndexes.push(k);
+            break;
+          }
+        }
+      }
+    } else if (base === 'lightener') {
+      // Remove the paired Deepener for this Lightener.
+      const meta = computePairMetadata(sections);
+      const targetDepth = meta[idx]?.depth;
+      if (targetDepth != null) {
+        // Walk BACK from idx: find the matching deepener at same depth.
+        for (let k = idx - 1; k >= 0; k--) {
+          if (meta[k].pairGroup === 'depth' && phaseBase(sections[k].phaseId) === 'deepener' && meta[k].depth === targetDepth) {
+            partnerIndexes.push(k);
+            break;
+          }
+        }
+      }
+    } else if (base === 'wake') {
+      // Removing Wake alone is structurally incomplete — prompt to also remove Reintroduction.
+      const reintroIdx = sections.findIndex(s => phaseBase(s.phaseId) === 'reintroduction');
+      if (reintroIdx >= 0 && reintroIdx !== idx) {
+        const also = await confirmAsync('Also remove Reintroduction? Reintroduction without Wake leaves the user mid-emergence.', { okText: 'remove both', cancelText: 'only wake' });
+        if (also) partnerIndexes.push(reintroIdx);
+      }
+    }
+
+    const toRemove = [idx, ...partnerIndexes];
+    if (toRemove.length > 1) {
+      const names = toRemove.map(i => getPhaseLabel(sections[i].phaseId)).join(', ');
+      const ok = await confirmAsync(`Remove ${toRemove.length} paired phases: ${names}?\n\nPhases in a pair should be kept together for safe session structure.`, { okText: 'remove all', cancelText: 'cancel' });
+      if (!ok) return;
+    }
+
+    // Remove in descending index order so splicing doesn't shift later indexes.
+    toRemove.sort((a, b) => b - a).forEach(i => sections.splice(i, 1));
     setScriptFromSections(sections);
+    if (partnerIndexes.length > 0) notify.info(`Removed ${toRemove.length} paired phases.`);
   }
 
+  /**
+   * Scaffold text for a new phase. Depth-aware for nested deepener/lightener.
+   */
+  function scaffoldForPhase(phaseId, depth = 1) {
+    if (phaseId === 'settling') return 'Find a comfortable position. Let the day settle. \x5BPAUSE 3\x5D';
+    if (phaseId === 'induction') return 'Begin the induction here. \x5BPAUSE 3\x5D';
+    if (phaseId === 'deepener' || phaseBase(phaseId) === 'deepener') {
+      if (depth <= 1) return 'Deepen the state. Each breath takes you further. \x5BPAUSE 3\x5D';
+      if (depth === 2) return 'Now deeper still — another level down. \x5BPAUSE 3\x5D';
+      if (depth === 3) return 'Deeper, and deeper yet. \x5BPAUSE 3\x5D';
+      return `Descend another level — level ${depth}. \x5BPAUSE 3\x5D`;
+    }
+    if (phaseId === 'lightener' || phaseBase(phaseId) === 'lightener') {
+      if (depth <= 1) return 'Begin easing intensity down. Notice the room. Notice the body. \x5BPAUSE 3\x5D';
+      return `Come back up one level — from depth ${depth} toward ${depth - 1}. \x5BPAUSE 3\x5D`;
+    }
+    if (phaseBase(phaseId) === 'work') return 'Continue the work here. \x5BPAUSE 3\x5D';
+    if (phaseBase(phaseId) === 'affirm') return 'Return to the user\'s affirmations here. \x5BPAUSE 3\x5D';
+    if (phaseId === 'wake') return 'In a moment, coming all the way back now. Five, returning. Four, breathing deeper. Three, energy returning. Two, eyes beginning to open. One, fully awake and alert. \x5BPAUSE 3\x5D';
+    if (phaseId === 'reintroduction') return 'Welcome back. When you feel ready, slowly get up. Stretch. Shake it off. Go about your day. \x5BPAUSE 3\x5D';
+    return 'New phase text. \x5BPAUSE 3\x5D';
+  }
+
+  /**
+   * Add a new phase to the session. Pair-aware:
+   *  - Adding an Induction auto-adds Wake + Reintroduction if missing (unless sleep intention).
+   *  - Adding a Deepener auto-adds a paired Lightener in the LIFO unwind slot.
+   *  - Work and Affirm are naked additions (no pair).
+   *  - Lightener, Wake, Reintroduction can be added naked (for repair of an incomplete session).
+   */
   function addPhaseSection(phaseId) {
     const sections = getScriptSectionsFromState();
-    const count = sections.filter(s => s.phaseId.startsWith(phaseId)).length + 1;
-    let nextId = phaseId;
-    if (phaseId === 'work' || phaseId === 'affirm') nextId = `${phaseId}-${count}`;
-    const scaffoldMap = {
-      work: 'Continue the work here. \x5BPAUSE 3\x5D',
-      affirm: 'Return to the user\'s affirmations here. \x5BPAUSE 3\x5D',
-      lightener: 'Begin easing intensity down. Notice the room. Notice the body. \x5BPAUSE 3\x5D',
-      wake: 'In a moment, coming all the way back now. Five, returning. Four, breathing deeper. Three, energy returning. Two, eyes beginning to open. One, fully awake and alert. \x5BPAUSE 3\x5D',
-      reintroduction: 'Welcome back. When you feel ready, slowly get up. Stretch. Shake it off. Go about your day. \x5BPAUSE 3\x5D',
+    const base = phaseBase(phaseId);
+    const added = [];
+
+    /** Build a uniquely-IDed section for a given base kind. */
+    const buildSection = (kind, opts = {}) => {
+      const existingCount = countPhaseBase(sections.concat(added), kind);
+      let id = kind;
+      // Numbered IDs for anything that can legitimately appear multiple times
+      if (['work', 'affirm', 'deepener', 'lightener'].includes(kind)) {
+        const nextN = existingCount + 1;
+        id = nextN > 1 ? `${kind}-${nextN}` : kind;
+        // Rename the first occurrence to `${kind}-1` for consistency once we have 2+.
+        // Done after insertion below.
+      }
+      return { phaseId: id, text: scaffoldForPhase(id, opts.depth || existingCount + 1) };
     };
-    const newSection = { phaseId: nextId, text: scaffoldMap[phaseId] || 'New phase text. \x5BPAUSE 3\x5D' };
-    if (phaseId === 'work' || phaseId === 'affirm') {
-      const insertAt = sections.findIndex(s => ['lightener', 'wake', 'reintroduction'].includes(String(s.phaseId).replace(/-\d+$/, '')));
-      if (insertAt >= 0) sections.splice(insertAt, 0, newSection);
-      else sections.push(newSection);
-    } else if (phaseId === 'lightener') {
-      const wakeIdx = sections.findIndex(s => String(s.phaseId).replace(/-\d+$/, '') === 'wake');
-      const reintroIdx = sections.findIndex(s => String(s.phaseId).replace(/-\d+$/, '') === 'reintroduction');
-      const insertIdx = wakeIdx >= 0 ? wakeIdx : reintroIdx;
-      if (insertIdx >= 0) sections.splice(insertIdx, 0, newSection);
-      else sections.push(newSection);
-    } else if (phaseId === 'wake') {
-      const reintroIdx = sections.findIndex(s => String(s.phaseId).replace(/-\d+$/, '') === 'reintroduction');
-      if (reintroIdx >= 0) sections.splice(reintroIdx, 0, newSection);
-      else sections.push(newSection);
+
+    /** Insert a section at the correct canonical position, then register it. */
+    const insertSection = (section) => {
+      const insertIdx = findPhaseInsertionIdx(sections, phaseBase(section.phaseId));
+      sections.splice(insertIdx, 0, section);
+      added.push(section);
+    };
+
+    // Pair logic — also queues partners in canonical positions.
+    if (base === 'induction') {
+      // Multi-induction sessions (fractionation) aren't fully modeled yet — guard.
+      if (countPhaseBase(sections, 'induction') > 0) {
+        notify.warn('This session already has an Induction. Fractionation (multi-induction cycles) is not yet supported — add a Deepener for deeper trance within the current cycle, or remove the existing Induction first.');
+        return;
+      }
+      insertSection(buildSection('induction'));
+      if (state.intentionType !== 'sleep') {
+        const hasWake = countPhaseBase(sections, 'wake') > 0;
+        const hasReintro = countPhaseBase(sections, 'reintroduction') > 0;
+        if (!hasWake) insertSection(buildSection('wake'));
+        if (!hasReintro) insertSection(buildSection('reintroduction'));
+      }
+    } else if (base === 'deepener') {
+      // Nesting — each call adds one deepener + one lightener (paired).
+      const depthBefore = countPhaseBase(sections, 'deepener');
+      const depth = depthBefore + 1;
+      insertSection({ phaseId: depth > 1 ? `deepener-${depth}` : 'deepener', text: scaffoldForPhase('deepener', depth) });
+      insertSection({ phaseId: depth > 1 ? `lightener-${depth}` : 'lightener', text: scaffoldForPhase('lightener', depth) });
+    } else if (base === 'settling' || base === 'wake' || base === 'reintroduction') {
+      // Naked (repair) additions.
+      if (countPhaseBase(sections, base) === 0) insertSection(buildSection(base));
+      else notify.info(`${getPhaseLabel(base)} already exists — skipping.`);
+    } else if (base === 'lightener') {
+      // Naked lightener add (for repair when the paired deepener exists unpaired).
+      insertSection(buildSection('lightener'));
+    } else if (base === 'work' || base === 'affirm') {
+      insertSection(buildSection(base));
     } else {
-      sections.push(newSection);
+      insertSection({ phaseId: base, text: scaffoldForPhase(base) });
     }
+
+    // Normalize IDs: if we now have 2+ of a kind where the first was unnumbered,
+    // promote it to `-1` so downstream code sees consistent numbering.
+    ['work', 'affirm', 'deepener', 'lightener'].forEach(kind => {
+      const indexes = sections.map((s, i) => phaseBase(s.phaseId) === kind ? i : -1).filter(i => i >= 0);
+      if (indexes.length >= 2) {
+        indexes.forEach((sectionIdx, n) => {
+          sections[sectionIdx] = { ...sections[sectionIdx], phaseId: `${kind}-${n + 1}` };
+        });
+      }
+    });
+
     setScriptFromSections(sections);
+    if (added.length > 1) {
+      const labels = added.map(s => getPhaseLabel(s.phaseId)).join(' + ');
+      notify.info(`Added paired phases: ${labels}`);
+    }
   }
 
   function resetPhaseOrderToDefault() {
@@ -7018,6 +7422,76 @@ ${s.text.trim()}`).join('\n\n').trim();
   // ====================================================================
   // SESSION PLAYER
   // ====================================================================
+  /**
+   * Validate that the current script has a safe ending structure.
+   * Per spec: [Lightener][Wake][Reintroduction] must exist before session playback.
+   * Sleep intention type is exempt — it deliberately drifts into sleep.
+   * Also flags unbalanced Deepener/Lightener nesting.
+   *
+   * @returns {{ ok: boolean, missing: string[], unbalanced: object|null, isSleep: boolean }}
+   */
+  function validateSessionSafety() {
+    const isSleep = state.intentionType === 'sleep';
+    const sections = getScriptSectionsFromState();
+    const has = (base) => sections.some(s => phaseBase(s.phaseId) === base);
+    const missing = [];
+    if (!isSleep) {
+      if (!has('lightener'))       missing.push('Lightener');
+      if (!has('wake'))            missing.push('Wake');
+      if (!has('reintroduction'))  missing.push('Reintroduction');
+    }
+    const deepenerCount = sections.filter(s => phaseBase(s.phaseId) === 'deepener').length;
+    const lightenerCount = sections.filter(s => phaseBase(s.phaseId) === 'lightener').length;
+    let unbalanced = null;
+    if (!isSleep && deepenerCount !== lightenerCount) {
+      unbalanced = { deepenerCount, lightenerCount, diff: deepenerCount - lightenerCount };
+    }
+    const ok = missing.length === 0 && !unbalanced;
+    return { ok, missing, unbalanced, isSleep };
+  }
+
+  /**
+   * Show the pre-session unsafe-structure warning modal.
+   * Returns true if user chooses to proceed anyway, false to go back.
+   */
+  function showUnsafeSessionModal(safety) {
+    return new Promise(resolve => {
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop visible';
+      const issues = [];
+      if (safety.missing.length) {
+        issues.push(`<li>Missing: <strong>${safety.missing.join(', ')}</strong> — without these, the session ends in trance.</li>`);
+      }
+      if (safety.unbalanced) {
+        const u = safety.unbalanced;
+        if (u.diff > 0) issues.push(`<li>${u.deepenerCount} Deepener${u.deepenerCount>1?'s':''} but only ${u.lightenerCount} Lightener${u.lightenerCount===1?'':'s'} — you will go deeper than you return.</li>`);
+        else            issues.push(`<li>${u.lightenerCount} Lightener${u.lightenerCount>1?'s':''} without matching Deepeners (${u.deepenerCount}) — structurally inconsistent.</li>`);
+      }
+      backdrop.innerHTML = `<div class="modal unsafe-modal">
+        <div class="unsafe-header">⚠ Incomplete session structure</div>
+        <div style="font-size:0.88rem; line-height:1.55; color:var(--text-dim);">
+          This session is missing finishing phases required for safe emergence from trance.
+        </div>
+        <ul class="unsafe-list">${issues.join('')}</ul>
+        <div class="unsafe-note">
+          <strong>Why this matters.</strong> A proper hypnosis session brings you fully back to normal
+          waking awareness. Skipping the Lightener, Wake, or Reintroduction phases may leave you feeling
+          groggy, partially dissociated, or — in rare cases — still in a light trance state.
+          Only proceed if this is deliberate (e.g. you're running a custom sleep-induction session and intend to drift off).
+        </div>
+        <div class="modal-actions">
+          <button class="btn" id="_unsafeBack">← Go Back</button>
+          <button class="btn btn-unsafe" id="_unsafeProceed">Proceed Anyway (Unsafe)</button>
+        </div>
+      </div>`;
+      document.body.appendChild(backdrop);
+      const cleanup = (val) => { backdrop.remove(); resolve(val); };
+      backdrop.querySelector('#_unsafeBack').addEventListener('click', () => cleanup(false));
+      backdrop.querySelector('#_unsafeProceed').addEventListener('click', () => cleanup(true));
+      backdrop.addEventListener('click', e => { if (e.target === backdrop) cleanup(false); });
+    });
+  }
+
   async function startSession() {
     // Emergency cooldown check
     if (state._cooldownUntil && Date.now() < state._cooldownUntil) {
@@ -7028,6 +7502,18 @@ ${s.text.trim()}`).join('\n\n').trim();
 
     const scriptText = $('scriptText').value.trim();
     if (!scriptText) { notify.warn('Generate or paste a script first.'); return; }
+
+    // Structural safety gate — user must explicitly proceed if ending phases are missing
+    // or deepener/lightener are unbalanced. Sleep intention is exempt by design.
+    const safety = validateSessionSafety();
+    if (!safety.ok) {
+      const proceed = await showUnsafeSessionModal(safety);
+      if (!proceed) return;
+      // Record the unsafe-start in analytics so we can surface it in the post-session review
+      state._startedUnsafe = true;
+    } else {
+      state._startedUnsafe = false;
+    }
 
     // If script was edited, offer to fix pause timings
     if (_scriptEditedSinceGen) {
@@ -7936,6 +8422,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('shareConfigBtn')?.addEventListener('click', shareCurrentConfig);
 
   $('beginBtn').addEventListener('click', startSession);
+  $('addInductionPhaseBtn')?.addEventListener('click', () => addPhaseSection('induction'));
+  $('addDeepenerPhaseBtn')?.addEventListener('click', () => addPhaseSection('deepener'));
   $('addWorkPhaseBtn')?.addEventListener('click', () => addPhaseSection('work'));
   $('addAffirmPhaseBtn')?.addEventListener('click', () => addPhaseSection('affirm'));
   $('addLightenerPhaseBtn')?.addEventListener('click', () => addPhaseSection('lightener'));

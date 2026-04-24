@@ -7,6 +7,31 @@ user-visible impact and effort.
 
 ---
 
+## Script Block Editor — Round 2 ✅
+
+Session structure editor rework. **Shipped:**
+
+- **Unlimited Work and Affirmation blocks** — hard caps removed. Adding blocks past the length default still works; the progressive script generator adapts its word budgets per block.
+- **Pair-aware add/remove** — Induction automatically adds Wake + Reintroduction when missing; Deepener automatically adds a matched Lightener. Removing either half prompts to remove its partner.
+- **Nested Deepener/Lightener pairs** — users can stack multiple depth layers; lighteners unwind in reverse (LIFO). Each Deepener carries a visible depth level (1–N) and the generator produces depth-aware language ("take them ONE LEVEL deeper, not all the way from waking").
+- **New default structure:** `[Settling][Induction][Deepener] → (Work, Affirm)×N → [Lightener][Wake][Reintroduction]`. Affirmation now *follows* each Work (per spec), replacing the previous interleaved pattern.
+- **Role-tagged Work blocks** — each Work block is assigned a narrative role (INTRODUCE / DEVELOP / INTENSIFY / REINFORCE / PEAK / CONSOLIDATE) based on its position and total count, so a 10-block session doesn't sound like 10 copies of the same paragraph.
+- **Pre-session safety gate** — if the script is missing Lightener, Wake, or Reintroduction (and isn't a Sleep-intention session), or if Deepener/Lightener are unbalanced, a modal blocks `startSession` with *"← Go Back"* / *"Proceed Anyway (Unsafe)"* options.
+- **Visual pair coding in the editor** — trance-entry pair (Induction ↔ Wake/Reintro) uses cyan; depth pairs (Deepener ↔ Lightener) use purple with opacity scaled by depth level. Hovering a paired phase highlights its partner.
+
+**Deferred to a future round:**
+
+- **Fractionation sessions (multi-induction)** — the code currently blocks a second Induction with a friendly message. Real fractionation support requires modeling "trance cycles" as first-class groups (induction → deepener → work → lightener → emergence × N cycles) rather than flat phase lists.
+- **Drag-and-drop reordering with positional enforcement** — move still uses up/down buttons. HTML5 drag-drop with constraint validation (Lightener can't be dragged above its Deepener, etc.) is a natural upgrade.
+- **Timeline view alongside the list** — horizontal bar showing phases as proportionally-sized colored segments. Visual arc is easier to read at 15+ phases.
+- **Per-phase duration estimate** — e.g. `Work 3 · ~60 words · ~1m 10s`. Live-recomputed as blocks change. The runtime data is already there (`targetWords`, `wpm`); just needs rendering.
+- **Budget/imbalance diagnostics** — quiet inline warning area: "est. session 22min — work section is 85% of total time." Shows when something's off.
+- **Structure templates** — one-click "Classic Linear / Deep Sleep / Peak Intensity" presets that replace the whole phase plan.
+- **Collapsible block groups** — when a session has 10 work blocks, the editor list gets long. Group them under a `▸ Work Section (10 blocks)` header.
+- **Affirmation placement patterns** — `woven / pulses / bookend / climax / rhythmic / custom` dropdown on the Affirmations step. Currently only woven-via-prompt + the new Work-Affirm pair default.
+
+---
+
 ## Already shipped ✅
 
 | # | Item | Shipped change |
