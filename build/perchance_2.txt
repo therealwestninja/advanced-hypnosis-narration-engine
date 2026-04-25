@@ -2246,6 +2246,14 @@ I return to myself easily"></textarea>
           <button class="btn secondary" id="shareConfigBtn" title="Create a shareable link for this session config">🔗 share link</button>
           <button class="btn green" id="beginBtn">begin session →</button>
         </div>
+        <!-- Per-session webcam opt-in (resets every session). Camera/mic-aware UI. -->
+        <label class="toggle-row" for="webcamOptInThisSession" style="margin-top:10px;align-items:flex-start;padding:8px 10px;background:rgba(120,180,240,0.04);border:0.5px solid rgba(120,180,240,0.18);border-radius:5px;">
+          <input type="checkbox" id="webcamOptInThisSession">
+          <span>
+            Use webcam this session <span style="color:var(--text-faint);font-size:0.7rem;font-weight:400;">— opt-in, this session only</span>
+            <span class="hint" style="line-height:1.5;">Local-only attention sensing: face presence, eye state (phase-aware — closed eyes are good during trance), and ambient room brightness for visualizer dimming. No frames saved or transmitted. Loads ~3-5MB MediaPipe on first enable.</span>
+          </span>
+        </label>
         <div class="detail-panel" id="phaseEditorPanel" style="margin-top:12px; display:none;">
           <div class="detail-title">phase order</div>
           <div style="margin-bottom:8px; font-size:0.78rem; color:var(--text-dim);">Arrange, remove, or add phase sections. Similar controls are now clustered here instead of stretching across a single row.</div>
@@ -2259,6 +2267,8 @@ I return to myself easily"></textarea>
             <button class="preview-btn" id="addWakePhaseBtn">+ add wake</button>
             <button class="preview-btn" id="addReintroPhaseBtn">+ add reintro</button>
             <button class="preview-btn" id="normalizePhaseOrderBtn">reset to default order</button>
+            <button class="preview-btn" id="undoBtn" disabled title="Undo (Ctrl+Z / Cmd+Z)">↶ undo</button>
+            <button class="preview-btn" id="redoBtn" disabled title="Redo (Ctrl+Shift+Z / Cmd+Shift+Z)">↷ redo</button>
           </div>
           <div class="sublabel" id="phaseStructureHint" style="margin-top:8px; font-size:0.72rem; color:var(--text-faint);">
             Default structure: <span style="color:var(--text-dim);">\{\{Settling\}\} \{\{Induction\}\} \{\{Deepener\}\} &rarr; (\{\{Work\}\}, \{\{Affirmation\}\}) &times; N &rarr; \{\{Lightener\}\} \{\{Wake\}\} \{\{Reintroduction\}\}</span>.
@@ -2271,6 +2281,11 @@ I return to myself easily"></textarea>
             <span style="color:var(--text-dim);">\{\{intention\}\}</span> your intention &middot;
             <span style="color:var(--text-dim);">\{\{affirmation\}\}</span> a random affirmation
           </div>
+        </div>
+        <!-- Session diagnostics — pre-session analysis surfaces structural issues -->
+        <div class="detail-panel" id="sessionDiagnosticsPanel" style="margin-top:12px;">
+          <div class="detail-title">session diagnostics</div>
+          <div id="sessionDiagnosticsList"></div>
         </div>
       </div>
 
@@ -2372,6 +2387,7 @@ I return to myself easily"></textarea>
       <div class="script-actions" style="margin-top:8px;">
         <button class="btn secondary" id="postBackToScriptBtn">← back to script</button>
         <button class="btn secondary" id="returnToSetupBtn">back to setup</button>
+        <button class="btn secondary" id="exportBundleBtn" title="Download a .zip with the script, session data, and any recorded ambience">📦 export bundle</button>
         <button class="btn" id="restartBtn">start another session</button>
       </div>
     </div>
@@ -2409,6 +2425,9 @@ I return to myself easily"></textarea>
     </div>
     <div class="text-display" id="textDisplay">·</div>
     <div class="session-time" id="sessionTime"></div>
+    <!-- Webcam status dot — appears next to session-time when webcam is on. Color-coded:
+         green = active+face detected, amber = active+no face, red = error, hidden = idle. -->
+    <div id="webcamStatusDot" title="Webcam off" style="position:absolute;top:14px;right:14px;width:8px;height:8px;border-radius:50%;background:transparent;opacity:0;transition:opacity 0.3s, background 0.3s;z-index:5;pointer-events:none;"></div>
     <div class="session-controls">
       <button class="btn secondary" id="pauseBtn">pause</button>
       <button class="btn secondary" id="endBtn">end & re-alert</button>
@@ -2416,6 +2435,7 @@ I return to myself easily"></textarea>
       <button class="transcript-toggle" id="transcriptToggle">📜 script</button>
       <button class="transcript-toggle" id="recordBtn">⏺ record ambience</button>
       <button class="transcript-toggle" id="fullscreenBtn">⛶ fullscreen</button>
+      <button class="transcript-toggle" id="webcamLiveToggle" title="Toggle webcam awareness for this session">📷 webcam</button>
       <button class="transcript-toggle" id="liveSettingsBtn">⚙ settings</button>
     </div>
     <div class="kb-hint"><kbd>Space</kbd> pause/resume · <kbd>Esc</kbd> end & re-alert</div>
@@ -2604,6 +2624,89 @@ I return to myself easily"></textarea>
           <button type="button" id="directorBiasResetBtn" style="background:none;border:none;color:var(--neon-cyan);cursor:pointer;font-size:0.66rem;padding:0;margin-left:4px;text-decoration:underline;">reset to balanced</button>
         </div>
       </div>
+      <label class="toggle-row" for="runtimeRulesEnabled" style="align-items:flex-start;margin-top:12px;">
+        <input type="checkbox" id="runtimeRulesEnabled">
+        <span>
+          Reactive playback rules
+          <span class="hint">Fires behavioral actions during the session based on live metrics (voice envelope, phase progression, engagement). Off by default — opt in for dynamic sessions that adapt as they play.</span>
+        </span>
+      </label>
+      <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px;">Ships with 3 always-on rules (silence nudge, work-phase ducking, unduck on exit) + 1 trigger window (engagement check at 8min). Tune via <code>state.runtimeRules</code> / <code>state.runtimeTriggers</code> — rule editor UI is a future release.</div>
+      <!-- Session mode preset — bundles rules + triggers + safety overrides -->
+      <div style="margin-top:14px;padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:0.82rem;color:var(--text);">⚙ Session mode</span>
+          <span id="sessionModeIcon" style="font-size:0.9rem;">○</span>
+        </div>
+        <select id="sessionModeSelect" style="width:100%;font-size:0.78rem;padding:5px 8px;">
+          <option value="standard">○ Standard</option>
+          <option value="deep-sleep">🌙 Deep Sleep</option>
+          <option value="active-practice">🎯 Active Practice</option>
+          <option value="gentle-exploration">🌱 Gentle Exploration</option>
+        </select>
+        <div id="sessionModeDescription" class="hint" style="font-size:0.68rem;line-height:1.5;margin-top:6px;">Default rules and caps. Use this unless you have a specific reason to change.</div>
+      </div>
+      <!-- Safety layer — consolidated runtime guards. Caps rules-engine setters,
+           emergency cooldown, session-length warning. -->
+      <div id="safetyPanel" style="margin-top:14px;padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:0.82rem;color:var(--text);">🛡 Safety limits</span>
+          <button id="safetyResetBtn" class="preview-btn" style="font-size:0.65rem;padding:2px 8px;">reset to defaults</button>
+        </div>
+        <div style="font-size:0.66rem;color:var(--text-faint);line-height:1.5;margin-bottom:10px;">Hard caps applied to rules-engine setters and emergency-cooldown duration. Defaults are conservative — adjust if you know what you're doing.</div>
+        <div style="display:grid;grid-template-columns:1fr 80px 30px;gap:6px 10px;align-items:center;font-size:0.74rem;">
+          <label for="safety_minSpeechRate">Min speech rate</label>
+          <input type="number" id="safety_minSpeechRate" min="0.5" max="2.0" step="0.1" style="font-size:0.74rem;padding:2px 6px;">
+          <span style="color:var(--text-faint);font-size:0.66rem;">×</span>
+          <label for="safety_maxSpeechRate">Max speech rate</label>
+          <input type="number" id="safety_maxSpeechRate" min="0.5" max="2.0" step="0.1" style="font-size:0.74rem;padding:2px 6px;">
+          <span style="color:var(--text-faint);font-size:0.66rem;">×</span>
+          <label for="safety_maxSoundscapeVolume">Max soundscape volume</label>
+          <input type="number" id="safety_maxSoundscapeVolume" min="0" max="100" step="5" style="font-size:0.74rem;padding:2px 6px;">
+          <span style="color:var(--text-faint);font-size:0.66rem;">%</span>
+          <label for="safety_emergencyCooldownSec">Emergency cooldown</label>
+          <input type="number" id="safety_emergencyCooldownSec" min="0" max="300" step="5" style="font-size:0.74rem;padding:2px 6px;">
+          <span style="color:var(--text-faint);font-size:0.66rem;">s</span>
+          <label for="safety_maxSessionMinutes">Session length warn-above</label>
+          <input type="number" id="safety_maxSessionMinutes" min="5" max="180" step="5" style="font-size:0.74rem;padding:2px 6px;">
+          <span style="color:var(--text-faint);font-size:0.66rem;">min</span>
+        </div>
+      </div>
+      <!-- Playback dynamics — adaptive speech-rate modulation during sessions -->
+      <div style="margin-top:14px;padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:0.82rem;color:var(--text);">📈 Playback dynamics</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.7rem;cursor:pointer;">
+            <input type="checkbox" id="pdEnabled">
+            <span>enable</span>
+          </label>
+        </div>
+        <div class="hint" style="font-size:0.66rem;line-height:1.5;margin-bottom:10px;">Modulates speech rate during the session — slow open, faster on engagement, etc. Off by default. Speech rate stays clamped by the safety layer above.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.74rem;align-items:center;">
+          <label for="pdMode">Mode</label>
+          <select id="pdMode" style="font-size:0.74rem;padding:3px 6px;">
+            <option value="time">Time curve</option>
+            <option value="engagement">Engagement</option>
+            <option value="adaptive">Adaptive (both)</option>
+          </select>
+          <label for="pdCurve">Time curve shape</label>
+          <select id="pdCurve" style="font-size:0.74rem;padding:3px 6px;">
+            <option value="linear">Linear</option>
+            <option value="sine">Sine (ease-in-out)</option>
+            <option value="exponential">Exponential</option>
+          </select>
+          <label for="pdStartScale">Start scale (×)</label>
+          <input type="number" id="pdStartScale" min="0.5" max="1.5" step="0.05" style="font-size:0.74rem;padding:2px 6px;">
+          <label for="pdEndScale">End scale (×)</label>
+          <input type="number" id="pdEndScale" min="0.5" max="1.5" step="0.05" style="font-size:0.74rem;padding:2px 6px;">
+          <label for="pdEngagementMin">Engagement floor (×)</label>
+          <input type="number" id="pdEngagementMin" min="0.5" max="1.5" step="0.05" style="font-size:0.74rem;padding:2px 6px;">
+          <label for="pdEngagementMax">Engagement ceiling (×)</label>
+          <input type="number" id="pdEngagementMax" min="0.5" max="1.5" step="0.05" style="font-size:0.74rem;padding:2px 6px;">
+          <label for="pdSmoothingSec">Smoothing (s)</label>
+          <input type="number" id="pdSmoothingSec" min="1" max="30" step="1" style="font-size:0.74rem;padding:2px 6px;">
+        </div>
+      </div>
       <!-- Debug section — session-only, NEVER persisted (excluded from _buildSettingsObj). -->
       <hr style="border:none;border-top:1px solid var(--glass-border);margin:14px 0 8px;">
       <div class="pf-label" style="margin-bottom:6px;">Debug (session only, never saved)</div>
@@ -2650,8 +2753,8 @@ I return to myself easily"></textarea>
         <option value="openai">OpenAI GPT</option>
       </select>
       <div id="extAiKeyRow" style="display:none;margin-top:6px;">
-        <input type="password" id="extAiKey" class="pf-input" placeholder="API key (sk-...)">
-        <div class="sublabel">Stored locally. Only sent to the selected API endpoint.</div>
+        <input type="password" id="extAiKey" class="pf-input" placeholder="API key (sk-...)" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div class="sublabel" style="line-height:1.5;">Session-only — cleared on reload, never persisted to disk. Use a low-spend / scoped key, never your primary account key. A risk warning will appear on first key entry.</div>
       </div>
     </div>
     <div class="modal-actions" style="margin-top:16px;">
@@ -3050,8 +3153,44 @@ I return to myself easily"></textarea>
     remoteProcessingOptIn: false,
     smartDirectorEnabled: true,
     directorBias: 0, // -3..+3. Negative = lean cautious, positive = lean forward.
+    runtimeRulesEnabled: false, // opt-in; when true, tickRulesEngine fires default rules during playback
+    activeSessionMode: 'standard', // session mode preset id — see SESSION_MODES below
+    playbackDynamics: { ...{ enabled: false, mode: 'engagement', startScale: 0.90, endScale: 1.10, curve: 'sine', engagementMin: 0.85, engagementMax: 1.15, smoothingSec: 8 } }, // adaptive speech-rate modulation
+    // Webcam awareness — per-session opt-in, all local processing.
+    // See /mnt/user-data/outputs/2026-04-24-webcam-awareness-design.md
+    _webcam: {
+      enabled:               false,    // user opt-in for THIS session (resets on finishSession)
+      status:                'idle',   // 'idle' | 'requesting' | 'loading' | 'active' | 'error'
+      stream:                null,     // MediaStream (held only while active)
+      videoEl:               null,     // hidden <video> element
+      faceDetected:          false,
+      lastFaceAt:            0,        // wallclock ms of last face detection
+      rawEAR:                null,     // 0..~1, eye openness (avg both eyes)
+      motion:                0,        // 0..1, frame-to-frame change (deferred — Round 4+)
+      _brightnessCanvas:     null,     // canvas reused for luminance sampling
+      _brightnessCtx:        null,
+      inferTimerHandle:      null,     // setInterval handle for inference loop
+      brightnessTimerHandle: null,     // setInterval handle for brightness loop
+      errorMessage:          null,
+    },
+    ambientBrightness: 0.5,            // 0..1, EMA-smoothed room luminance
+    ambientDimScale:   1.0,            // multiplier for visualizer intensity (0.6..1.2)
+    // Safety layer — consolidated runtime guards. User-customizable via the
+    // safety panel; persisted in _buildSettingsObj. See SAFETY_DEFAULTS below.
+    safetyConfig: {
+      maxSpeechRate:        1.5,   // cap TTS rate; rules-engine setSpeechRate respects this
+      minSpeechRate:        0.6,   // floor TTS rate; very-slow rate can cause drowsiness
+      maxSoundscapeVolume:  0.85,  // cap drone vol; prevents rules from drowning narrator
+      emergencyCooldownSec: 30,    // wait this long after emergency before next session
+      maxSessionMinutes:    60,    // warn at session start if estimated runtime > this
+    },
     extAiProvider: 'perchance',
     _extAiKey: null,
+    // Per-provider key cache so users can keep both Anthropic + OpenAI keys
+    // populated without re-pasting on provider switch. Session-only (underscore
+    // prefix, never persisted via _buildSettingsObj). Migrated from _extAiKey
+    // on first switch — see provider-change handler.
+    _extAiKeysByProvider: { anthropic: null, openai: null },
     // Debug flags — session-only, NEVER persisted. See _buildSettingsObj — these are
     // deliberately excluded. Mirrored from checkboxes by _syncDebugState().
     _debug: {
@@ -3227,9 +3366,23 @@ I return to myself easily"></textarea>
   function startAudioReactiveLoop() {
     const a = state.audioReactive;
     if (a._rafHandle) return; // already running
+    let _lastTickMs = performance.now();
     const tick = () => {
       if (!a._rafHandle) return; // stopped
       updateAudioReactiveFrame();
+      tickStateEngine(); // state-engine reads from audioReactive; needs to run after update
+      // Rules engine reads engineState and fires actions when conditions hold.
+      // Runs only when opt-in flag is true; default off to preserve current behavior.
+      const nowMs = performance.now();
+      const frameSec = Math.min(0.1, (nowMs - _lastTickMs) / 1000); // cap at 100ms (e.g. tab backgrounding)
+      _lastTickMs = nowMs;
+      if (state.runtimeRulesEnabled) {
+        tickRulesEngine(frameSec);
+        tickTriggerWindows(); // trigger windows use same opt-in flag as rules
+      }
+      // Playback dynamics — independent opt-in flag (state.playbackDynamics.enabled).
+      // No-op when disabled, so safe to call unconditionally.
+      tickPlaybackDynamics(frameSec);
       a._rafHandle = requestAnimationFrame(tick);
     };
     a._rafHandle = requestAnimationFrame(tick);
@@ -3251,14 +3404,1710 @@ I return to myself easily"></textarea>
     if (!a || !a.active || a.gain === 0) {
       return { overall: 0, bass: 0, mid: 0, treble: 0, pulse: 0, envelope: 0 };
     }
+    // Apply ambient-brightness dim scale — when the room is dark, viz amplitude
+    // drops to 0.6×; when bright, climbs to 1.2×. Default 1.0 when webcam is off.
+    const dim = state.ambientDimScale ?? 1.0;
+    const g = a.gain * dim;
     return {
-      overall:  a.overall       * a.gain,
-      bass:     a.bass          * a.gain,
-      mid:      a.mid           * a.gain,
-      treble:   a.treble        * a.gain,
-      pulse:    a.voicePulse    * a.gain,
-      envelope: a.voiceEnvelope * a.gain,
+      overall:  a.overall       * g,
+      bass:     a.bass          * g,
+      mid:      a.mid           * g,
+      treble:   a.treble        * g,
+      pulse:    a.voicePulse    * g,
+      envelope: a.voiceEnvelope * g,
     };
+  }
+
+  // ====================================================================
+  // STATE ENGINE — canonical runtime metric bundle
+  // ====================================================================
+  // Normalizes playback signals into a single object (state.engineState)
+  // that rules-engine and trigger-windows read without caring about the
+  // source. EMA-smoothed `engagement` is a weighted fusion of voice +
+  // audio + time signals. External callers can inject extra signals via
+  // setEngineSignal().
+  //
+  // Published state.engineState shape:
+  //   voiceEnvelope    0–1   smoothed narrator voice presence
+  //   voicePulse       0–1   transient voice spike (near 1 on word onset)
+  //   audioOverall     0–1   full-mix audio energy (FFT-derived)
+  //   engagement       0–1   EMA-fused engagement score
+  //   sessionSec       sec   wall-clock elapsed since session start (minus pauses)
+  //   completedFraction 0–1  fraction of estimated total runtime elapsed
+  //   sinceVoiceSec    sec   seconds since last voiceEnvelope > threshold
+  //   currentPhase     str   phase id currently playing (e.g. 'settling', 'work-2')
+  //   phaseKind        str   base kind ('settling'|'induction'|'deepener'|...)
+  //   phaseSec         sec   seconds elapsed in current phase
+  //   playing          bool  session active and not paused
+  //   paused           bool  mirrors state.paused
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio — js/state-engine.js
+  // ====================================================================
+  const ENGINE_DEFAULT_WEIGHTS = {
+    voiceEnvelope: 0.55,  // narrator presence dominates — silent narrator = low engagement
+    audioOverall:  0.30,  // soundscape + voice combined energy
+    voicePresence: 0.15,  // binary "any voice heard recently" bonus
+  };
+  const ENGINE_EMA_ALPHA      = 0.05;   // ~3s time constant at 60fps
+  const VOICE_PRESENCE_THRESHOLD = 0.12; // voiceEnvelope above this counts as "speaking"
+
+  let _engineSmoothedEngagement = 0;
+  let _engineLastVoiceAt        = 0;    // wall-clock ms of last voiceEnvelope crossing threshold
+  let _enginePhaseEnteredAt     = 0;    // wall-clock ms when current phase was entered
+  let _engineLastPhase          = null; // track phase transitions
+  const _engineExternalSignals  = {};   // name → { value: 0–1, weight: 0–1 }
+
+  // Seed engineState so consumers reading pre-init don't crash
+  if (!state.engineState) {
+    state.engineState = {
+      voiceEnvelope: 0, voicePulse: 0, audioOverall: 0, engagement: 0,
+      sessionSec: 0, completedFraction: 0, sinceVoiceSec: 0,
+      currentPhase: null, phaseKind: null, phaseSec: 0,
+      playing: false, paused: false,
+    };
+  }
+
+  /** Inject an external signal into the engagement fusion. Value + weight both 0–1.
+   *  Example: a physiological sensor adapter could push its own signal this way. */
+  function setEngineSignal(name, value, weight = 0.3) {
+    _engineExternalSignals[name] = {
+      value:  Math.max(0, Math.min(1, value)),
+      weight: Math.max(0, Math.min(1, weight)),
+    };
+  }
+  function clearEngineSignals() {
+    Object.keys(_engineExternalSignals).forEach(k => delete _engineExternalSignals[k]);
+  }
+
+  function _engineDeriveEngagement(voiceEnv, audioOverall, voicePresence, playing) {
+    if (!playing) return _engineSmoothedEngagement;
+    const weights = { ...ENGINE_DEFAULT_WEIGHTS };
+    const signals = { voiceEnvelope: voiceEnv, audioOverall, voicePresence };
+    for (const [name, { value, weight }] of Object.entries(_engineExternalSignals)) {
+      signals[name] = value;
+      weights[name] = weight;
+    }
+    const totalWeight = Object.values(weights).reduce((s, w) => s + w, 0) || 1;
+    let raw = 0;
+    for (const [name, w] of Object.entries(weights)) {
+      raw += (signals[name] ?? 0) * (w / totalWeight);
+    }
+    raw = Math.max(0, Math.min(1, raw));
+    _engineSmoothedEngagement += ENGINE_EMA_ALPHA * (raw - _engineSmoothedEngagement);
+    return +_engineSmoothedEngagement.toFixed(3);
+  }
+
+  /** Main tick — call every RAF frame while a session is active.
+   *  Reads audioReactive + playback state, produces engineState. */
+  function tickStateEngine() {
+    const now     = Date.now();
+    const playing = !!state._sessionStartTime && !state.paused;
+    const ar      = state.audioReactive || {};
+    const voiceEnv     = ar.voiceEnvelope || 0;
+    const voicePulse   = ar.voicePulse || 0;
+    const audioOverall = ar.overall || 0;
+
+    // Track last voice activity — used by triggers/rules to detect narrator silence
+    if (voiceEnv >= VOICE_PRESENCE_THRESHOLD) _engineLastVoiceAt = now;
+    const voicePresence = voiceEnv >= VOICE_PRESENCE_THRESHOLD ? 1 : 0;
+    const sinceVoiceSec = _engineLastVoiceAt ? (now - _engineLastVoiceAt) / 1000 : Infinity;
+
+    // Track phase transitions
+    const curPhase = state._currentPhase || null;
+    if (curPhase !== _engineLastPhase) {
+      _enginePhaseEnteredAt = now;
+      _engineLastPhase = curPhase;
+    }
+    const phaseSec = playing && _enginePhaseEnteredAt ? (now - _enginePhaseEnteredAt) / 1000 : 0;
+
+    // Session time (minus pauses) — mirrors finishSession's elapsed calculation
+    let sessionSec = 0;
+    if (state._sessionStartTime) {
+      let pausedMs = state._pausedTotalMs || 0;
+      if (state._pauseStartedAt) pausedMs += (now - state._pauseStartedAt);
+      sessionSec = Math.max(0, (now - state._sessionStartTime - pausedMs) / 1000);
+    }
+
+    // Completion fraction against estimated total runtime (from script metrics)
+    const estTotalSec = (state._estimatedTotalSec || 0);
+    const completedFraction = estTotalSec > 0 ? Math.min(1, sessionSec / estTotalSec) : 0;
+
+    state.engineState = {
+      voiceEnvelope: voiceEnv,
+      voicePulse,
+      audioOverall,
+      engagement:    _engineDeriveEngagement(voiceEnv, audioOverall, voicePresence, playing),
+      sessionSec:    +sessionSec.toFixed(2),
+      completedFraction: +completedFraction.toFixed(3),
+      sinceVoiceSec: Number.isFinite(sinceVoiceSec) ? +sinceVoiceSec.toFixed(2) : null,
+      currentPhase:  curPhase,
+      phaseKind:     curPhase ? phaseBase(curPhase) : null,
+      phaseSec:      +phaseSec.toFixed(2),
+      playing,
+      paused:        !!state.paused,
+    };
+  }
+
+  /** Read a single metric by name — used by rule conditions. */
+  function getEngineMetric(metric) {
+    const es = state.engineState || {};
+    switch (metric) {
+      case 'voiceEnvelope':     return es.voiceEnvelope ?? 0;
+      case 'voicePulse':        return es.voicePulse ?? 0;
+      case 'audioOverall':      return es.audioOverall ?? 0;
+      case 'engagement':        return es.engagement ?? 0;
+      case 'sessionSec':        return es.sessionSec ?? 0;
+      case 'completedFraction': return es.completedFraction ?? 0;
+      case 'sinceVoiceSec':     return es.sinceVoiceSec ?? 0;
+      case 'phaseSec':          return es.phaseSec ?? 0;
+      // Webcam-derived. Returns 0 when webcam is off (signals not injected).
+      // attention/wakefulness pull from the external-signal cache the webcam
+      // adapter writes into via setEngineSignal.
+      case 'attention':         return _engineExternalSignals?.attention?.value ?? 0;
+      case 'wakefulness':       return _engineExternalSignals?.wakefulness?.value ?? 0;
+      case 'faceDetected':      return state._webcam?.faceDetected ? 1 : 0;
+      case 'ambientBrightness': return state.ambientBrightness ?? 0.5;
+      default:                  return 0;
+    }
+  }
+
+  /** Evaluate a {metric, op, value} condition against the current engine state.
+   *  Also supports pseudo-metrics 'phaseKind' (string equality) and
+   *  'currentPhase' (exact phase-id match). */
+  function evalEngineCondition(condition) {
+    if (!condition) return false;
+    const { metric, op, value } = condition;
+    // String-valued pseudo-metrics — support only '==' and '!=' ops
+    if (metric === 'phaseKind' || metric === 'currentPhase') {
+      const es = state.engineState || {};
+      const actual = String(es[metric] || '');
+      const expected = String(value || '');
+      if (op === '==') return actual === expected;
+      if (op === '!=') return actual !== expected;
+      return false;
+    }
+    const actual = getEngineMetric(metric);
+    switch (op) {
+      case '<':  return actual <  value;
+      case '>':  return actual >  value;
+      case '<=': return actual <= value;
+      case '>=': return actual >= value;
+      case '==': return Math.abs(actual - value) < 0.001;
+      case '!=': return Math.abs(actual - value) >= 0.001;
+      default:   return false;
+    }
+  }
+
+  /** Reset — call on session end so a new session starts with a clean slate. */
+  function resetStateEngine() {
+    _engineSmoothedEngagement = 0;
+    _engineLastVoiceAt        = 0;
+    _enginePhaseEnteredAt     = 0;
+    _engineLastPhase          = null;
+    clearEngineSignals();
+    state.engineState = {
+      voiceEnvelope: 0, voicePulse: 0, audioOverall: 0, engagement: 0,
+      sessionSec: 0, completedFraction: 0, sinceVoiceSec: 0,
+      currentPhase: null, phaseKind: null, phaseSec: 0,
+      playing: false, paused: false,
+    };
+  }
+
+  // ====================================================================
+  // RULES ENGINE — behavioral scripting over runtime metrics
+  // ====================================================================
+  // Rules fire actions when a metric condition holds for `durationSec`,
+  // with a `cooldownSec` gate between re-fires. Evaluated every RAF tick
+  // during active sessions.
+  //
+  // Rule schema (stored in state.session.rules[] for portability — but
+  // since HNE sessions are generated from config not authored, rules
+  // actually live on state.runtimeRules and can be declared via
+  // DEFAULT_RUNTIME_RULES or added programmatically):
+  //
+  // {
+  //   id:           string (unique),
+  //   enabled:      bool,
+  //   name:         string (for notify messages),
+  //   condition:    { metric, op, value } — see evalEngineCondition
+  //   durationSec:  number   (cond must hold this long before firing)
+  //   cooldownSec:  number   (min gap between re-fires; 0 = no gap)
+  //   action:       { type, param }
+  // }
+  //
+  // Supported action types:
+  //   pause              — pauses playback (via togglePause if not already paused)
+  //   resume             — resumes playback
+  //   emergencyExit      — triggers full rescue sequence
+  //   notifyMessage      — shows a toast (param: message string)
+  //   showOnScreenText   — full-screen transient overlay (param: text)
+  //   duckAudio          — temporarily reduces soundscape (param: volume 0-1 or null for default)
+  //   unduckAudio        — restores soundscape to state.droneVolume
+  //   setSpeechRate      — adjust TTS rate (param: 0.5..2.0)
+  //   setSoundscapeVolume — set drone volume (param: 0..1)
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio — js/rules-engine.js
+  // ====================================================================
+  const RULES_VALID_ACTIONS = new Set([
+    'pause', 'resume', 'emergencyExit', 'notifyMessage', 'showOnScreenText',
+    'duckAudio', 'unduckAudio', 'setSpeechRate', 'setSoundscapeVolume',
+  ]);
+  const RULES_VALID_METRICS = new Set([
+    'voiceEnvelope', 'voicePulse', 'audioOverall', 'engagement',
+    'sessionSec', 'completedFraction', 'sinceVoiceSec',
+    'phaseSec', 'phaseKind', 'currentPhase',
+    // Webcam-derived signals (only populated when state._webcam.status === 'active').
+    // Rules using these are no-ops when the webcam is off because the signals
+    // simply aren't injected — `getEngineMetric` returns 0, so '> 0.5' never fires.
+    'attention', 'wakefulness', 'faceDetected', 'ambientBrightness',
+  ]);
+  const RULES_VALID_OPS = new Set(['<', '>', '<=', '>=', '==', '!=']);
+
+  function _rulesUid() {
+    return 'r_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  /** Normalize a partial rule spec into a canonical runtime rule. */
+  function normalizeRule(r) {
+    const raw = r || {};
+    const cond = raw.condition || {};
+    const act  = raw.action || {};
+    return {
+      id:          typeof raw.id === 'string' && raw.id ? raw.id : _rulesUid(),
+      enabled:     raw.enabled !== false,
+      name:        typeof raw.name === 'string' && raw.name ? raw.name : 'Rule',
+      condition: {
+        metric: RULES_VALID_METRICS.has(cond.metric) ? cond.metric : 'engagement',
+        op:     RULES_VALID_OPS.has(cond.op)         ? cond.op     : '<',
+        value:  Number.isFinite(cond.value) || typeof cond.value === 'string' ? cond.value : 0.3,
+      },
+      durationSec: Number.isFinite(raw.durationSec) ? Math.max(0, raw.durationSec) : 5,
+      cooldownSec: Number.isFinite(raw.cooldownSec) ? Math.max(0, raw.cooldownSec) : 30,
+      action: {
+        type:  RULES_VALID_ACTIONS.has(act.type) ? act.type : 'notifyMessage',
+        param: act.param ?? null,
+      },
+    };
+  }
+
+  // Per-rule runtime state: { conditionHeldSec, lastFiredSec }
+  // `lastFiredSec` uses sessionSec so cooldowns work relative to session start.
+  const _runtimeRuleState = {};
+
+  function _getRuntimeRuleState(id) {
+    if (!_runtimeRuleState[id]) _runtimeRuleState[id] = { conditionHeldSec: 0, lastFiredSec: -Infinity };
+    return _runtimeRuleState[id];
+  }
+
+  function clearRuntimeRuleState() {
+    Object.keys(_runtimeRuleState).forEach(k => delete _runtimeRuleState[k]);
+  }
+
+  /** Execute a rule's action. Silent on unknown types — already caught at normalize. */
+  async function executeRuleAction(rule) {
+    const { type, param } = rule.action;
+    const n = rule.name;
+    try {
+      switch (type) {
+        case 'pause':
+          if (!state.paused) togglePause();
+          notify.info(`Rule "${n}": paused`);
+          break;
+        case 'resume':
+          if (state.paused) togglePause();
+          notify.info(`Rule "${n}": resumed`);
+          break;
+        case 'emergencyExit':
+          notify.warn(`Rule "${n}": initiating rescue`);
+          emergencyEnd();
+          break;
+        case 'notifyMessage':
+          notify.info(String(param || 'Rule fired: ' + n).slice(0, 200));
+          break;
+        case 'showOnScreenText': {
+          if (!param) break;
+          _showRuleOverlay(String(param).slice(0, 200));
+          break;
+        }
+        case 'duckAudio': {
+          // Temporary duck — the existing ducking system in the app is complex and
+          // managed at speakScript level; here we just lower drone volume directly.
+          // The matching unduckAudio action (or next ducking event from speakScript)
+          // restores volume. Record the pre-duck value so unduckAudio can restore it.
+          if (typeof drone !== 'undefined' && drone?.setVolume) {
+            if (state._rulesPreDuckVolume == null) state._rulesPreDuckVolume = state.droneVolume;
+            const targetVol = Number.isFinite(Number(param)) ? Math.max(0, Math.min(1, Number(param))) : 0.1;
+            drone.setVolume(targetVol);
+          }
+          notify.info(`Rule "${n}": ducked`);
+          break;
+        }
+        case 'unduckAudio':
+          if (typeof drone !== 'undefined' && drone?.setVolume) {
+            const target = state._rulesPreDuckVolume != null ? state._rulesPreDuckVolume : state.droneVolume;
+            drone.setVolume(target);
+            state._rulesPreDuckVolume = null;
+          }
+          break;
+        case 'setSpeechRate': {
+          // Apply the local 0.5..2.0 hard-floor first (sanity bound), then the
+          // user-tunable safety layer cap. Two layers: never below 0.5 or above 2.0
+          // regardless of safety config (those are TTS-engine bounds), then further
+          // clamped by safetyConfig.minSpeechRate / maxSpeechRate (default 0.6..1.5).
+          const raw = Math.max(0.5, Math.min(2.0, Number.isFinite(Number(param)) ? Number(param) : 1));
+          const rate = gateSpeechRate(raw);
+          state.speechRate = rate;
+          // Note: in-progress utterances keep their original rate — only new ones pick up the change.
+          notify.info(`Rule "${n}": speech rate → ${rate.toFixed(2)}×`);
+          break;
+        }
+        case 'setSoundscapeVolume': {
+          const raw = Number.isFinite(Number(param)) ? Number(param) : 0.35;
+          const vol = gateSoundscapeVolume(raw);
+          state.droneVolume = vol;
+          if (typeof drone !== 'undefined' && drone?.setVolume) drone.setVolume(vol);
+          const slider = $('droneVolume'); if (slider) slider.value = Math.round(vol * 100);
+          const lbl = $('droneVolVal'); if (lbl) lbl.textContent = Math.round(vol * 100);
+          notify.info(`Rule "${n}": soundscape volume → ${Math.round(vol * 100)}%`);
+          break;
+        }
+      }
+    } catch (e) {
+      console.warn('[rules] action failed:', rule.name, type, e);
+    }
+  }
+
+  /** Transient full-screen overlay text (2.5s fade). Used by showOnScreenText
+   *  action. Creates style block once, then appends/removes a div. */
+  function _showRuleOverlay(text) {
+    if (!document.getElementById('rule-overlay-style')) {
+      const s = document.createElement('style');
+      s.id = 'rule-overlay-style';
+      s.textContent = `@keyframes ruleOverlayFade { 0%{opacity:0;transform:translate(-50%,-45%)} 15%{opacity:1;transform:translate(-50%,-50%)} 75%{opacity:1;transform:translate(-50%,-50%)} 100%{opacity:0;transform:translate(-50%,-55%)} }`;
+      document.head.appendChild(s);
+    }
+    const el = document.createElement('div');
+    el.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      z-index:9000;background:rgba(4,4,7,0.85);border:0.5px solid rgba(196,154,60,0.35);
+      border-radius:12px;padding:20px 30px;font-size:1.1rem;color:var(--text);
+      font-family:var(--font-body);text-align:center;max-width:70vw;
+      backdrop-filter:blur(8px);pointer-events:none;
+      animation:ruleOverlayFade 2.5s ease forwards`;
+    el.textContent = text;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2600);
+  }
+
+  /** Rules list source. state.runtimeRules is the live list; falls back to
+   *  DEFAULT_RUNTIME_RULES if user hasn't customized. Writable for future UI. */
+  let DEFAULT_RUNTIME_RULES = [];
+
+  function _activeRuntimeRules() {
+    const r = state.runtimeRules;
+    if (Array.isArray(r)) return r;
+    return DEFAULT_RUNTIME_RULES;
+  }
+
+  /** Main tick — call after tickStateEngine in the RAF loop.
+   *  frameSec is the time since the previous tick (for durationSec accumulation). */
+  function tickRulesEngine(frameSec) {
+    const rules = _activeRuntimeRules();
+    if (!rules.length) return;
+    const es = state.engineState;
+    if (!es || !es.playing) return;
+    const now = es.sessionSec;
+    for (const rule of rules) {
+      if (!rule.enabled) continue;
+      const rs = _getRuntimeRuleState(rule.id);
+      const condMet = evalEngineCondition(rule.condition);
+      if (condMet) {
+        rs.conditionHeldSec += frameSec;
+        if (rs.conditionHeldSec >= rule.durationSec) {
+          const cooldownElapsed = now - rs.lastFiredSec;
+          if (rs.lastFiredSec === -Infinity || cooldownElapsed >= rule.cooldownSec) {
+            rs.lastFiredSec = now;
+            rs.conditionHeldSec = 0;
+            executeRuleAction(rule);
+          }
+        }
+      } else {
+        rs.conditionHeldSec = 0;
+      }
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Default runtime rules — shipped as sane starters. User toggles or
+  // replaces via state.runtimeRules (future UI). These run only when
+  // state.runtimeRulesEnabled is true (opt-in; default off).
+  // ────────────────────────────────────────────────────────────────────
+  DEFAULT_RUNTIME_RULES = [
+    normalizeRule({
+      name: 'Gentle nudge on prolonged narrator silence',
+      enabled: true,
+      condition: { metric: 'sinceVoiceSec', op: '>', value: 45 },
+      durationSec: 0,      // condition already has time built in — fire as soon as it holds
+      cooldownSec: 300,    // at most every 5 minutes — not spammy
+      action: { type: 'notifyMessage', param: 'Still here — take your time.' },
+    }),
+    normalizeRule({
+      name: 'Lower soundscape during deep work phases',
+      enabled: true,
+      condition: { metric: 'phaseKind', op: '==', value: 'work' },
+      durationSec: 8,      // sustained 8s in a work phase before ducking
+      cooldownSec: 60,
+      action: { type: 'duckAudio', param: 0.18 },
+    }),
+    normalizeRule({
+      name: 'Restore soundscape when leaving work phase',
+      enabled: true,
+      condition: { metric: 'phaseKind', op: '!=', value: 'work' },
+      durationSec: 2,
+      cooldownSec: 10,
+      action: { type: 'unduckAudio', param: null },
+    }),
+    // Webcam-aware rules. These no-op when webcam is off (the metrics read 0
+    // because the adapter doesn't push signals into the fusion engine).
+    normalizeRule({
+      name: 'Re-alert nudge when eyes stay closed during Wake/Reintroduction',
+      enabled: true,
+      condition: { metric: 'wakefulness', op: '<', value: 0.35 },
+      durationSec: 15,                  // give it real time — surfacing is a process
+      cooldownSec: 60,
+      action: { type: 'showOnScreenText', param: 'Take your time opening your eyes.' },
+    }),
+    normalizeRule({
+      name: 'Pause when user has left the camera view',
+      enabled: true,
+      condition: { metric: 'faceDetected', op: '==', value: 0 },
+      durationSec: 60,                  // 60s of no face = user actually walked away
+      cooldownSec: 120,
+      action: { type: 'pause', param: null },
+    }),
+    normalizeRule({
+      name: 'Gentle hint that user can close their eyes anytime',
+      enabled: true,
+      condition: { metric: 'attention', op: '>', value: 0.7 },
+      durationSec: 600,                 // 10 minutes of staring at the screen
+      cooldownSec: 1800,                // at most every 30 minutes
+      action: { type: 'notifyMessage', param: 'You can close your eyes anytime.' },
+    }),
+  ];
+
+  // ====================================================================
+  // TRIGGER WINDOWS — time-bounded conditional triggers
+  // ====================================================================
+  // Complements rules-engine: rules fire repeatedly when a condition holds;
+  // triggers fire once per window (opens at `atSec`, waits up to
+  // `windowDurSec` for the condition, then closes). Good for time-specific
+  // interactions like "at the 10-minute mark, offer a mood check".
+  //
+  // Trigger schema (lives alongside rules on state.runtimeTriggers):
+  // {
+  //   id:           string,
+  //   enabled:      bool,
+  //   name:         string,
+  //   atSec:        number    (session-seconds when window opens)
+  //   windowDurSec: number    (how long the window stays open)
+  //   condition:    { metric, op, value } — same evalEngineCondition
+  //   successAction: { type, param } — fires if condition becomes true within window
+  //   failureAction: { type, param } — fires if window closes without condition
+  //   cooldownSec:  number    (min gap before same trigger can re-arm)
+  // }
+  //
+  // Shares the action set with rules-engine (via executeRuleAction). The 'none'
+  // action type means "do nothing" — useful on failureAction when you only
+  // want positive reinforcement for success.
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio — js/trigger-windows.js
+  // ====================================================================
+
+  function _trigUid() {
+    return 't_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function normalizeTrigger(t) {
+    const raw = t || {};
+    const cond = raw.condition || {};
+    const normalizeAct = (a) => ({
+      type:  a && (RULES_VALID_ACTIONS.has(a.type) || a.type === 'none') ? a.type : 'none',
+      param: a?.param ?? null,
+    });
+    return {
+      id:           typeof raw.id === 'string' && raw.id ? raw.id : _trigUid(),
+      enabled:      raw.enabled !== false,
+      name:         typeof raw.name === 'string' && raw.name ? raw.name : 'Trigger',
+      atSec:        Number.isFinite(raw.atSec)        ? Math.max(0, raw.atSec)        : 60,
+      windowDurSec: Number.isFinite(raw.windowDurSec) ? Math.max(1, raw.windowDurSec) : 10,
+      condition: {
+        metric: RULES_VALID_METRICS.has(cond.metric) ? cond.metric : 'engagement',
+        op:     RULES_VALID_OPS.has(cond.op)         ? cond.op     : '>=',
+        value:  Number.isFinite(cond.value) || typeof cond.value === 'string' ? cond.value : 0.6,
+      },
+      successAction: normalizeAct(raw.successAction),
+      failureAction: normalizeAct(raw.failureAction),
+      cooldownSec:   Number.isFinite(raw.cooldownSec) ? Math.max(0, raw.cooldownSec) : 120,
+    };
+  }
+
+  // Runtime window state per trigger id:
+  // { status: 'idle'|'open'|'success'|'failed', openedAt: sessionSec, lastFiredAt: sessionSec }
+  const _triggerWindowState = {};
+
+  function _getTriggerWindowState(id) {
+    if (!_triggerWindowState[id]) _triggerWindowState[id] = { status: 'idle', openedAt: 0, lastFiredAt: -Infinity };
+    return _triggerWindowState[id];
+  }
+
+  function clearTriggerWindowState() {
+    Object.keys(_triggerWindowState).forEach(k => delete _triggerWindowState[k]);
+  }
+
+  /** Execute a trigger action. Shares the rule action set, plus 'none' as a
+   *  no-op (useful for failureAction when you want no penalty). */
+  function executeTriggerAction(action, triggerName, outcome) {
+    if (!action || action.type === 'none') return;
+    // Adapt to executeRuleAction's shape — it expects { action: {...}, name: '...' }
+    executeRuleAction({ name: `${triggerName} ${outcome}`, action });
+  }
+
+  function _activeRuntimeTriggers() {
+    const t = state.runtimeTriggers;
+    if (Array.isArray(t)) return t;
+    return DEFAULT_RUNTIME_TRIGGERS;
+  }
+
+  /** Main tick — call after tickRulesEngine. Idempotent to missing triggers. */
+  function tickTriggerWindows() {
+    const triggers = _activeRuntimeTriggers();
+    if (!triggers.length) return;
+    const es = state.engineState;
+    if (!es || !es.playing) return;
+    const now = es.sessionSec;
+
+    for (const trigger of triggers) {
+      if (!trigger.enabled) continue;
+      const ws = _getTriggerWindowState(trigger.id);
+
+      if (ws.status === 'idle') {
+        const cooldownOk = now - ws.lastFiredAt >= trigger.cooldownSec;
+        if (now >= trigger.atSec && cooldownOk) {
+          ws.status   = 'open';
+          ws.openedAt = now;
+        }
+      }
+
+      if (ws.status === 'open') {
+        const elapsed = now - ws.openedAt;
+        const condMet = evalEngineCondition(trigger.condition);
+        if (condMet) {
+          ws.status      = 'success';
+          ws.lastFiredAt = now;
+          executeTriggerAction(trigger.successAction, trigger.name, '✓');
+          // Re-arm briefly — so the next atSec window can open on a repeat trigger.
+          // In HNE sessions don't loop, so this is mostly for safety.
+          setTimeout(() => { if (_triggerWindowState[trigger.id]) _triggerWindowState[trigger.id].status = 'idle'; }, 500);
+        } else if (elapsed >= trigger.windowDurSec) {
+          ws.status      = 'failed';
+          ws.lastFiredAt = now;
+          executeTriggerAction(trigger.failureAction, trigger.name, '✗');
+          setTimeout(() => { if (_triggerWindowState[trigger.id]) _triggerWindowState[trigger.id].status = 'idle'; }, 500);
+        }
+      }
+    }
+  }
+
+  // Default triggers — opt-in via state.runtimeRulesEnabled (shares the flag with rules).
+  // Ship with one starter: a gentle mid-session check-in that fires a quiet nudge
+  // if engagement is low 8 minutes in. Users can replace via state.runtimeTriggers.
+  const DEFAULT_RUNTIME_TRIGGERS = [
+    normalizeTrigger({
+      name: 'Mid-session engagement check',
+      enabled: true,
+      atSec: 480,                   // 8 minutes in
+      windowDurSec: 30,
+      condition: { metric: 'engagement', op: '>=', value: 0.4 },
+      successAction: { type: 'none', param: null },                                      // quiet success
+      failureAction: { type: 'notifyMessage', param: 'Drifted? That can be part of it.' }, // gentle nudge
+      cooldownSec: 999999,          // one-shot per session
+    }),
+  ];
+
+  // ====================================================================
+  // WEBCAM AWARENESS — local-only attention + ambient sensing
+  // ====================================================================
+  // Per-session opt-in. All inference runs in-browser via MediaPipe Face
+  // Landmarker (lazy-loaded from CDN on first enable). Frames never leave
+  // the device. No persistence — signals exist in memory until session ends.
+  //
+  // Signals published into state.engineState.engagement via setEngineSignal:
+  //   attention   — face present + oriented toward camera (weight 0.25)
+  //   wakefulness — phase-aware eye-state (weight 0.15)
+  //                 CRITICAL: eyes-closed is POSITIVE during trance phases.
+  //                 See _computeWakefulness for the phase mapping table.
+  //
+  // Separate signals (not engagement-fused):
+  //   state.ambientBrightness — 0..1 room luminance, EMA-smoothed
+  //   state.ambientDimScale   — 0.6..1.2 viz intensity multiplier
+  //
+  // See /mnt/user-data/outputs/2026-04-24-webcam-awareness-design.md
+  // ====================================================================
+  const WEBCAM_INFER_FPS         = 8;     // 8 inferences per second — much cheaper than RAF
+  const WEBCAM_BRIGHTNESS_FPS    = 2;     // ambient sampled 2/sec — cheap and slow-changing
+  const EAR_CLOSED_THRESHOLD     = 0.20;  // EAR below this = eyes closed
+  const EAR_OPEN_THRESHOLD       = 0.32;  // EAR above this = eyes clearly open
+  const FACE_PRESENCE_TIMEOUT_MS = 3000;  // grace period before flipping faceDetected → false
+  const AMBIENT_EMA_ALPHA        = 0.05;  // ~10s time constant at 2fps
+  const AMBIENT_DIM_DARK_THRESHOLD   = 0.25; // ambient < this → dim viz to 0.6
+  const AMBIENT_DIM_BRIGHT_THRESHOLD = 0.70; // ambient > this → boost viz to 1.2
+
+  // MediaPipe Face Mesh eye-landmark indices (from the 478-point face mesh).
+  // Each eye uses 6 landmarks: outer corner, top-2-points, inner corner, bottom-2-points.
+  // EAR (Eye Aspect Ratio) = (||p2-p6|| + ||p3-p5||) / (2 * ||p1-p4||)
+  const RIGHT_EYE_IDX = [33, 160, 158, 133, 153, 144]; // user's right (image left)
+  const LEFT_EYE_IDX  = [362, 385, 387, 263, 373, 380]; // user's left  (image right)
+
+  // CDN paths — pinned version for stability. WASM + model lazy-loaded on first enable.
+  const MP_VISION_VERSION = '0.10.14';
+  const MP_VISION_ESM_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VISION_VERSION}/+esm`;
+  const MP_WASM_PATH      = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VISION_VERSION}/wasm`;
+  const MP_MODEL_PATH     = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+
+  let _mpFaceLandmarker = null;
+  let _mpLoadPromise    = null; // de-dupe concurrent load attempts
+
+  /** Lazy-load MediaPipe FaceLandmarker. Idempotent — returns cached instance after first load.
+   *  ~3-5MB WASM + model on first call; cached by browser thereafter. */
+  async function _loadFaceLandmarker() {
+    if (_mpFaceLandmarker) return _mpFaceLandmarker;
+    if (_mpLoadPromise)    return _mpLoadPromise;
+    _mpLoadPromise = (async () => {
+      const mod = await import(MP_VISION_ESM_URL);
+      // jsdelivr +esm bundles MediaPipe with both named and default exports;
+      // accept either shape so a future build change doesn't break us.
+      const lib = mod.FaceLandmarker ? mod : (mod.default || {});
+      const FaceLandmarker  = lib.FaceLandmarker;
+      const FilesetResolver = lib.FilesetResolver;
+      if (!FaceLandmarker || !FilesetResolver) {
+        throw new Error('MediaPipe imports missing — CDN may be unreachable or version changed');
+      }
+      const filesetResolver = await FilesetResolver.forVisionTasks(MP_WASM_PATH);
+      _mpFaceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: { modelAssetPath: MP_MODEL_PATH, delegate: 'GPU' },
+        runningMode: 'VIDEO',
+        numFaces: 1,
+        outputFaceBlendshapes: false,            // we don't use expressions
+        outputFacialTransformationMatrixes: false,
+      });
+      return _mpFaceLandmarker;
+    })();
+    try { return await _mpLoadPromise; }
+    finally { _mpLoadPromise = null; } // allow retry on transient failure
+  }
+
+  function _euclideanDist(a, b) {
+    const dx = a.x - b.x, dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  /** Eye Aspect Ratio for one eye. Returns null if landmarks missing. */
+  function _eyeAspectRatio(landmarks, eyeIdx) {
+    const p = eyeIdx.map(i => landmarks[i]);
+    if (p.some(x => !x)) return null;
+    const v1 = _euclideanDist(p[1], p[5]);
+    const v2 = _euclideanDist(p[2], p[4]);
+    const h  = _euclideanDist(p[0], p[3]);
+    if (h < 1e-6) return null;
+    return (v1 + v2) / (2 * h);
+  }
+
+  /** Phase-aware wakefulness — the most important inversion in the spec.
+   *  During trance phases (settling..affirm), eyes-closed is POSITIVE signal.
+   *  During wake/reintroduction, eyes-closed indicates the user hasn't fully
+   *  surfaced yet (low wakefulness, may need a gentler nudge). */
+  function _computeWakefulness(rawEAR, phaseKind) {
+    if (rawEAR == null) return null;
+    const closed = rawEAR < EAR_CLOSED_THRESHOLD;
+    const open   = rawEAR > EAR_OPEN_THRESHOLD;
+    switch (phaseKind) {
+      case 'settling':
+      case 'induction':
+      case 'deepener':
+      case 'work':
+      case 'affirm':
+        // Trance phases — closed eyes are appropriate, expected, GOOD.
+        return closed ? 0.9 : (open ? 0.5 : 0.7);
+      case 'lightener':
+        // Transition — neutral; eyes may be on the way to opening.
+        return 0.5;
+      case 'wake':
+        // Script is instructing eyes-open. Open = full wakefulness; closed = still drifting.
+        return open ? 0.95 : (closed ? 0.3 : 0.6);
+      case 'reintroduction':
+        // User should be fully back. Closed eyes here = user drifted re-tranced.
+        return open ? 0.95 : (closed ? 0.1 : 0.5);
+      default:
+        return 0.5;
+    }
+  }
+
+  /** Show consent modal. Returns true (user agreed) or false (declined / cancelled).
+   *  Modal text per spec §5.1 — explicit about local-only, no persistence. */
+  function requestWebcamConsent() {
+    return new Promise(resolve => {
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop visible';
+      backdrop.style.zIndex = 9999;
+      backdrop.innerHTML = `<div class="modal" style="max-width:480px;">
+        <h3 style="margin:0 0 12px;font-size:1.05rem;font-weight:500;">Enable webcam awareness?</h3>
+        <div style="font-size:0.84rem;line-height:1.55;color:var(--text-dim);">
+          Your webcam will be used <strong>locally only</strong> to detect:
+        </div>
+        <ul style="margin:8px 0 12px 18px;padding:0;font-size:0.78rem;line-height:1.65;color:var(--text-dim);">
+          <li>Whether you're present (for automatic pausing)</li>
+          <li>Eye state — phase-appropriate (closed eyes are <em>good</em> during trance)</li>
+          <li>Room brightness (for visualizer comfort)</li>
+        </ul>
+        <div style="font-size:0.76rem;color:var(--text);background:rgba(120,180,240,0.06);border:0.5px solid rgba(120,180,240,0.2);border-radius:5px;padding:10px 12px;line-height:1.55;">
+          <strong style="display:block;margin-bottom:4px;">What is NOT collected:</strong>
+          <span>No frames saved to disk · No data leaves this device · No identity or facial recognition</span>
+        </div>
+        <div style="margin-top:10px;font-size:0.72rem;color:var(--text-faint);line-height:1.55;">
+          Processing happens in your browser via Google's MediaPipe (loaded from a CDN on first use, ~3–5MB WASM + model).
+          You can disable anytime via the camera icon during the session. <strong>This permission applies to this session only.</strong>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;">
+          <button id="webcamConsentNo"  class="preview-btn">Not now</button>
+          <button id="webcamConsentYes" class="preview-btn primary">Enable webcam</button>
+        </div>
+      </div>`;
+      document.body.appendChild(backdrop);
+      const cleanup = (val) => { backdrop.remove(); resolve(val); };
+      backdrop.querySelector('#webcamConsentNo')?.addEventListener('click', () => cleanup(false));
+      backdrop.querySelector('#webcamConsentYes')?.addEventListener('click', () => cleanup(true));
+      // Click outside to dismiss = decline
+      backdrop.addEventListener('click', (e) => { if (e.target === backdrop) cleanup(false); });
+    });
+  }
+
+  /** Start the webcam: getUserMedia → load MediaPipe → start inference + brightness loops.
+   *  Caller is responsible for having obtained consent first. */
+  async function startWebcam() {
+    const w = state._webcam;
+    if (w.status === 'active' || w.status === 'requesting' || w.status === 'loading') return;
+
+    // API availability check — old browsers, insecure contexts (file://), iframes without permission.
+    if (!navigator.mediaDevices?.getUserMedia) {
+      w.status = 'error';
+      w.errorMessage = 'getUserMedia not supported in this browser/context';
+      _renderWebcamStatus();
+      notify.warn('Webcam not supported in this browser');
+      return;
+    }
+
+    w.status = 'requesting';
+    w.errorMessage = null;
+    _renderWebcamStatus();
+
+    try {
+      // Low resolution — face detection works fine at 320x240, saves CPU and bandwidth (n/a since local).
+      w.stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' },
+        audio: false,
+      });
+
+      // Hidden video element — never rendered to UI. 1px so it has dimensions for the <video> draw calls.
+      if (!w.videoEl) {
+        w.videoEl = document.createElement('video');
+        w.videoEl.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1;';
+        w.videoEl.muted = true;
+        w.videoEl.autoplay = true;
+        w.videoEl.playsInline = true;
+        w.videoEl.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(w.videoEl);
+      }
+      w.videoEl.srcObject = w.stream;
+      await w.videoEl.play().catch(() => {}); // autoplay may need user gesture; try-and-continue
+
+      // Load MediaPipe (lazy, cached after first call)
+      w.status = 'loading';
+      _renderWebcamStatus();
+      await _loadFaceLandmarker();
+
+      // Start the inference + brightness loops
+      w.status   = 'active';
+      w.enabled  = true;
+      w.lastFaceAt = 0;
+      _renderWebcamStatus();
+      _startWebcamLoops();
+      notify.info('Webcam awareness on — local processing only');
+    } catch (e) {
+      console.warn('[webcam] start failed:', e);
+      w.status = 'error';
+      w.errorMessage = e?.message || String(e);
+      _renderWebcamStatus();
+      // User-friendly error — don't dump getUserMedia internals on the user
+      if (e?.name === 'NotAllowedError')      notify.warn('Camera permission denied');
+      else if (e?.name === 'NotFoundError')   notify.warn('No camera found');
+      else if (e?.name === 'NotReadableError') notify.warn('Camera is in use by another application');
+      else                                     notify.warn('Webcam error: ' + (e?.message || 'unknown'));
+      stopWebcam();
+    }
+  }
+
+  /** Stop the webcam: release stream, kill loops, clear signals.
+   *  Idempotent — safe to call repeatedly. */
+  function stopWebcam() {
+    const w = state._webcam;
+    if (w.inferTimerHandle)      { clearInterval(w.inferTimerHandle);      w.inferTimerHandle = null; }
+    if (w.brightnessTimerHandle) { clearInterval(w.brightnessTimerHandle); w.brightnessTimerHandle = null; }
+    if (w.stream) {
+      try { w.stream.getTracks().forEach(t => t.stop()); } catch {}
+      w.stream = null;
+    }
+    if (w.videoEl) {
+      try { w.videoEl.srcObject = null; w.videoEl.remove(); } catch {}
+      w.videoEl = null;
+    }
+    w.status        = 'idle';
+    w.enabled       = false;
+    w.faceDetected  = false;
+    w.rawEAR        = null;
+    w.motion        = 0;
+    w._brightnessCanvas = null;
+    w._brightnessCtx    = null;
+    // Clear externally-injected engagement signals so they don't linger
+    if (typeof clearEngineSignals === 'function') {
+      // Surgical clear — only OUR signals; leave any other adapter's signals alone.
+      // (clearEngineSignals nukes all of them; safer to delete just ours.)
+      try {
+        const sigs = _engineExternalSignals;
+        if (sigs) { delete sigs.attention; delete sigs.wakefulness; }
+      } catch {}
+    }
+    state.ambientBrightness = 0.5;
+    state.ambientDimScale   = 1.0;
+    _renderWebcamStatus();
+  }
+
+  function _startWebcamLoops() {
+    const w = state._webcam;
+    const inferIntervalMs      = Math.round(1000 / WEBCAM_INFER_FPS);
+    const brightnessIntervalMs = Math.round(1000 / WEBCAM_BRIGHTNESS_FPS);
+    w.inferTimerHandle = setInterval(() => {
+      try { _tickWebcamInfer(); } catch (e) { console.warn('[webcam] infer tick failed:', e); }
+    }, inferIntervalMs);
+    w.brightnessTimerHandle = setInterval(() => {
+      try { _tickWebcamBrightness(); } catch (e) { console.warn('[webcam] brightness tick failed:', e); }
+    }, brightnessIntervalMs);
+  }
+
+  /** One face-landmark inference frame. Publishes attention + wakefulness signals. */
+  function _tickWebcamInfer() {
+    const w = state._webcam;
+    if (w.status !== 'active' || !w.videoEl || !_mpFaceLandmarker) return;
+    if (w.videoEl.readyState < 2) return; // HAVE_CURRENT_DATA — video not ready yet
+
+    const result = _mpFaceLandmarker.detectForVideo(w.videoEl, performance.now());
+    const faces  = result?.faceLandmarks || [];
+    const facePresent = faces.length > 0;
+
+    if (facePresent) {
+      w.faceDetected = true;
+      w.lastFaceAt   = Date.now();
+      const lm = faces[0];
+      const earR = _eyeAspectRatio(lm, RIGHT_EYE_IDX);
+      const earL = _eyeAspectRatio(lm, LEFT_EYE_IDX);
+      const ear  = (earR != null && earL != null) ? (earR + earL) / 2 : (earR ?? earL);
+      w.rawEAR = ear;
+    } else {
+      // Don't immediately flip faceDetected — give a few frames of grace for momentary
+      // occlusion (user moves head, hand passes by, blink that confuses the detector).
+      if (w.lastFaceAt && Date.now() - w.lastFaceAt > FACE_PRESENCE_TIMEOUT_MS) {
+        w.faceDetected = false;
+        w.rawEAR = null;
+      }
+    }
+
+    // Publish signals into the state-engine fusion. Weights from the design spec.
+    if (typeof setEngineSignal === 'function') {
+      setEngineSignal('attention', w.faceDetected ? 0.8 : 0.0, 0.25);
+      const phaseKind   = state.engineState?.phaseKind || null;
+      const wakefulness = _computeWakefulness(w.rawEAR, phaseKind);
+      if (wakefulness != null) {
+        setEngineSignal('wakefulness', wakefulness, 0.15);
+      }
+    }
+    _renderWebcamStatus();
+  }
+
+  /** One ambient-brightness sample. Cheap — just full-frame mean luminance via tiny canvas. */
+  function _tickWebcamBrightness() {
+    const w = state._webcam;
+    if (w.status !== 'active' || !w.videoEl || w.videoEl.readyState < 2) return;
+
+    if (!w._brightnessCanvas) {
+      // 16x12 px is enough for a stable mean — saves a lot of getImageData CPU.
+      w._brightnessCanvas = document.createElement('canvas');
+      w._brightnessCanvas.width = 16;
+      w._brightnessCanvas.height = 12;
+      w._brightnessCtx = w._brightnessCanvas.getContext('2d', { willReadFrequently: true });
+    }
+    try {
+      w._brightnessCtx.drawImage(w.videoEl, 0, 0, 16, 12);
+      const data = w._brightnessCtx.getImageData(0, 0, 16, 12).data;
+      let sum = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        // ITU-R BT.601 luma — fast and good enough; we don't need photometric accuracy
+        sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      }
+      const meanLuma = sum / (data.length / 4) / 255;
+
+      // EMA smooth over ~10s at 2fps (alpha 0.05 with 0.5s steps ≈ 10s time constant)
+      const prev = state.ambientBrightness ?? 0.5;
+      state.ambientBrightness = prev + AMBIENT_EMA_ALPHA * (meanLuma - prev);
+
+      // Map smoothed brightness → viz dim scale, with linear ramps in the transition zones
+      // so the visualizer doesn't flicker between modes near the threshold boundaries.
+      const b = state.ambientBrightness;
+      let scale;
+      if (b < AMBIENT_DIM_DARK_THRESHOLD)        scale = 0.6;
+      else if (b < 0.45)                          scale = 0.6 + (b - AMBIENT_DIM_DARK_THRESHOLD) * 2.0; // 0.6 → 1.0 over 0.25..0.45
+      else if (b > AMBIENT_DIM_BRIGHT_THRESHOLD)  scale = 1.2;
+      else if (b > 0.55)                          scale = 1.0 + (b - 0.55) * 1.33;                      // 1.0 → 1.2 over 0.55..0.70
+      else                                        scale = 1.0;
+      state.ambientDimScale = scale;
+    } catch (e) {
+      // SecurityError if cross-origin video, NotReadableError if stream died — silent fail.
+      console.warn('[webcam] brightness sample failed:', e);
+    }
+  }
+
+  /** Update the status dot indicator. Called from start/stop/tick paths. */
+  function _renderWebcamStatus() {
+    const dot = document.getElementById('webcamStatusDot');
+    if (!dot) return;
+    const w = state._webcam;
+    let color = 'transparent', title = 'Webcam off', opacity = 0;
+    switch (w.status) {
+      case 'requesting': color = 'var(--neon-amber)'; title = 'Requesting camera permission…'; opacity = 0.8; break;
+      case 'loading':    color = 'var(--neon-amber)'; title = 'Loading face detection model…'; opacity = 0.8; break;
+      case 'active':
+        opacity = 1;
+        if (w.faceDetected) { color = '#7dc87a'; title = 'Webcam active — face detected (local processing only)'; }
+        else                { color = 'var(--neon-amber)'; title = 'Webcam active — no face detected'; }
+        break;
+      case 'error': color = '#ff6b6b'; title = 'Webcam error: ' + (w.errorMessage || 'unknown'); opacity = 0.9; break;
+      case 'idle':  color = 'transparent'; title = 'Webcam off'; opacity = 0; break;
+    }
+    dot.style.background = color;
+    dot.style.opacity = String(opacity);
+    dot.title = title;
+  }
+
+  // ====================================================================
+  // SAFETY LAYER — consolidated runtime guards
+  // ====================================================================
+  // Single source of truth for runtime safety constraints. Wraps mutators
+  // that can be commanded by the rules engine (setSpeechRate,
+  // setSoundscapeVolume) with hard caps, so a misconfigured rule can't
+  // crank speech rate to 2× or drown the narrator under loud soundscape.
+  //
+  // Existing photosensitivity caps (audio-reactive 3Hz burst rate limiter,
+  // breathing-tempo lock) are documented here but enforced inline at their
+  // visualizer points — moving them now would risk regressions.
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio — js/safety.js
+  // ====================================================================
+  const SAFETY_DEFAULTS = {
+    maxSpeechRate:        1.5,
+    minSpeechRate:        0.6,
+    maxSoundscapeVolume:  0.85,
+    emergencyCooldownSec: 30,
+    maxSessionMinutes:    60,
+  };
+
+  /** Read current safety config with default fallback. Pure read. */
+  function getSafetyConfig() {
+    return { ...SAFETY_DEFAULTS, ...(state.safetyConfig || {}) };
+  }
+
+  /** Clamp a requested speech rate to [minSpeechRate, maxSpeechRate].
+   *  Used by rules-engine setSpeechRate action AND any direct setter that
+   *  wants gating. NaN-safe — returns 1.0 (default) for non-finite input.
+   *  Notifies if the requested value was out of range. */
+  function gateSpeechRate(requested) {
+    const c = getSafetyConfig();
+    const r = Number(requested);
+    if (!Number.isFinite(r)) return 1.0;
+    const clamped = Math.max(c.minSpeechRate, Math.min(c.maxSpeechRate, r));
+    if (Math.abs(clamped - r) > 0.001) {
+      notify.warn(`Safety: speech rate clamped from ${r.toFixed(2)}× to ${clamped.toFixed(2)}×`);
+    }
+    return clamped;
+  }
+
+  /** Clamp a requested soundscape volume to [0, maxSoundscapeVolume]. */
+  function gateSoundscapeVolume(requested) {
+    const c = getSafetyConfig();
+    const v = Number(requested);
+    if (!Number.isFinite(v)) return 0;
+    const clamped = Math.max(0, Math.min(c.maxSoundscapeVolume, v));
+    if (Math.abs(clamped - v) > 0.001) {
+      notify.warn(`Safety: soundscape volume clamped from ${Math.round(v*100)}% to ${Math.round(clamped*100)}%`);
+    }
+    return clamped;
+  }
+
+  /** Returns seconds remaining on emergency cooldown, or 0 if not active. */
+  function getEmergencyCooldownRemaining() {
+    if (!state._cooldownUntil) return 0;
+    return Math.max(0, Math.ceil((state._cooldownUntil - Date.now()) / 1000));
+  }
+
+  /** Pre-flight check — call before session start. Returns null if OK or
+   *  an info object {warn, message} if the user should be warned. The caller
+   *  decides whether to block or just notify. */
+  function checkSessionLengthSafety() {
+    const c = getSafetyConfig();
+    const m = getScriptMetrics(state.fullScript || '');
+    if ((m.estimatedMin || 0) > c.maxSessionMinutes) {
+      return {
+        warn: true,
+        message: `This session is estimated at ${m.estimatedMin} minutes — over the ${c.maxSessionMinutes}-minute soft cap. Consider a shorter session, or proceed if you're sure.`,
+      };
+    }
+    return null;
+  }
+
+  /** Render the safety panel inputs from state. Idempotent — call after
+   *  load, reset, or any external change. The change listeners are wired
+   *  once in the init block; this just refreshes input values. */
+  function _renderSafetyPanel() {
+    const c = getSafetyConfig();
+    const setVal = (id, v) => { const el = $(id); if (el) el.value = v; };
+    setVal('safety_minSpeechRate',        c.minSpeechRate.toFixed(1));
+    setVal('safety_maxSpeechRate',        c.maxSpeechRate.toFixed(1));
+    setVal('safety_maxSoundscapeVolume',  Math.round(c.maxSoundscapeVolume * 100));
+    setVal('safety_emergencyCooldownSec', c.emergencyCooldownSec);
+    setVal('safety_maxSessionMinutes',    c.maxSessionMinutes);
+  }
+
+  /** Reset safety config to defaults. Persists immediately. */
+  function _resetSafetyConfig() {
+    state.safetyConfig = { ...SAFETY_DEFAULTS };
+    _renderSafetyPanel();
+    saveUserSettings();
+    notify.info('Safety limits reset to defaults');
+  }
+
+  // ====================================================================
+  // SESSION MODES — preset bundles of rules + triggers + safety overrides
+  // ====================================================================
+  // Each mode is a coherent posture for the runtime reactivity layer. Applying
+  // a mode overrides state.runtimeRules, state.runtimeTriggers, and (optionally)
+  // safetyConfig fields. The 'standard' mode reverts to defaults.
+  //
+  // Modes don't affect the AI script itself — they shape *how* the script plays
+  // (caps, nudges, ducking aggressiveness, silence tolerance). Think of it as
+  // "delivery tone for the rules engine."
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio — js/session-modes.js
+  // (HNE adaptation: no intensity-ramp/dynamic-pacing yet, so modes use rules +
+  //  triggers + safety overrides as their levers.)
+  // ====================================================================
+  const SESSION_MODES = [
+    {
+      id:          'standard',
+      name:        'Standard',
+      icon:        '○',
+      description: 'Default rules and caps. Use this unless you have a specific reason to change.',
+      // null = use built-in defaults (DEFAULT_RUNTIME_RULES / DEFAULT_RUNTIME_TRIGGERS / SAFETY_DEFAULTS)
+      rules:           null,
+      triggers:        null,
+      safetyOverrides: null,
+    },
+    {
+      id:          'deep-sleep',
+      name:        'Deep Sleep',
+      icon:        '🌙',
+      description: 'Quiet posture for sleep-intention sessions. No nudges, aggressive ducking, low volume cap. The narrator can fade out without waking you.',
+      rules: [
+        // No silence-nudge — silence is the goal, not a problem.
+        // Aggressive duck during work + maintain through transitions.
+        {
+          name: '[Deep Sleep] Soft duck across all phases',
+          enabled: true,
+          condition: { metric: 'voiceEnvelope', op: '<', value: 0.05 },
+          durationSec: 4,
+          cooldownSec: 30,
+          action: { type: 'duckAudio', param: 0.10 },
+        },
+        {
+          name: '[Deep Sleep] Restore on voice activity',
+          enabled: true,
+          condition: { metric: 'voiceEnvelope', op: '>', value: 0.15 },
+          durationSec: 1,
+          cooldownSec: 5,
+          action: { type: 'unduckAudio', param: null },
+        },
+        // Webcam-aware: don't pause when face leaves view (sleep = closed eyes, often turned head)
+      ],
+      triggers: [], // no mid-session check-ins — would wake the sleeper
+      safetyOverrides: {
+        maxSoundscapeVolume: 0.5,    // never blast soundscape when targeting sleep
+        maxSessionMinutes:   90,     // sleep sessions can run longer
+      },
+    },
+    {
+      id:          'active-practice',
+      name:        'Active Practice',
+      icon:        '🎯',
+      description: 'For focus and learning sessions. Earlier engagement check, tighter speech rate range, more responsive feedback.',
+      rules: [
+        {
+          name: '[Active] Silence nudge — quicker to fire',
+          enabled: true,
+          condition: { metric: 'sinceVoiceSec', op: '>', value: 30 },  // 30s vs default 45s
+          durationSec: 0,
+          cooldownSec: 180,                                              // 3min vs default 5min
+          action: { type: 'notifyMessage', param: 'Still with me?' },
+        },
+        {
+          name: '[Active] Heavy duck during work for focus',
+          enabled: true,
+          condition: { metric: 'phaseKind', op: '==', value: 'work' },
+          durationSec: 4,                                                // faster vs default 8s
+          cooldownSec: 60,
+          action: { type: 'duckAudio', param: 0.10 },                    // deeper duck
+        },
+        {
+          name: '[Active] Restore soundscape on phase change',
+          enabled: true,
+          condition: { metric: 'phaseKind', op: '!=', value: 'work' },
+          durationSec: 2,
+          cooldownSec: 10,
+          action: { type: 'unduckAudio', param: null },
+        },
+      ],
+      triggers: [
+        {
+          name: '[Active] Early engagement check',
+          enabled: true,
+          atSec: 240,                                                    // 4min vs default 8min
+          windowDurSec: 30,
+          condition: { metric: 'engagement', op: '>=', value: 0.5 },     // higher bar
+          successAction: { type: 'none', param: null },
+          failureAction: { type: 'notifyMessage', param: 'Notice where attention is. No judgment.' },
+          cooldownSec: 999999,
+        },
+      ],
+      safetyOverrides: {
+        minSpeechRate: 0.8,    // narrower range — keeps pacing energetic
+        maxSpeechRate: 1.4,
+      },
+    },
+    {
+      id:          'gentle-exploration',
+      name:        'Gentle Exploration',
+      icon:        '🌱',
+      description: 'For first-timers, sensitive topics, or just easing in. Conservative caps, extra reassurance, no startling actions.',
+      rules: [
+        {
+          name: '[Gentle] Reassurance after long silence',
+          enabled: true,
+          condition: { metric: 'sinceVoiceSec', op: '>', value: 60 },    // patient — wait a full minute
+          durationSec: 0,
+          cooldownSec: 240,
+          action: { type: 'notifyMessage', param: 'Whatever you\'re feeling is okay.' },
+        },
+        {
+          name: '[Gentle] Soft duck during work',
+          enabled: true,
+          condition: { metric: 'phaseKind', op: '==', value: 'work' },
+          durationSec: 12,                                               // slower — let the user settle in
+          cooldownSec: 90,
+          action: { type: 'duckAudio', param: 0.30 },                    // lighter duck
+        },
+        {
+          name: '[Gentle] Restore on phase exit',
+          enabled: true,
+          condition: { metric: 'phaseKind', op: '!=', value: 'work' },
+          durationSec: 3,
+          cooldownSec: 15,
+          action: { type: 'unduckAudio', param: null },
+        },
+      ],
+      triggers: [
+        {
+          name: '[Gentle] Mid-session check with permission',
+          enabled: true,
+          atSec: 600,                                                    // 10min — well into the session
+          windowDurSec: 60,                                              // generous window
+          condition: { metric: 'engagement', op: '>=', value: 0.3 },     // very forgiving
+          successAction: { type: 'none', param: null },
+          failureAction: { type: 'showOnScreenText', param: 'You\'re doing fine. Stay or step away — both are okay.' },
+          cooldownSec: 999999,
+        },
+      ],
+      safetyOverrides: {
+        maxSpeechRate:        1.2,    // never push fast
+        minSpeechRate:        0.7,
+        maxSoundscapeVolume:  0.65,   // softer ambient
+        maxSessionMinutes:    30,     // short by default
+      },
+    },
+  ];
+
+  /** Apply a session mode by id. Replaces runtimeRules + runtimeTriggers + merges
+   *  safetyOverrides into safetyConfig. Idempotent. Persists. */
+  function applySessionMode(modeId) {
+    const mode = SESSION_MODES.find(m => m.id === modeId);
+    if (!mode) { notify.warn(`Unknown session mode: ${modeId}`); return; }
+
+    state.activeSessionMode = mode.id;
+
+    // Rules: null → defaults, [] → empty list (deep sleep wants no rules), array → normalize each
+    if (mode.rules === null) {
+      state.runtimeRules = null; // null causes _activeRuntimeRules() to fall back to DEFAULT_RUNTIME_RULES
+    } else {
+      state.runtimeRules = mode.rules.map(r => normalizeRule(r));
+    }
+    if (mode.triggers === null) {
+      state.runtimeTriggers = null;
+    } else {
+      state.runtimeTriggers = mode.triggers.map(t => normalizeTrigger(t));
+    }
+
+    // Safety overrides: merge into config, clamp via field-by-field rules.
+    // null overrides means "leave safetyConfig alone" (mode doesn't tweak safety).
+    if (mode.safetyOverrides) {
+      const cur = state.safetyConfig || { ...SAFETY_DEFAULTS };
+      const ov = mode.safetyOverrides;
+      state.safetyConfig = {
+        ...cur,
+        ...(Number.isFinite(ov.maxSpeechRate)        && { maxSpeechRate:        Math.max(0.5, Math.min(2.0, ov.maxSpeechRate)) }),
+        ...(Number.isFinite(ov.minSpeechRate)        && { minSpeechRate:        Math.max(0.5, Math.min(2.0, ov.minSpeechRate)) }),
+        ...(Number.isFinite(ov.maxSoundscapeVolume)  && { maxSoundscapeVolume:  Math.max(0.0, Math.min(1.0, ov.maxSoundscapeVolume)) }),
+        ...(Number.isFinite(ov.emergencyCooldownSec) && { emergencyCooldownSec: Math.max(0, Math.min(300, ov.emergencyCooldownSec)) }),
+        ...(Number.isFinite(ov.maxSessionMinutes)    && { maxSessionMinutes:    Math.max(5, Math.min(180, ov.maxSessionMinutes)) }),
+      };
+      _renderSafetyPanel();
+    } else if (mode.id === 'standard') {
+      // Standard mode resets safety to defaults — explicit return-to-baseline path.
+      state.safetyConfig = { ...SAFETY_DEFAULTS };
+      _renderSafetyPanel();
+    }
+
+    // Clear any in-flight rule state — prior mode's accumulators are no longer valid
+    clearRuntimeRuleState();
+    clearTriggerWindowState();
+
+    saveUserSettings();
+    notify.info(`Session mode: ${mode.name}`);
+  }
+
+  // ====================================================================
+  // PLAYBACK DYNAMICS — adaptive speech-rate modulation during sessions
+  // ====================================================================
+  // Combines intensity-ramp (time-curve) + dynamic-pacing (engagement-driven)
+  // into one feature: a single 0..1 "dynamics intensity" scalar derived per
+  // frame, mapped onto speech rate. Speech rate is the only parameter we
+  // modulate live — volume/viz changes feel jarring mid-session.
+  //
+  // Modes:
+  //   time       — linear/sine/exponential curve from startScale → endScale across session
+  //   engagement — proportional to current state.engineState.engagement
+  //   adaptive   — blend of both (max of each)
+  //
+  // The computed scalar is multiplied against state._baseSpeechRate (the
+  // user's chosen rate) to yield the live rate, then clamped via the safety
+  // layer's gateSpeechRate.
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio — js/intensity-ramp.js
+  //                                                              + js/dynamic-pacing.js
+  // (HNE consolidation: both ASS modules ported into one feature since they
+  //  modulate the same underlying axis here.)
+  // ====================================================================
+  const PLAYBACK_DYNAMICS_DEFAULTS = {
+    enabled:        false,         // opt-in; default off so existing behavior is unchanged
+    mode:           'engagement',  // 'time' | 'engagement' | 'adaptive'
+    startScale:     0.90,          // intensity = 0 → speech rate × this (slow open)
+    endScale:       1.10,          // intensity = 1 → speech rate × this (faster as session progresses)
+    curve:          'sine',        // 'linear' | 'sine' | 'exponential' (how time-based ramp shapes)
+    engagementMin:  0.85,          // engagement = 0 → rate scale this
+    engagementMax:  1.15,          // engagement = 1 → rate scale this
+    smoothingSec:   8,             // EMA time constant on the live scalar — prevents jitter
+  };
+
+  let _playbackDynamicsState = {
+    smoothedScale: 1.0,    // EMA of the computed scale
+    lastTickMs:    0,
+    lastApplyMs:   0,      // throttle setSpeechRate calls
+  };
+
+  function getPlaybackDynamicsConfig() {
+    return { ...PLAYBACK_DYNAMICS_DEFAULTS, ...(state.playbackDynamics || {}) };
+  }
+
+  /** Curve eval — maps progress (0..1) → intensity (0..1) per shape */
+  function _pdCurve(progress, shape) {
+    const p = Math.max(0, Math.min(1, progress));
+    switch (shape) {
+      case 'linear':      return p;
+      case 'sine':        return 0.5 - 0.5 * Math.cos(Math.PI * p); // ease-in-out
+      case 'exponential': return p * p;                              // slow start, fast finish
+      default:            return p;
+    }
+  }
+
+  /** Compute the target rate scale for the current engineState. Returns null
+   *  if dynamics is disabled — caller should skip applying. */
+  function _pdComputeTargetScale() {
+    const c = getPlaybackDynamicsConfig();
+    if (!c.enabled) return null;
+    const es = state.engineState;
+    if (!es?.playing) return null;
+
+    let intensity = 0;
+    if (c.mode === 'time' || c.mode === 'adaptive') {
+      const progress = es.completedFraction || 0;
+      intensity = Math.max(intensity, _pdCurve(progress, c.curve));
+    }
+    if (c.mode === 'engagement' || c.mode === 'adaptive') {
+      const eng = es.engagement || 0;
+      intensity = Math.max(intensity, eng);
+    }
+
+    // Map intensity → scale by mode. Time/adaptive use startScale..endScale (curve range);
+    // engagement uses engagementMin..engagementMax.
+    const lo = (c.mode === 'engagement') ? c.engagementMin : c.startScale;
+    const hi = (c.mode === 'engagement') ? c.engagementMax : c.endScale;
+    return lo + (hi - lo) * intensity;
+  }
+
+  /** Per-frame tick. Computes target scale, EMA-smooths, applies to speech rate
+   *  via the safety gate. Throttled to once per second to avoid setSpeechRate
+   *  thrashing — TTS engines don't update rate of in-progress utterances anyway. */
+  function tickPlaybackDynamics(frameSec) {
+    const target = _pdComputeTargetScale();
+    if (target == null) return;
+
+    const c = getPlaybackDynamicsConfig();
+    // EMA: alpha derived from time constant (smoothingSec). Higher smoothingSec = slower change.
+    const alpha = Math.min(1, frameSec / Math.max(0.5, c.smoothingSec));
+    _playbackDynamicsState.smoothedScale += alpha * (target - _playbackDynamicsState.smoothedScale);
+
+    // Throttle the actual speech-rate update to once per second.
+    const nowMs = Date.now();
+    if (nowMs - _playbackDynamicsState.lastApplyMs < 1000) return;
+    _playbackDynamicsState.lastApplyMs = nowMs;
+
+    const baseRate = state._baseSpeechRate ?? state.speechRate ?? 1.0;
+    const rawNew = baseRate * _playbackDynamicsState.smoothedScale;
+    state.speechRate = gateSpeechRate(rawNew); // safety layer enforces hard caps
+  }
+
+  function resetPlaybackDynamics() {
+    _playbackDynamicsState = { smoothedScale: 1.0, lastTickMs: 0, lastApplyMs: 0 };
+    // Restore base speech rate so a new session starts clean
+    if (state._baseSpeechRate != null) {
+      state.speechRate = state._baseSpeechRate;
+    }
+  }
+
+  // ====================================================================
+  // ZIP EXPORT — bundle the just-finished session as a downloadable .zip
+  // ====================================================================
+  // Pure-JS STORE-method ZIP builder (no external deps). Exports:
+  //   session.json    — the per-session record from stillness_history_v1
+  //   script.txt      — the full generated script as plain text
+  //   script.md       — same script, phase-headered for readability
+  //   profile.json    — the profile snapshot at session-end (for reproducibility)
+  //   README.md       — what's in the bundle and how to interpret it
+  //
+  // Note: recorded ambience auto-downloads via stopRecording's onstop handler
+  // and isn't held in JS memory after that, so it can't be bundled into this
+  // export. Documented in the README.
+  //
+  // ZIP builder adapted verbatim from /mnt/user-data/uploads/Adaptive-Session-Studio
+  // — js/zip-export.js (the assembly logic above is HNE-shaped, not ASS-shaped).
+  // ====================================================================
+  function _zipU16(n) { const b = new Uint8Array(2); new DataView(b.buffer).setUint16(0, n, true); return b; }
+  function _zipU32(n) { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, n, true); return b; }
+
+  function _zipCrc32(data) {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < data.length; i++) {
+      crc ^= data[i];
+      for (let j = 0; j < 8; j++) crc = crc >>> 1 ^ (crc & 1 ? 0xEDB88320 : 0);
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  /** Build a single ZIP entry — returns the local file header, central dir
+   *  header, and bytes. Caller stitches them with offsets. */
+  function _zipEntry(name, bytes) {
+    const nameBytes = new TextEncoder().encode(name);
+    const crc  = _zipCrc32(bytes);
+    const size = bytes.length;
+    // Local file header
+    const lfh = new Uint8Array([
+      0x50,0x4B,0x03,0x04,    // signature
+      20,0,                    // version needed
+      0,0,                     // flags
+      0,0,                     // compression (STORE)
+      0,0,0,0,                 // mod time/date
+      ..._zipU32(crc),
+      ..._zipU32(size),        // compressed size = uncompressed
+      ..._zipU32(size),
+      ..._zipU16(nameBytes.length),
+      0,0,                     // extra field length
+    ]);
+    // Central directory header
+    const cdh = new Uint8Array([
+      0x50,0x4B,0x01,0x02,
+      20,0, 20,0, 0,0, 0,0,
+      0,0,0,0,
+      ..._zipU32(crc),
+      ..._zipU32(size),
+      ..._zipU32(size),
+      ..._zipU16(nameBytes.length),
+      0,0, 0,0, 0,0, 0,0,0,0, 0,0,0,0,
+      0,0,0,0,                 // local header offset — patched by _zipBuild
+    ]);
+    return { nameBytes, lfh, cdh, bytes };
+  }
+
+  /** Build a ZIP file from an array of {name, bytes} entries. */
+  function _zipBuild(files) {
+    const entries = files.map(f => _zipEntry(f.name, f.bytes));
+    const parts = [];
+    const cdParts = [];
+    let offset = 0;
+    for (const e of entries) {
+      // Patch local-header offset into central directory entry
+      new DataView(e.cdh.buffer).setUint32(42, offset, true);
+      parts.push(e.lfh, e.nameBytes, e.bytes);
+      offset += e.lfh.length + e.nameBytes.length + e.bytes.length;
+      cdParts.push(e.cdh, e.nameBytes);
+    }
+    const cdStart = offset;
+    const cdSize  = cdParts.reduce((n, p) => n + p.length, 0);
+    // End of central directory
+    const eocd = new Uint8Array([
+      0x50,0x4B,0x05,0x06,
+      0,0, 0,0,
+      ..._zipU16(entries.length),
+      ..._zipU16(entries.length),
+      ..._zipU32(cdSize),
+      ..._zipU32(cdStart),
+      0,0,
+    ]);
+    const all = [...parts, ...cdParts, eocd];
+    const total = all.reduce((n, p) => n + p.length, 0);
+    const out = new Uint8Array(total);
+    let pos = 0;
+    for (const p of all) { out.set(p, pos); pos += p.length; }
+    return out;
+  }
+
+  /** Pretty-print the script with phase headers for readability. */
+  function _formatScriptForBundle(script) {
+    if (!script) return '';
+    const ordered = (parseScript(script).ordered || []);
+    const parsed  = parseScript(script);
+    let out = '';
+    for (const phaseId of ordered) {
+      const text = parsed[phaseId] || '';
+      out += `## ${getPhaseLabel(phaseId)}\n\n${stripLeadingPhaseHeader(text, phaseId).trim()}\n\n`;
+    }
+    return out.trim();
+  }
+
+  /** Export the most-recent session as a downloadable .zip bundle.
+   *  Called from the post-session screen's export button. */
+  async function exportSessionBundle() {
+    try {
+      const history = (await idbGet('stillness_history_v1')) || [];
+      if (!history.length) {
+        notify.warn('No session to export — start a session first.');
+        return;
+      }
+      const record = history[0];
+      const enc = new TextEncoder();
+      const safeName = (record.guide || 'session')
+        .replace(/[/\\:*?"<>|]/g, '_')
+        .replace(/\s+/g, '_')
+        .slice(0, 40)
+        .toLowerCase();
+      const dateStr = new Date(record.date || Date.now()).toISOString().slice(0, 10);
+
+      const files = [];
+
+      // 1. session.json — the full per-session record
+      files.push({ name: 'session.json', bytes: enc.encode(JSON.stringify(record, null, 2)) });
+
+      // 2. script.txt — raw script (with PAUSE markers and phase headers preserved)
+      if (record.script) {
+        files.push({ name: 'script.txt', bytes: enc.encode(record.script) });
+        // 3. script.md — pretty-printed version with phase headers
+        files.push({ name: 'script.md', bytes: enc.encode(_formatScriptForBundle(record.script)) });
+      }
+
+      // 4. profile.json — profile snapshot for reproducibility
+      if (record.profileSnapshot) {
+        files.push({ name: 'profile.json', bytes: enc.encode(JSON.stringify(record.profileSnapshot, null, 2)) });
+      }
+
+      // 5. README.md — explain what's in the bundle
+      const durMin = Math.round((record.durationSec || 0) / 60);
+      const moodPart = (record.preMood != null && record.postMood != null)
+        ? `\n- **Mood**: ${record.preMood} → ${record.postMood} (Δ${(record.postMood - record.preMood) >= 0 ? '+' : ''}${record.postMood - record.preMood})`
+        : '';
+      const depthPart = record.depth != null ? `\n- **Self-reported depth**: ${record.depth}/10` : '';
+      const readme = [
+        `# ${record.guide || 'Session'} — ${dateStr}`,
+        '',
+        `Bundle exported from the Advanced Hypnosis Narration Engine.`,
+        '',
+        '## Session details',
+        `- **Date**: ${new Date(record.date || Date.now()).toLocaleString()}`,
+        `- **Persona**: ${record.guide || '?'}`,
+        `- **Method**: ${record.method || '?'}`,
+        `- **Intention**: ${record.intention || '?'}`,
+        `- **Length**: ${record.length || '?'} (${durMin} min actual)`,
+        `- **Soundscape**: ${record.soundscape || '?'}`,
+        `- **Completed**: ${record.completed ? 'yes' : 'no (early end)'}` + moodPart + depthPart,
+        '',
+        '## Files',
+        '- `session.json` — full session record (config, metrics, settings)',
+        '- `script.txt` — raw generated script with phase markers and `[PAUSE N]` directives',
+        '- `script.md` — pretty-printed script with phase headers',
+        '- `profile.json` — your profile snapshot at session time',
+        '',
+        '## Not included',
+        '- **Recorded ambience** — if you used the "record ambience" feature during the session, the audio downloaded automatically as a separate `.webm` file when recording stopped. It isn\'t stored in browser memory and so can\'t be re-bundled here.',
+        '- **Background images** — generated bg images are stored separately and aren\'t bundled.',
+        '',
+        '## Reproducibility',
+        'To replay this exact configuration: paste the contents of `script.txt` into the script editor in HNE, or use `session.json`\'s `personaId` / `methodId` / `intentionText` / `phaseOrder` to reconstruct the configuration in Step 4.',
+      ].join('\n');
+      files.push({ name: 'README.md', bytes: enc.encode(readme) });
+
+      const zipBytes = _zipBuild(files);
+      const blob = new Blob([zipBytes], { type: 'application/zip' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${safeName}-${dateStr}.zip`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+
+      const sizeKB = Math.round(zipBytes.length / 1024);
+      notify.success(`Bundle exported: ${a.download} (${sizeKB} KB, ${files.length} files)`);
+    } catch (err) {
+      console.error('[zip-export] failed:', err);
+      notify.error('Bundle export failed — see console for details.');
+    }
+  }
+
+  // ====================================================================
+  // BROWSER CAPABILITIES — feature detection + graceful degradation
+  // ====================================================================
+  // Detects browser capabilities at startup and surfaces meaningful
+  // warnings when something HNE relies on isn't available. Helps users
+  // on Firefox / Safari / older browsers understand WHY a feature is
+  // missing rather than getting silent breakage.
+  //
+  // Exposed as state.caps for runtime checks; warnMissingCapabilities()
+  // shows a single grouped notify on first session-screen entry.
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio — js/capabilities.js
+  // (HNE adaptations: drop FaceDetector check (we use MediaPipe via CDN, cross-browser
+  //  by design), add WebRTC + MediaRecorder + getUserMedia checks for the new webcam +
+  //  recording features, add prefers-reduced-motion detection.)
+  // ====================================================================
+  state.caps = {
+    speechSynthesis: false,
+    speechRate:      false,
+    webAudio:        false,
+    fullscreen:      false,
+    indexedDB:       false,
+    getUserMedia:    false,   // for webcam awareness
+    mediaRecorder:   false,   // for ambience recording
+    reducedMotion:   false,   // OS-level accessibility preference
+    wakeLock:        false,   // for keep-screen-awake during sessions
+    vibration:       false,   // for tactile feedback (haptics)
+    // Aliases preserving the previous shape (caps.tts was used by older code)
+    tts:             false,
+  };
+  let _capsWarnedOnce = false;
+
+  function detectCapabilities() {
+    const c = state.caps;
+    c.speechSynthesis = 'speechSynthesis' in window;
+    c.tts             = c.speechSynthesis;  // alias for legacy code
+    c.webAudio        = 'AudioContext' in window || 'webkitAudioContext' in window;
+    c.fullscreen      = 'requestFullscreen' in document.documentElement
+                     || 'webkitRequestFullscreen' in document.documentElement;
+    c.indexedDB       = 'indexedDB' in window;
+    c.getUserMedia    = !!(navigator.mediaDevices?.getUserMedia);
+    c.mediaRecorder   = 'MediaRecorder' in window;
+    c.wakeLock        = 'wakeLock' in navigator;
+    c.vibration       = 'vibrate' in navigator;
+    // Speech rate support — some browsers expose synthesis but ignore rate.
+    if (c.speechSynthesis) {
+      try {
+        const u = new SpeechSynthesisUtterance('');
+        u.rate = 1.5;
+        c.speechRate = true;
+      } catch { c.speechRate = false; }
+    }
+    // OS-level reduced-motion preference. Not really a "capability" but we
+    // want to know it at startup for the same gating reasons.
+    try {
+      c.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch { c.reducedMotion = false; }
+    return c;
+  }
+
+  /** Show grouped warning for missing capabilities. Called once after first
+   *  session-screen entry — too early in the boot and the user has no context. */
+  function warnMissingCapabilities() {
+    if (_capsWarnedOnce) return;
+    _capsWarnedOnce = true;
+    const c = state.caps;
+    const missing = [];
+    if (!c.speechSynthesis) missing.push('Text-to-speech (TTS) is not supported — sessions will have no narration.');
+    else if (!c.speechRate) missing.push('Your browser ignores TTS rate adjustment — speech will play at default speed regardless of slider.');
+    if (!c.webAudio)        missing.push('Web Audio is not supported — no soundscape, no audio-reactive visualizer.');
+    if (!c.indexedDB)       missing.push('IndexedDB is not available — session history and adaptive learning won\'t persist.');
+    if (!c.getUserMedia)    missing.push('Webcam awareness unavailable — getUserMedia not supported in this browser/context.');
+    if (!c.mediaRecorder)   missing.push('Ambience recording unavailable — MediaRecorder not supported.');
+    // fullscreen is non-critical — not warned, button just no-ops gracefully
+    if (missing.length === 0) return;
+    if (missing.length === 1) {
+      notify.warn(missing[0]);
+    } else {
+      notify.warn(`Some features unavailable in this browser:\n• ${missing.join('\n• ')}`);
+    }
+  }
+
+  /** Estimate localStorage budget. HNE keeps most data in IDB but uses
+   *  localStorage for settings mirror + onboarding flag. Useful diagnostic. */
+  function checkStorageBudget() {
+    try {
+      let used = 0;
+      for (const key of Object.keys(localStorage)) {
+        used += (localStorage.getItem(key) ?? '').length * 2; // UTF-16 bytes approx
+      }
+      const estimated   = 5 * 1024 * 1024; // ~5MB typical browser limit
+      const available   = Math.max(0, estimated - used);
+      const percentUsed = Math.round((used / estimated) * 100);
+      return { used, available, percentUsed, warning: percentUsed > 60 };
+    } catch {
+      return { used: 0, available: 0, percentUsed: 0, warning: false };
+    }
   }
 
   /**
@@ -3732,6 +5581,14 @@ I return to myself easily"></textarea>
       remoteProcessingOptIn: !!$('remoteProcessingOptIn')?.checked,
       smartDirectorEnabled: !!$('smartDirectorEnabled')?.checked,
       directorBias: Number($('directorBiasSlider')?.value ?? state.directorBias ?? 0),
+      runtimeRulesEnabled: !!$('runtimeRulesEnabled')?.checked,
+      // Session mode preset id — bundles rules+triggers+safety overrides
+      activeSessionMode: state.activeSessionMode || 'standard',
+      // Playback dynamics — adaptive speech-rate modulation config
+      playbackDynamics: { ...PLAYBACK_DYNAMICS_DEFAULTS, ...(state.playbackDynamics || {}) },
+      // Safety layer — persist the whole config object so users get their tuned
+      // caps back across sessions. Only persist the fields we actually expose.
+      safetyConfig: { ...SAFETY_DEFAULTS, ...(state.safetyConfig || {}) },
       settingsVersion: 5,
     };
   }
@@ -3952,6 +5809,89 @@ I return to myself easily"></textarea>
       state.directorBias = s.directorBias ?? 0;
       const dbSlider = $('directorBiasSlider'); if (dbSlider) dbSlider.value = state.directorBias;
       _updateDirectorBiasUI(); // update label + enabled state
+      state.runtimeRulesEnabled = !!s.runtimeRulesEnabled;
+      const rrcb = $('runtimeRulesEnabled'); if (rrcb) rrcb.checked = state.runtimeRulesEnabled;
+      // Safety config — merge defaults with persisted overrides. Sanitizes via
+      // explicit field-by-field clamping so a corrupted persisted value can't
+      // override a hard limit (e.g. negative cooldown, NaN cap).
+      if (s.safetyConfig && typeof s.safetyConfig === 'object') {
+        const sc = s.safetyConfig;
+        state.safetyConfig = {
+          maxSpeechRate:        Number.isFinite(sc.maxSpeechRate)        ? Math.max(0.5, Math.min(2.0, sc.maxSpeechRate))      : SAFETY_DEFAULTS.maxSpeechRate,
+          minSpeechRate:        Number.isFinite(sc.minSpeechRate)        ? Math.max(0.5, Math.min(2.0, sc.minSpeechRate))      : SAFETY_DEFAULTS.minSpeechRate,
+          maxSoundscapeVolume:  Number.isFinite(sc.maxSoundscapeVolume)  ? Math.max(0.0, Math.min(1.0, sc.maxSoundscapeVolume)) : SAFETY_DEFAULTS.maxSoundscapeVolume,
+          emergencyCooldownSec: Number.isFinite(sc.emergencyCooldownSec) ? Math.max(0, Math.min(300, sc.emergencyCooldownSec)) : SAFETY_DEFAULTS.emergencyCooldownSec,
+          maxSessionMinutes:    Number.isFinite(sc.maxSessionMinutes)    ? Math.max(5, Math.min(180, sc.maxSessionMinutes))    : SAFETY_DEFAULTS.maxSessionMinutes,
+        };
+        // If min > max (corrupt or hand-edited), reset to defaults — a swapped
+        // pair would lock speech rate at the boundary instead of producing a range.
+        if (state.safetyConfig.minSpeechRate >= state.safetyConfig.maxSpeechRate) {
+          state.safetyConfig.minSpeechRate = SAFETY_DEFAULTS.minSpeechRate;
+          state.safetyConfig.maxSpeechRate = SAFETY_DEFAULTS.maxSpeechRate;
+        }
+      }
+      _renderSafetyPanel?.(); // refresh inputs if panel already exists in DOM
+      // Session mode — restore the user's last selection. Apply on load so rules + triggers
+      // + safety overrides all snap to the saved mode at startup. If the saved mode is unknown
+      // (e.g. mode list changed in a release), silently fall back to standard.
+      const savedMode = typeof s.activeSessionMode === 'string' ? s.activeSessionMode : 'standard';
+      const modeExists = SESSION_MODES.some(m => m.id === savedMode);
+      const finalMode = modeExists ? savedMode : 'standard';
+      const modeSel = $('sessionModeSelect'); if (modeSel) modeSel.value = finalMode;
+      // Apply silently — but don't notify on initial load (would be noise on every page load).
+      // Replicate applySessionMode's effects without the notify call.
+      const mode = SESSION_MODES.find(m => m.id === finalMode);
+      if (mode) {
+        state.activeSessionMode = mode.id;
+        if (mode.rules === null)    state.runtimeRules = null;
+        else                         state.runtimeRules = mode.rules.map(r => normalizeRule(r));
+        if (mode.triggers === null) state.runtimeTriggers = null;
+        else                         state.runtimeTriggers = mode.triggers.map(t => normalizeTrigger(t));
+        // Safety overrides applied AFTER the safetyConfig load above — mode wins on conflict.
+        if (mode.safetyOverrides) {
+          const cur = state.safetyConfig || { ...SAFETY_DEFAULTS };
+          const ov = mode.safetyOverrides;
+          state.safetyConfig = {
+            ...cur,
+            ...(Number.isFinite(ov.maxSpeechRate)        && { maxSpeechRate:        Math.max(0.5, Math.min(2.0, ov.maxSpeechRate)) }),
+            ...(Number.isFinite(ov.minSpeechRate)        && { minSpeechRate:        Math.max(0.5, Math.min(2.0, ov.minSpeechRate)) }),
+            ...(Number.isFinite(ov.maxSoundscapeVolume)  && { maxSoundscapeVolume:  Math.max(0.0, Math.min(1.0, ov.maxSoundscapeVolume)) }),
+            ...(Number.isFinite(ov.emergencyCooldownSec) && { emergencyCooldownSec: Math.max(0, Math.min(300, ov.emergencyCooldownSec)) }),
+            ...(Number.isFinite(ov.maxSessionMinutes)    && { maxSessionMinutes:    Math.max(5, Math.min(180, ov.maxSessionMinutes)) }),
+          };
+          _renderSafetyPanel?.();
+        }
+        // Description + icon refresh
+        const ic = $('sessionModeIcon');        if (ic) ic.textContent = mode.icon;
+        const dc = $('sessionModeDescription'); if (dc) dc.textContent = mode.description;
+      }
+      // Playback dynamics — restore saved config with field-by-field clamping
+      // so a corrupted persisted value can't bypass the intended ranges.
+      if (s.playbackDynamics && typeof s.playbackDynamics === 'object') {
+        const pd = s.playbackDynamics;
+        const validModes  = new Set(['time', 'engagement', 'adaptive']);
+        const validCurves = new Set(['linear', 'sine', 'exponential']);
+        state.playbackDynamics = {
+          enabled:        pd.enabled === true,
+          mode:           validModes.has(pd.mode) ? pd.mode : PLAYBACK_DYNAMICS_DEFAULTS.mode,
+          curve:          validCurves.has(pd.curve) ? pd.curve : PLAYBACK_DYNAMICS_DEFAULTS.curve,
+          startScale:     Number.isFinite(pd.startScale)    ? Math.max(0.5, Math.min(1.5, pd.startScale))    : PLAYBACK_DYNAMICS_DEFAULTS.startScale,
+          endScale:       Number.isFinite(pd.endScale)      ? Math.max(0.5, Math.min(1.5, pd.endScale))      : PLAYBACK_DYNAMICS_DEFAULTS.endScale,
+          engagementMin:  Number.isFinite(pd.engagementMin) ? Math.max(0.5, Math.min(1.5, pd.engagementMin)) : PLAYBACK_DYNAMICS_DEFAULTS.engagementMin,
+          engagementMax:  Number.isFinite(pd.engagementMax) ? Math.max(0.5, Math.min(1.5, pd.engagementMax)) : PLAYBACK_DYNAMICS_DEFAULTS.engagementMax,
+          smoothingSec:   Number.isFinite(pd.smoothingSec)  ? Math.max(1, Math.min(30, pd.smoothingSec))     : PLAYBACK_DYNAMICS_DEFAULTS.smoothingSec,
+        };
+        // Repair start/end inversion (would map intensity backward) and engagement floor/ceiling swap
+        if (state.playbackDynamics.startScale > state.playbackDynamics.endScale) {
+          state.playbackDynamics.startScale = PLAYBACK_DYNAMICS_DEFAULTS.startScale;
+          state.playbackDynamics.endScale   = PLAYBACK_DYNAMICS_DEFAULTS.endScale;
+        }
+        if (state.playbackDynamics.engagementMin > state.playbackDynamics.engagementMax) {
+          state.playbackDynamics.engagementMin = PLAYBACK_DYNAMICS_DEFAULTS.engagementMin;
+          state.playbackDynamics.engagementMax = PLAYBACK_DYNAMICS_DEFAULTS.engagementMax;
+        }
+        _renderPlaybackDynamicsPanel?.();
+      }
       applySavedVoiceSelection();
       updateVoiceInfo();
       return true;
@@ -5371,12 +7311,237 @@ I return to myself easily"></textarea>
     // Default: Perchance AI
     if (typeof root !== 'undefined' && root.aiTextPlugin) {
       try {
-        const data = await root.aiTextPlugin({ instruction, stopSequences: opts.stopSequences || ['\n\n\n'], hideStartWith: true, ...opts });
+        // Default stopSequences include both '\n\n\n' (paragraph triple-break)
+        // and '\n\n[[' as a defensive guard against chat-format bleed (the
+        // [[Speaker]]: pattern occasionally appears in model outputs even when
+        // we don't request it). Per the perchance-api skill checklist §14.
+        const data = await root.aiTextPlugin({ instruction, stopSequences: opts.stopSequences || ['\n\n\n', '\n\n[['], hideStartWith: true, ...opts });
         if (!data || data.stopReason === 'error') return asResult('', 'error', 'perchance ai error');
         return asResult(data.generatedText, data.stopReason, 'perchance empty');
       } catch (e) { console.warn('Perchance AI threw:', e); return asResult('', 'error', 'perchance threw'); }
     }
     return asResult('', 'error', 'no provider available');
+  }
+
+  // ====================================================================
+  // METRICS HISTORY — daily rolling aggregates
+  // ====================================================================
+  // Per-day session aggregates independent of the per-session log. Session
+  // log holds the last 50 sessions; this holds the last 180 calendar days
+  // with sessions grouped. Feeds Smart Director with time-series shape that
+  // memory digests don't have.
+  //
+  // DayMetric shape (one entry per calendar date):
+  //   {
+  //     date:                 'YYYY-MM-DD',
+  //     sessionCount:         n,
+  //     totalRuntimeSec:      n,
+  //     completedCount:       n,
+  //     interruptedCount:     n,
+  //     emergencyExitCount:   n,
+  //     intentionMix:         { sleep: n, calm: n, focus: n, ... },
+  //     methodMix:            { 'method-id': n, ... },
+  //     personaMix:           { 'persona-id': n, ... },
+  //     avgPostMood:          0..10 | null,
+  //     avgMoodDelta:         signed | null,
+  //     avgDepth:             1..10 | null,
+  //     // Transient accumulators (stripped on save, rebuilt from samples on load)
+  //     _moodSamples:         [n, ...],
+  //     _deltaSamples:        [n, ...],
+  //     _depthSamples:        [n, ...],
+  //     source:               'app' | 'app+import:<n>'
+  //   }
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio — js/metrics-history.js
+  // ====================================================================
+  const METRICS_HISTORY_KEY     = 'hne_metrics_history_v1';
+  const METRICS_RETAIN_DAYS     = 180;
+
+  let _metricsDays = null; // DayMetric[] sorted newest-first once loaded
+  const metricsHistoryReady = (async () => {
+    try { _metricsDays = (await idbGet(METRICS_HISTORY_KEY)) || []; }
+    catch { _metricsDays = []; }
+    if (!Array.isArray(_metricsDays)) _metricsDays = [];
+  })();
+
+  function _metricsDateStr(ts) {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function _metricsEmptyDay(date, source = 'app') {
+    return {
+      date, source,
+      sessionCount:        0,
+      totalRuntimeSec:     0,
+      completedCount:      0,
+      interruptedCount:    0,
+      emergencyExitCount:  0,
+      intentionMix:        {},
+      methodMix:           {},
+      personaMix:          {},
+      avgPostMood:         null,
+      avgMoodDelta:        null,
+      avgDepth:            null,
+      _moodSamples:        [],
+      _deltaSamples:       [],
+      _depthSamples:       [],
+    };
+  }
+
+  async function _saveMetricsHistory() {
+    if (!_metricsDays) return;
+    // Prune entries older than retainDays from the live cache too —
+    // safe because old days' transient accumulators carry no future value.
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - METRICS_RETAIN_DAYS);
+    const cutStr = _metricsDateStr(cutoff);
+    _metricsDays = _metricsDays.filter(d => d.date >= cutStr);
+    // Strip transient accumulator fields for the IDB payload.
+    // Keep them in-memory so further same-day sessions can extend averages
+    // accurately without restarting from scratch.
+    const forStorage = _metricsDays.map(({ _moodSamples, _deltaSamples, _depthSamples, ...d }) => d);
+    try { await idbSet(METRICS_HISTORY_KEY, forStorage); } catch {}
+  }
+
+  /**
+   * Record a finished session into the day's aggregate. Called from finishSession.
+   * Idempotent on repeat calls for the same record only if id is supplied —
+   * but we don't bother with dedupe since finishSession is the single caller.
+   */
+  async function recordSessionInMetricsHistory(record, completionState) {
+    await metricsHistoryReady;
+    if (!record || !_metricsDays) return;
+    const date = _metricsDateStr(record.date || Date.now());
+    let day = _metricsDays.find(d => d.date === date);
+    if (!day) {
+      day = _metricsEmptyDay(date, 'app');
+      _metricsDays.unshift(day);
+    }
+    // Defensive: rebuild transient arrays if the day was loaded from disk
+    // (where they were stripped). Future same-day sessions get accurate
+    // running averages even after a page reload mid-day.
+    if (!day._moodSamples)  day._moodSamples  = day.avgPostMood  != null ? [day.avgPostMood]  : [];
+    if (!day._deltaSamples) day._deltaSamples = day.avgMoodDelta != null ? [day.avgMoodDelta] : [];
+    if (!day._depthSamples) day._depthSamples = day.avgDepth     != null ? [day.avgDepth]     : [];
+
+    day.sessionCount++;
+    day.totalRuntimeSec += record.durationSec || 0;
+
+    if (completionState === 'completed')           day.completedCount++;
+    else if (completionState === 'emergency')      day.emergencyExitCount++;
+    else                                           day.interruptedCount++;
+
+    // Mix counters — keys come from the session record verbatim
+    if (record.intention)       day.intentionMix[record.intention]   = (day.intentionMix[record.intention]   || 0) + 1;
+    if (record.methodId)        day.methodMix[record.methodId]       = (day.methodMix[record.methodId]      || 0) + 1;
+    if (record.personaId)       day.personaMix[record.personaId]     = (day.personaMix[record.personaId]    || 0) + 1;
+
+    // Post-mood / depth may be null at session-end (only set after post-checkin).
+    // updateMetricsHistoryWithPostCheckin() patches these later if available.
+    if (Number.isFinite(record.postMood)) {
+      day._moodSamples.push(record.postMood);
+      day.avgPostMood = +(day._moodSamples.reduce((a,b)=>a+b,0) / day._moodSamples.length).toFixed(2);
+      if (Number.isFinite(record.preMood)) {
+        const delta = record.postMood - record.preMood;
+        day._deltaSamples.push(delta);
+        day.avgMoodDelta = +(day._deltaSamples.reduce((a,b)=>a+b,0) / day._deltaSamples.length).toFixed(2);
+      }
+    }
+    if (Number.isFinite(record.depth)) {
+      day._depthSamples.push(record.depth);
+      day.avgDepth = +(day._depthSamples.reduce((a,b)=>a+b,0) / day._depthSamples.length).toFixed(2);
+    }
+
+    await _saveMetricsHistory();
+  }
+
+  /**
+   * Patch today's metric with post-checkin data. Called when the user submits
+   * the post-screen mood + depth check-in. Adds to the day's running averages
+   * (the session was already counted at finishSession time, this just enriches
+   * the per-day stats with the post-checkin signals).
+   */
+  async function updateMetricsHistoryWithPostCheckin({ postMood, preMood, depth }) {
+    await metricsHistoryReady;
+    if (!_metricsDays || !_metricsDays.length) return;
+    const today = _metricsDateStr(Date.now());
+    const day = _metricsDays.find(d => d.date === today);
+    if (!day) return;
+    // Guard against the same post-checkin being submitted twice (the slider's
+    // input event can fire on a draft change AND a final value). We only add
+    // one sample per call — duplicates within a session will inflate the
+    // running average toward the latest value, which is fine.
+    if (!day._moodSamples)  day._moodSamples  = [];
+    if (!day._deltaSamples) day._deltaSamples = [];
+    if (!day._depthSamples) day._depthSamples = [];
+    if (Number.isFinite(postMood)) {
+      day._moodSamples.push(postMood);
+      day.avgPostMood = +(day._moodSamples.reduce((a,b)=>a+b,0) / day._moodSamples.length).toFixed(2);
+      if (Number.isFinite(preMood)) {
+        const delta = postMood - preMood;
+        day._deltaSamples.push(delta);
+        day.avgMoodDelta = +(day._deltaSamples.reduce((a,b)=>a+b,0) / day._deltaSamples.length).toFixed(2);
+      }
+    }
+    if (Number.isFinite(depth)) {
+      day._depthSamples.push(depth);
+      day.avgDepth = +(day._depthSamples.reduce((a,b)=>a+b,0) / day._depthSamples.length).toFixed(2);
+    }
+    await _saveMetricsHistory();
+  }
+
+  /** Returns DayMetric[] newest-first, capped to maxDays days. */
+  async function getDailyMetricsHistory(maxDays = METRICS_RETAIN_DAYS) {
+    await metricsHistoryReady;
+    return (_metricsDays || []).slice(0, maxDays);
+  }
+
+  /** Compute trend signals from recent days for the Smart Director.
+   *  Returns null when there's not enough data for any signal to be meaningful. */
+  async function getMetricsTrendSummary(opts = {}) {
+    const windowDays = opts.windowDays || 7;
+    const compareDays = opts.compareDays || 14;
+    const days = await getDailyMetricsHistory(windowDays + compareDays);
+    if (days.length < 3) return null;
+    const recent = days.slice(0, windowDays);
+    const prior  = days.slice(windowDays, windowDays + compareDays);
+
+    const sum = (arr, key) => arr.reduce((a, d) => a + (d[key] || 0), 0);
+    const avgNonNull = (arr, key) => {
+      const vals = arr.map(d => d[key]).filter(v => Number.isFinite(v));
+      return vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
+    };
+
+    const recentSessions  = sum(recent, 'sessionCount');
+    const recentCompleted = sum(recent, 'completedCount');
+    const priorSessions   = sum(prior, 'sessionCount');
+    const priorCompleted  = sum(prior, 'completedCount');
+
+    if (recentSessions === 0) return null;
+
+    const recentCompletionRate = recentSessions ? recentCompleted / recentSessions : null;
+    const priorCompletionRate  = priorSessions  ? priorCompleted  / priorSessions  : null;
+    const completionDelta = (recentCompletionRate != null && priorCompletionRate != null)
+      ? recentCompletionRate - priorCompletionRate
+      : null;
+
+    return {
+      windowDays,
+      recentSessionCount:  recentSessions,
+      recentCompletionRate,
+      completionDelta,
+      avgPostMood:    avgNonNull(recent, 'avgPostMood'),
+      avgMoodDelta:   avgNonNull(recent, 'avgMoodDelta'),
+      avgDepth:       avgNonNull(recent, 'avgDepth'),
+      avgRuntimeSec:  recentSessions ? sum(recent, 'totalRuntimeSec') / recentSessions : null,
+    };
+  }
+
+  /** Wipe metrics history (linked from the existing Profile reset path) */
+  async function clearMetricsHistory() {
+    _metricsDays = [];
+    try { await idbDel(METRICS_HISTORY_KEY); } catch {}
   }
 
   // ====================================================================
@@ -5657,8 +7822,56 @@ Practitioner profile (full, natural sentences):`;
     const p = getPersona();
     const el = $('personaDetail');
     if (!p) { el.innerHTML = ''; return; }
-    el.innerHTML = `<div class="detail-title">${escapeHtml(p.name)}</div><div>${escapeHtml(p.systemPrompt)}</div>`;
+    // Build base structure first; then async-fill the portrait region. The
+    // portrait box exists either way — empty placeholder while loading,
+    // image once cached, "generate" button if neither.
+    el.innerHTML = `<div class="persona-detail-row" style="display:flex;gap:14px;align-items:flex-start;">
+      <div id="personaPortraitBox" data-persona-id="${escapeHtml(p.id)}" style="flex:0 0 96px;width:96px;height:96px;border-radius:8px;background:var(--glass);border:1px solid var(--glass-border);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;">
+        <span class="persona-portrait-placeholder" style="font-size:0.62rem;color:var(--text-faint);text-align:center;line-height:1.4;padding:6px;">no portrait yet</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div class="detail-title">${escapeHtml(p.name)}</div>
+        <div>${escapeHtml(p.systemPrompt)}</div>
+        <button id="generatePortraitBtn" class="preview-btn" style="margin-top:8px;font-size:0.7rem;padding:3px 10px;">🎨 generate portrait</button>
+      </div>
+    </div>`;
+    // Async load cached portrait if available (no API call — IDB lookup only)
+    _hydratePersonaPortrait(p.id);
+    // Wire the generate button — fires async generation, swaps placeholder for image
+    $('generatePortraitBtn')?.addEventListener('click', async () => {
+      const btn = $('generatePortraitBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ generating…'; }
+      const url = await generatePersonaPortrait(p);
+      if (btn) { btn.disabled = false; btn.textContent = url ? '🔄 regenerate portrait' : '🎨 generate portrait'; }
+      if (url) _setPortraitImage(url, p.id);
+    });
   }
+
+  /** Look up cached portrait for a persona and inject it into the detail panel
+   *  if found. Does nothing if no portrait is cached or if the panel isn't
+   *  showing this persona anymore (e.g. user clicked another persona during load). */
+  async function _hydratePersonaPortrait(personaId) {
+    const url = await personaPortraitGet(personaId);
+    if (!url) return;
+    _setPortraitImage(url, personaId);
+    // Update the button label to reflect that a portrait already exists
+    const btn = $('generatePortraitBtn');
+    if (btn) btn.textContent = '🔄 regenerate portrait';
+  }
+
+  /** Replace the placeholder in #personaPortraitBox with an <img> for the URL.
+   *  Skips the swap if the box now belongs to a different persona (race guard). */
+  function _setPortraitImage(url, expectedPersonaId) {
+    const box = $('personaPortraitBox');
+    if (!box) return;
+    if (expectedPersonaId && box.dataset.personaId !== expectedPersonaId) {
+      // Persona changed during async generation — revoke and bail
+      URL.revokeObjectURL(url);
+      return;
+    }
+    box.innerHTML = `<img src="${url}" alt="portrait" style="width:100%;height:100%;object-fit:cover;">`;
+  }
+
   function renderMethodGrid() {
     const grid = $('methodGrid');
     grid.innerHTML = '';
@@ -6856,6 +9069,116 @@ Practitioner profile (full, natural sentences):`;
     a.download = id + '.png';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  // ====================================================================
+  // PERSONA PORTRAITS — generated, cached portraits per persona
+  // ====================================================================
+  // Each persona can have an optional generated portrait, stored as a blob
+  // in IDB under `persona_portrait_<id>`. Generated on demand via the
+  // existing textToImagePlugin (same one used for backgrounds), so requires
+  // the plugin to be loaded — non-Perchance hosts get a graceful no-op.
+  //
+  // Generation is MANUAL — triggered by a button in the persona editor or
+  // detail panel — to avoid surprise API costs. Once cached, portraits
+  // persist forever (until manually regenerated or persona deleted).
+  // No automatic background generation.
+  //
+  // Resolves "Persona portraits" sub-item of #7 textToImagePlugin extensions.
+  // Reuses the bgCache pattern: blob stored at predictable IDB key, lookup
+  // returns objectURL on demand.
+  // ====================================================================
+  const PORTRAIT_KEY = id => 'persona_portrait_' + id;
+
+  // Style hints by persona category — feed into the prompt to give each
+  // category its own visual language. Empty string = no hint (use base only).
+  const PORTRAIT_STYLE_BY_CATEGORY = {
+    contemplative: 'soft watercolor wash, muted blue-gray palette, gentle indirect lighting, calm contemplative expression',
+    showman:       'theatrical lighting with warm rim glow, confident charismatic expression, slightly dramatic angle',
+    somatic:       'soft body-aware silhouette, organic flowing forms, warm earth tones, grounded presence',
+    authoritarian: 'high contrast charcoal sketch, formal upright pose, focused steady gaze, monochromatic',
+  };
+  const PORTRAIT_NEGATIVE = 'text, watermark, logo, signature, nsfw, multiple faces, distorted face, anatomical errors, low quality, blurry, deformed, nudity';
+
+  /** Build a portrait prompt from persona metadata. Combines the name + tagline
+   *  + category-specific style hint into a stylized half-body portrait prompt. */
+  function _buildPortraitPrompt(persona) {
+    const styleHint = PORTRAIT_STYLE_BY_CATEGORY[persona.category] || PORTRAIT_STYLE_BY_CATEGORY.contemplative;
+    // Sanitize tagline — strip parens like "(custom)" that aren't visual cues
+    const tagline = (persona.tagline || '').replace(/\([^)]*\)/g, '').trim() || 'a hypnotic guide';
+    return `stylized minimal half-body portrait illustration, ${tagline}, ${styleHint}, soft glowing background, looking ahead with serene focus, ethereal mood, fine art illustration, no background text, no signature`;
+  }
+
+  /** Get cached portrait URL for a persona, or null if not cached.
+   *  Returns objectURL — caller is responsible for revoking when done. */
+  async function personaPortraitGet(personaId) {
+    try {
+      const blob = await idbGet(PORTRAIT_KEY(personaId));
+      return blob ? URL.createObjectURL(blob) : null;
+    } catch { return null; }
+  }
+
+  /** Cache a portrait blob for a persona. Overwrites any existing portrait. */
+  async function personaPortraitSet(personaId, blob) {
+    await idbSet(PORTRAIT_KEY(personaId), blob);
+  }
+
+  /** Delete a cached portrait. Called when a persona is deleted. */
+  async function personaPortraitDelete(personaId) {
+    await idbDel(PORTRAIT_KEY(personaId));
+  }
+
+  /** Generate a portrait for a persona. Async — caller awaits the objectURL.
+   *  Returns null if the plugin is unavailable, opt-in is off, or generation
+   *  fails. Notifies the user on each outcome so they understand what happened.
+   *  Per-persona dedup: if a generation is already running for this persona,
+   *  returns the existing promise rather than starting a second call. */
+  const _portraitInflight = new Map(); // personaId → Promise<URL|null>
+  async function generatePersonaPortrait(persona) {
+    if (!persona || !persona.id) return null;
+    // Dedup: in-flight call for the same persona returns the existing promise
+    if (_portraitInflight.has(persona.id)) return _portraitInflight.get(persona.id);
+
+    if (typeof root === 'undefined' || !root.textToImagePlugin) {
+      notify.warn('Image plugin unavailable — portraits require Perchance hosting.');
+      return null;
+    }
+    if (!state.remoteProcessingOptIn) {
+      notify.warn('Portraits require remote processing opt-in (in Options).');
+      return null;
+    }
+
+    const promise = (async () => {
+      try {
+        const prompt = _buildPortraitPrompt(persona);
+        const result = await root.textToImagePlugin({
+          prompt,
+          negativePrompt: PORTRAIT_NEGATIVE,
+          negative:       PORTRAIT_NEGATIVE,
+          guidanceScale:  7.5,
+          numInferenceSteps: 25,
+          steps:             25,
+          seed: Math.floor(Math.random() * 2147483647), // fresh seed each generation
+        });
+        const dataUrl = result?.dataUrl || String(result || '');
+        if (!dataUrl || !dataUrl.startsWith('data:')) {
+          notify.warn(`Portrait generation returned no image for ${persona.name}.`);
+          return null;
+        }
+        const blob = await fetch(dataUrl).then(r => r.blob());
+        await personaPortraitSet(persona.id, blob);
+        notify.success(`Portrait generated for ${persona.name}.`);
+        return URL.createObjectURL(blob);
+      } catch (e) {
+        console.warn('[persona portrait] generation failed:', e);
+        notify.error('Portrait generation failed — see console.');
+        return null;
+      } finally {
+        _portraitInflight.delete(persona.id);
+      }
+    })();
+    _portraitInflight.set(persona.id, promise);
+    return promise;
   }
 
   async function renderBgGallery() {
@@ -8118,6 +10441,8 @@ Practitioner profile (full, natural sentences):`;
     if (!await confirmAsync('Delete this persona?')) return;
     saveCustomPersonas(loadCustomPersonas().filter(p => p.id !== id));
     if (state.selectedPersonaId === id) state.selectedPersonaId = 'driver';
+    // Drop the cached portrait too — orphan blobs would just bloat IDB
+    personaPortraitDelete(id).catch(() => {});
     refreshPersonas(); renderPersonaGrid(); renderPersonaDetail();
   }
 
@@ -8602,6 +10927,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       if (!await confirmAsync('Your manual edits to the script will be discarded. Regenerate anyway?')) return;
     }
     _aiInProgress = true;
+    history.clear(); // fresh generation invalidates prior edit history
     const persona = getPersona();
     const method = getMethod();
     const durations = PHASE_DURATIONS[state.length];
@@ -8680,6 +11006,36 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       } catch (e) { console.warn('Memory context build failed:', e); }
     } else { sdLog('memoryCtx skipped — Smart Director off'); }
 
+    // Metrics trends — multi-day rolling aggregates that give the director
+    // time-series shape (completion-rate trends, mood deltas) over the recent
+    // 7-day window. Short block, priority 3 alongside director brief.
+    let metricsTrendCtx = '';
+    if (sdOn) {
+      try {
+        const trend = await getMetricsTrendSummary({ windowDays: 7, compareDays: 14 });
+        if (trend && trend.recentSessionCount >= 2) {
+          const bits = [];
+          bits.push(`${trend.recentSessionCount} session${trend.recentSessionCount===1?'':'s'} in last ${trend.windowDays} days`);
+          if (trend.recentCompletionRate != null) {
+            bits.push(`${Math.round(trend.recentCompletionRate * 100)}% completion`);
+          }
+          if (Number.isFinite(trend.completionDelta) && Math.abs(trend.completionDelta) >= 0.15) {
+            bits.push(trend.completionDelta > 0
+              ? `up ${Math.round(trend.completionDelta * 100)}pts vs prior 14d`
+              : `down ${Math.round(-trend.completionDelta * 100)}pts vs prior 14d`);
+          }
+          if (Number.isFinite(trend.avgMoodDelta)) {
+            bits.push(`avg mood Δ ${trend.avgMoodDelta >= 0 ? '+' : ''}${trend.avgMoodDelta.toFixed(1)}`);
+          }
+          if (Number.isFinite(trend.avgDepth)) {
+            bits.push(`avg self-reported depth ${trend.avgDepth.toFixed(1)}/10`);
+          }
+          metricsTrendCtx = '\nRECENT TRENDS: ' + bits.join(' · ') + '. Adjust pacing or intensity if completion or mood is trending down.';
+          sdLog('metricsTrendCtx built', trend);
+        }
+      } catch (e) { console.warn('Metrics trend build failed:', e); }
+    } else { sdLog('metricsTrendCtx skipped — Smart Director off'); }
+
     // Build sharedContext under a token budget — priority order
     // determines what gets dropped first if the user has a huge profile +
     // long memory + many affirmations.
@@ -8692,6 +11048,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
       { name: 'demoNote',   text: demoNote,          priority: 4 },
       { name: 'director',   text: directorBriefCtx,  priority: 3 }, // short, actionable, high-value
       { name: 'profile',    text: profileCtx,        priority: 3 },
+      { name: 'metrics',    text: metricsTrendCtx,   priority: 3 }, // recent-day trend signals
       { name: 'freshSeeds', text: freshBlock,        priority: 2 }, // optional anchors — drops before adaptive
       { name: 'adaptive',   text: adaptiveCtx,       priority: 2 },
       { name: 'memory',     text: memoryCtx,         priority: 1 }, // first to drop
@@ -8923,6 +11280,239 @@ ${gs.phaseResults[p]}
     return { words, pauses, pauseSecs, phaseCount, workBlocks, affirmBlocks, estimatedMin, ordered: parsed.ordered || [] };
   }
 
+  // ====================================================================
+  // SESSION DIAGNOSTICS — pre-flight structural analysis
+  // ====================================================================
+  // Heuristic checks that surface tips, warnings, and structural issues
+  // BEFORE the user starts a session. Complements validateSessionSafety()
+  // (which gates startSession and blocks on critical gaps) — diagnostics
+  // shows the user the issues earlier so they can fix them proactively.
+  //
+  // Each suggestion: { id, severity, title, detail, action? }
+  //   severity: 'info' | 'warn' | 'error'
+  //   action:   optional { label, fn } — button in the suggestion card
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio — js/suggestions.js
+  // ====================================================================
+
+  function analyzeSessionScript() {
+    const suggestions = [];
+    const hasScript = !!state.fullScript;
+
+    // No script yet — just a gentle nudge
+    if (!hasScript) {
+      suggestions.push({
+        id: 'no_script',
+        severity: 'info',
+        title: 'No script generated yet',
+        detail: 'Configure your session above, then click "generate full script" to produce the per-phase narration. You can also paste a custom script directly into the text area.',
+      });
+      return suggestions;
+    }
+
+    const metrics = getScriptMetrics(state.fullScript);
+    const sections = getScriptSectionsFromState();
+    const isSleep = state.intentionType === 'sleep';
+
+    // ── Structural safety (aligns with validateSessionSafety — surfaces the
+    //    same concerns as the startSession gate, but earlier and fixable) ───
+    const has = (base) => sections.some(s => phaseBase(s.phaseId) === base);
+    const missingFinishers = [];
+    if (!isSleep) {
+      if (!has('lightener'))      missingFinishers.push('Lightener');
+      if (!has('wake'))           missingFinishers.push('Wake');
+      if (!has('reintroduction')) missingFinishers.push('Reintroduction');
+    }
+    if (missingFinishers.length) {
+      suggestions.push({
+        id: 'missing_finishers',
+        severity: 'error',
+        title: `Missing: ${missingFinishers.join(', ')}`,
+        detail: 'Without these phases the session ends in trance. Add the missing phases from the buttons above. (Sleep-intention sessions skip this requirement.)',
+        action: {
+          label: 'Add missing phases',
+          fn: () => { missingFinishers.forEach(m => addPhaseSection(m.toLowerCase())); },
+        },
+      });
+    }
+
+    const deepenerCount = sections.filter(s => phaseBase(s.phaseId) === 'deepener').length;
+    const lightenerCount = sections.filter(s => phaseBase(s.phaseId) === 'lightener').length;
+    if (!isSleep && deepenerCount !== lightenerCount) {
+      const diff = deepenerCount - lightenerCount;
+      suggestions.push({
+        id: 'unbalanced_deepener',
+        severity: 'error',
+        title: 'Unbalanced Deepener / Lightener pairs',
+        detail: diff > 0
+          ? `${deepenerCount} Deepener${deepenerCount>1?'s':''} but only ${lightenerCount} Lightener${lightenerCount===1?'':'s'} — you will go deeper than you return. Add ${Math.abs(diff)} Lightener${Math.abs(diff)>1?'s':''} or remove extra Deepener${diff>1?'s':''}.`
+          : `${lightenerCount} Lightener${lightenerCount>1?'s':''} without matching Deepeners (${deepenerCount}). Structurally inconsistent — remove ${Math.abs(diff)} Lightener${Math.abs(diff)>1?'s':''} or add matching Deepener${Math.abs(diff)>1?'s':''}.`,
+      });
+    }
+
+    // ── Work section balance ────────────────────────────────────────────────
+    if (metrics.workBlocks === 0) {
+      suggestions.push({
+        id: 'no_work_blocks',
+        severity: 'info',
+        title: 'Session has no Work blocks',
+        detail: 'Work blocks are where the therapeutic content lives. Without any, the session is essentially just an induction + wake cycle with no content between.',
+      });
+    } else {
+      // Sum spoken words per phase kind to assess proportions
+      const wordsPerPhase = {};
+      sections.forEach(s => {
+        const base = phaseBase(s.phaseId);
+        const wordCount = String(s.text || '').replace(/\x5BPAUSE\s+\d+\x5D/gi, ' ').split(/\s+/).filter(w => w.length > 0).length;
+        wordsPerPhase[base] = (wordsPerPhase[base] || 0) + wordCount;
+      });
+      const totalWords = Object.values(wordsPerPhase).reduce((a, b) => a + b, 0);
+      if (totalWords > 50) {
+        const workPct = (wordsPerPhase.work || 0) / totalWords;
+        if (workPct > 0.75) {
+          suggestions.push({
+            id: 'work_dominates',
+            severity: 'warn',
+            title: 'Work section is ' + Math.round(workPct * 100) + '% of session',
+            detail: 'The work section dominates the session. Consider shorter Work blocks, more Settling/Induction time, or a longer Lightener to improve the arc. Sessions that are nearly all Work can feel front-loaded.',
+          });
+        }
+        const settlingWords = wordsPerPhase.settling || 0;
+        if (metrics.estimatedMin >= 10 && totalWords > 0 && settlingWords / totalWords < 0.05) {
+          suggestions.push({
+            id: 'settling_too_short',
+            severity: 'info',
+            title: 'Settling phase feels brief',
+            detail: `Settling is under 5% of the total for a ${metrics.estimatedMin}-minute session. Longer settling (8–12%) gives the user time to arrive before the induction starts.`,
+          });
+        }
+      }
+    }
+
+    // ── Affirmations cross-check ─────────────────────────────────────────────
+    const hasAffirmToken = /\{\{affirmation\}\}/i.test(state.fullScript || '');
+    const hasAffirmPhase = sections.some(s => phaseBase(s.phaseId) === 'affirm');
+    const userAffirmRaw = $('userAffirmations')?.value?.trim();
+    const userAffirmCount = userAffirmRaw ? userAffirmRaw.split('\n').filter(l => l.trim()).length : 0;
+
+    if ((hasAffirmToken || hasAffirmPhase) && userAffirmCount === 0) {
+      suggestions.push({
+        id: 'affirmations_missing',
+        severity: 'warn',
+        title: 'Affirmations referenced but none defined',
+        detail: hasAffirmToken
+          ? 'The script uses {{affirmation}} tokens but no user affirmations are defined. Tokens will resolve to a generic fallback. Add personal affirmations in the Affirmations step for a more powerful session.'
+          : 'The session includes Affirmation phases but no user affirmations are defined. The affirmation interludes will generate generic content. Add personal affirmations in the Affirmations step.',
+      });
+    }
+
+    // ── Empty phase text ────────────────────────────────────────────────────
+    const emptyPhases = sections.filter(s => !s.text || s.text.trim().length < 30);
+    if (emptyPhases.length) {
+      const labels = emptyPhases.map(s => getPhaseLabel(s.phaseId)).slice(0, 3).join(', ');
+      const more = emptyPhases.length > 3 ? ` (+${emptyPhases.length - 3} more)` : '';
+      suggestions.push({
+        id: 'empty_phases',
+        severity: 'warn',
+        title: `${emptyPhases.length} phase${emptyPhases.length>1?'s have':' has'} little or no content`,
+        detail: `${labels}${more} — ${emptyPhases.length>1?'each has':'it has'} fewer than 30 characters of script text. Regenerate ${emptyPhases.length>1?'these phases':'this phase'} or edit manually before starting.`,
+      });
+    }
+
+    // ── Runtime extremes ────────────────────────────────────────────────────
+    if (metrics.estimatedMin >= 45) {
+      suggestions.push({
+        id: 'session_very_long',
+        severity: 'info',
+        title: `Estimated runtime is ${metrics.estimatedMin} minutes`,
+        detail: 'Sessions over 45 minutes can be hard to stay engaged with, especially for less-experienced practitioners. Consider trimming Work blocks or reducing pause durations if this feels long.',
+      });
+    } else if (metrics.estimatedMin < 5 && metrics.estimatedMin > 0) {
+      suggestions.push({
+        id: 'session_very_short',
+        severity: 'info',
+        title: `Estimated runtime is only ${metrics.estimatedMin} minute${metrics.estimatedMin===1?'':'s'}`,
+        detail: 'Very short sessions leave little room for actual trance. Consider a longer session length or adding more phases.',
+      });
+    }
+
+    // ── Fractionation attempt (currently blocked at add-time, but detect
+    //    anyway in case a script was pasted or imported with multiple Inductions) ─
+    const inductionCount = sections.filter(s => phaseBase(s.phaseId) === 'induction').length;
+    if (inductionCount > 1) {
+      suggestions.push({
+        id: 'multi_induction',
+        severity: 'warn',
+        title: 'Multiple Induction phases detected',
+        detail: `The session has ${inductionCount} Induction phases. Fractionation (multi-induction cycles) is not fully supported yet — the session will play but structural tooling treats later inductions as unusual. Use nested Deepeners for progressive deepening within one cycle.`,
+      });
+    }
+
+    // ── Positive: session looks complete ─────────────────────────────────────
+    if (!suggestions.length) {
+      suggestions.push({
+        id: 'all_good',
+        severity: 'info',
+        title: 'Session looks good',
+        detail: `~${metrics.estimatedMin} min · ${metrics.phaseCount} phases · ${metrics.workBlocks} work block${metrics.workBlocks===1?'':'s'}. No structural issues detected — ready to start.`,
+      });
+    }
+
+    return suggestions;
+  }
+
+  function renderSessionDiagnostics() {
+    const panel = $('sessionDiagnosticsPanel');
+    const list = $('sessionDiagnosticsList');
+    if (!panel || !list) return;
+    // Hide if no script preview is visible — diagnostics are only useful in Step 4
+    if (!$('scriptPreview')?.classList.contains('visible')) {
+      panel.style.display = 'none';
+      return;
+    }
+    const suggestions = analyzeSessionScript();
+    if (!suggestions.length) { panel.style.display = 'none'; return; }
+    panel.style.display = 'block';
+
+    const ICONS = { info: 'ℹ', warn: '⚠', error: '✕' };
+    const COLORS = {
+      info:  { icon: 'var(--text-dim)',    bg: 'rgba(120,180,240,0.06)', border: 'rgba(120,180,240,0.2)' },
+      warn:  { icon: 'var(--neon-amber)',  bg: 'rgba(255,179,0,0.08)',   border: 'rgba(255,179,0,0.3)'  },
+      error: { icon: '#ff6b6b',            bg: 'rgba(255,107,107,0.08)', border: 'rgba(255,107,107,0.3)' },
+    };
+    const _esc = (s) => String(s).replace(/[<>&"']/g, c => ({ '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":'&#39;' }[c]));
+
+    list.innerHTML = suggestions.map(s => {
+      const c = COLORS[s.severity] || COLORS.info;
+      const actionHtml = s.action
+        ? `<button class="diag-action" data-diag-id="${_esc(s.id)}" style="margin-top:6px;padding:4px 10px;font-size:0.7rem;border:0.5px solid ${c.border};border-radius:4px;background:transparent;color:${c.icon};cursor:pointer;">${_esc(s.action.label)}</button>`
+        : '';
+      return `<div class="diag-card" style="border:0.5px solid ${c.border};background:${c.bg};border-radius:5px;padding:8px 10px;margin-bottom:6px;">
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          <span style="color:${c.icon};font-size:0.85rem;flex-shrink:0;margin-top:1px;font-weight:600;">${ICONS[s.severity]}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.78rem;font-weight:500;color:var(--text);margin-bottom:3px;">${_esc(s.title)}</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);line-height:1.55;">${_esc(s.detail)}</div>
+            ${actionHtml}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Bind action buttons. Need to close over the captured suggestion since the
+    // `action.fn` may reference state or DOM that will change after re-render.
+    list.querySelectorAll('.diag-action').forEach(btn => {
+      const id = btn.dataset.diagId;
+      const s = suggestions.find(x => x.id === id);
+      if (s?.action?.fn) {
+        btn.addEventListener('click', () => {
+          s.action.fn();
+          renderSessionDiagnostics(); // refresh after action applied
+        });
+      }
+    });
+  }
+
   function normalizePhaseSections(sections) {
     const cleaned = (sections || []).filter(s => s && s.text && s.text.trim()).map(s => ({ ...s, text: s.text.trim() }));
     let workIdx = 0;
@@ -8951,6 +11541,150 @@ ${gs.phaseResults[p]}
     const sections = getScriptSectionsFromState();
     return sections.map(s => stripLeadingPhaseHeader(s.text, s.phaseId).trim()).filter(Boolean).join('\n\n');
   }
+
+  // ====================================================================
+  // UNDO / REDO — phase-editor snapshot stack
+  // ====================================================================
+  // Snapshot-based undo for the phase editor. Each mutating operation
+  // (add, remove, move, reset, textarea edit) pushes the current state
+  // BEFORE mutating. Undo pops the past stack (pushing the current state
+  // to future). Redo reverses.
+  //
+  // Snapshot contains all four derived fields (scriptSections is the
+  // source of truth, but parsedScript + fullScript + generatedPhaseOrder
+  // can diverge from it during textarea edits, so all four are saved).
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio — js/history.js
+  // ====================================================================
+  const HISTORY_MAX = 60;
+  const _historyPast   = [];
+  const _historyFuture = [];
+  let _historyOnChange = null;
+  let _historyPushDebounce = null;
+  let _historyPushDebouncePending = null;
+
+  function _historySnapshot() {
+    return JSON.stringify({
+      scriptSections:      state.scriptSections || [],
+      generatedPhaseOrder: state.generatedPhaseOrder || [],
+      fullScript:          state.fullScript || null,
+      parsedScript:        state.parsedScript || null,
+    });
+  }
+
+  function _historyApply(json) {
+    try {
+      const snap = JSON.parse(json);
+      state.scriptSections      = snap.scriptSections      || [];
+      state.generatedPhaseOrder = snap.generatedPhaseOrder || [];
+      state.fullScript          = snap.fullScript;
+      state.parsedScript        = snap.parsedScript;
+      // Re-render the visible UI from the restored state
+      if (state.fullScript != null) {
+        const el = $('scriptText'); if (el) el.value = state.fullScript;
+        showScript();
+      } else {
+        const el = $('scriptText'); if (el) el.value = '';
+        $('scriptPreview')?.classList.remove('visible');
+        renderPhaseEditor();
+      }
+      updateStepUI();
+      syncGenStateWithPhases();
+      _historyNotify();
+    } catch (e) {
+      console.warn('[history] apply snapshot failed:', e);
+    }
+  }
+
+  function _historyNotify() {
+    const ub = $('undoBtn'); if (ub) ub.disabled = !history.canUndo();
+    const rb = $('redoBtn'); if (rb) rb.disabled = !history.canRedo();
+    _historyOnChange?.();
+  }
+
+  const history = {
+    onchange(fn) { _historyOnChange = fn; },
+    push() {
+      _historyPast.push(_historySnapshot());
+      if (_historyPast.length > HISTORY_MAX) _historyPast.shift();
+      _historyFuture.length = 0;
+      _historyNotify();
+    },
+    /**
+     * Transactional checkpoint for guarded mutations. Capture pre-state at
+     * the top of a mutator; return a `commit()` closure. Call commit() after
+     * mutation. If the state didn't change between begin and commit (guard
+     * returned early, idempotent operation), commit is a no-op. Usage:
+     *
+     *   function addFoo() {
+     *     const commit = history.beginChange();
+     *     if (bailOut) return;
+     *     ... mutate ...
+     *     commit();
+     *   }
+     */
+    beginChange() {
+      const before = _historySnapshot();
+      let committed = false;
+      return () => {
+        if (committed) return;
+        committed = true;
+        if (_historySnapshot() === before) return; // no change — skip
+        _historyPast.push(before);
+        if (_historyPast.length > HISTORY_MAX) _historyPast.shift();
+        _historyFuture.length = 0;
+        _historyNotify();
+      };
+    },
+    /** Debounced push — for textarea input where per-keystroke snapshots
+     *  would flood the stack. The snapshot is captured on the FIRST call
+     *  in a typing burst (so it reflects pre-edit state), not on each call.
+     *  Subsequent calls within the debounce window just reset the timer.
+     *  Commits after `delayMs` of idle, only if state has actually changed. */
+    pushDebounced(delayMs = 500) {
+      if (_historyPushDebouncePending == null) {
+        // First call in the burst — capture NOW, before the mutation hits
+        _historyPushDebouncePending = _historySnapshot();
+      }
+      if (_historyPushDebounce) clearTimeout(_historyPushDebounce);
+      _historyPushDebounce = setTimeout(() => {
+        _historyPushDebounce = null;
+        const pending = _historyPushDebouncePending;
+        _historyPushDebouncePending = null;
+        if (pending == null) return;
+        // Only commit if the state has actually changed since snapshot.
+        // Rapid typing that returns to the same text (e.g. select-all → retype
+        // same text) should not produce a stack entry.
+        if (_historyPast[_historyPast.length - 1] === pending) return;
+        if (_historySnapshot() === pending) return; // no net change
+        _historyPast.push(pending);
+        if (_historyPast.length > HISTORY_MAX) _historyPast.shift();
+        _historyFuture.length = 0;
+        _historyNotify();
+      }, delayMs);
+    },
+    canUndo() { return _historyPast.length > 0; },
+    canRedo() { return _historyFuture.length > 0; },
+    undo() {
+      if (!_historyPast.length) return;
+      _historyFuture.push(_historySnapshot());
+      if (_historyFuture.length > HISTORY_MAX) _historyFuture.shift();
+      _historyApply(_historyPast.pop());
+    },
+    redo() {
+      if (!_historyFuture.length) return;
+      _historyPast.push(_historySnapshot());
+      _historyApply(_historyFuture.pop());
+    },
+    clear() {
+      _historyPast.length = 0;
+      _historyFuture.length = 0;
+      if (_historyPushDebounce) { clearTimeout(_historyPushDebounce); _historyPushDebounce = null; }
+      _historyPushDebouncePending = null;
+      _historyNotify();
+    },
+    depth() { return { past: _historyPast.length, future: _historyFuture.length }; },
+  };
 
   function setScriptFromSections(sections, opts = {}) {
     const cleaned = normalizePhaseSections(sections);
@@ -9053,14 +11787,18 @@ ${s.text.trim()}`).join('\n\n').trim();
         list.querySelectorAll('.phase-editor-row').forEach(r => r.classList.remove('highlight-pair'));
       });
     });
+    // Refresh pre-flight diagnostics — phase list changes can fix or introduce issues
+    renderSessionDiagnostics();
   }
 
   function movePhaseSection(idx, delta) {
     const sections = getScriptSectionsFromState();
     const j = idx + delta;
     if (j < 0 || j >= sections.length) return;
+    const commit = history.beginChange();
     [sections[idx], sections[j]] = [sections[j], sections[idx]];
     setScriptFromSections(sections);
+    commit();
   }
 
   /**
@@ -9128,9 +11866,11 @@ ${s.text.trim()}`).join('\n\n').trim();
       if (!ok) return;
     }
 
+    const commit = history.beginChange();
     // Remove in descending index order so splicing doesn't shift later indexes.
     toRemove.sort((a, b) => b - a).forEach(i => sections.splice(i, 1));
     setScriptFromSections(sections);
+    commit();
     if (partnerIndexes.length > 0) notify.info(`Removed ${toRemove.length} paired phases.`);
   }
 
@@ -9165,6 +11905,7 @@ ${s.text.trim()}`).join('\n\n').trim();
    *  - Lightener, Wake, Reintroduction can be added naked (for repair of an incomplete session).
    */
   function addPhaseSection(phaseId) {
+    const commit = history.beginChange();
     const sections = getScriptSectionsFromState();
     const base = phaseBase(phaseId);
     const added = [];
@@ -9235,6 +11976,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     });
 
     setScriptFromSections(sections);
+    commit();
     if (added.length > 1) {
       const labels = added.map(s => getPhaseLabel(s.phaseId)).join(' + ');
       notify.info(`Added paired phases: ${labels}`);
@@ -9243,6 +11985,7 @@ ${s.text.trim()}`).join('\n\n').trim();
 
   function resetPhaseOrderToDefault() {
     if (!state.fullScript) return;
+    const commit = history.beginChange();
     state.generatedPhaseOrder = getPhaseList();
     state.parsedScript = parseScript(state.fullScript);
     const sections = [];
@@ -9257,6 +12000,7 @@ ${s.text.trim()}`).join('\n\n').trim();
       if (!used.has(phaseId)) sections.push({ phaseId, text: state.parsedScript[phaseId] });
     }
     setScriptFromSections(sections);
+    commit();
   }
 
   function showScript() {
@@ -9268,7 +12012,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     $('scriptPreview').classList.add('visible');
     renderPhaseEditor();
   }
-  function hideScript() { state.fullScript = null; state.parsedScript = null; state.generatedPhaseOrder = []; state.scriptSections = []; $('scriptPreview').classList.remove('visible'); renderPhaseEditor(); updateStepUI(); }
+  function hideScript() { state.fullScript = null; state.parsedScript = null; state.generatedPhaseOrder = []; state.scriptSections = []; $('scriptPreview').classList.remove('visible'); renderPhaseEditor(); updateStepUI(); history.clear(); }
 
   // ====================================================================
   // SCRIPT TIMING FIXER — recalculates \x5BPAUSE N\x5D markers heuristically
@@ -10029,10 +12773,75 @@ ${s.text.trim()}`).join('\n\n').trim();
     }
   }
 
+  /** JSON.stringify replacer that survives corrupt records.
+   *  - Skips circular references silently
+   *  - Replaces non-finite numbers (NaN, ±Infinity) with null (valid JSON)
+   *  - Replaces undefined with null (valid JSON)
+   *  - Replaces functions / symbols with null
+   *  - Truncates string fields longer than 100KB (defensive against runaway values)
+   *
+   *  Per the perchance-api skill: a single corrupt entry shouldn't abort an
+   *  export of the whole backup — surfaces at least the recoverable parts.
+   */
+  function _corruptItemReplacer() {
+    const seen = new WeakSet();
+    let _corruptCount = 0;
+    const replacer = function(key, value) {
+      // Circular reference detection — JSON.stringify normally throws on these
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) { _corruptCount++; return null; }
+        seen.add(value);
+      }
+      if (typeof value === 'number' && !Number.isFinite(value)) { _corruptCount++; return null; }
+      if (typeof value === 'undefined')                          { _corruptCount++; return null; }
+      if (typeof value === 'function' || typeof value === 'symbol') { _corruptCount++; return null; }
+      if (typeof value === 'string' && value.length > 100_000)   { _corruptCount++; return value.slice(0, 100_000) + '…[truncated]'; }
+      return value;
+    };
+    replacer._getCount = () => _corruptCount;
+    return replacer;
+  }
+
   async function exportBackup() {
     markFeatureUsed(FEAT.BACKUP);
-    const backup = { version: 5, exportedAt: Date.now(), personas: loadCustomPersonas(), history: (await idbGet('stillness_history_v1')) || [], program: (await idbGet('stillness_program_v1')) || null, profile: getProfile(), settings: _buildSettingsObj(), analytics: (await idbGet(ANALYTICS_KEY)) || null, adaptive: (await idbGet(ADAPTIVE_KEY)) || null };
-    const json = JSON.stringify(backup);
+    // Build the backup object with each source independently try-caught — a
+    // failed read of one slice (e.g. corrupt analytics blob) shouldn't abort
+    // the whole export. Each fall-back logs a console warning so the user can
+    // tell something was skipped if they investigate.
+    const safe = async (label, fn, fallback) => {
+      try { return await fn(); }
+      catch (e) { console.warn(`[backup] ${label} read failed:`, e); return fallback; }
+    };
+    const backup = {
+      version: 5,
+      exportedAt: Date.now(),
+      personas:  await safe('personas',  () => loadCustomPersonas(), []),
+      history:   await safe('history',   async () => (await idbGet('stillness_history_v1')) || [], []),
+      program:   await safe('program',   async () => (await idbGet('stillness_program_v1')) || null, null),
+      profile:   await safe('profile',   () => getProfile(), {}),
+      settings:  await safe('settings',  () => _buildSettingsObj(), {}),
+      analytics: await safe('analytics', async () => (await idbGet(ANALYTICS_KEY)) || null, null),
+      adaptive:  await safe('adaptive',  async () => (await idbGet(ADAPTIVE_KEY)) || null, null),
+    };
+    const replacer = _corruptItemReplacer();
+    let json;
+    try {
+      json = JSON.stringify(backup, replacer);
+    } catch (e) {
+      // Even with the replacer this can fail (very rare — non-stringifiable BigInt etc.).
+      // Last-ditch: stringify each top-level slice independently, dropping any that throw.
+      console.warn('[backup] full stringify failed even with replacer; falling back to per-slice:', e);
+      const partial = { version: backup.version, exportedAt: backup.exportedAt, _partial: true };
+      for (const k of Object.keys(backup)) {
+        try { JSON.stringify(backup[k], replacer); partial[k] = backup[k]; }
+        catch (e2) { console.warn(`[backup] dropped slice "${k}":`, e2); }
+      }
+      json = JSON.stringify(partial, replacer);
+    }
+    const corruptCount = replacer._getCount();
+    if (corruptCount > 0) {
+      console.warn(`[backup] ${corruptCount} corrupt fields replaced during export`);
+    }
     let blob;
     try {
       const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
@@ -10043,7 +12852,11 @@ ${s.text.trim()}`).join('\n\n').trim();
     a.click();
     // Delay revoke — some browsers cancel the download if URL is revoked before it starts
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    notify.success('Backup exported (.gz).');
+    if (corruptCount > 0) {
+      notify.warn(`Backup exported (.gz). ${corruptCount} corrupt field${corruptCount === 1 ? '' : 's'} skipped — see console.`);
+    } else {
+      notify.success('Backup exported (.gz).');
+    }
   }
 
   async function importBackup(file) {
@@ -10230,6 +13043,13 @@ ${s.text.trim()}`).join('\n\n').trim();
       state._startedUnsafe = false;
     }
 
+    // Soft cap on session length — if estimated runtime exceeds safetyConfig.maxSessionMinutes,
+    // surface a notify (non-blocking — user already opted into this length via slider).
+    const lengthWarn = checkSessionLengthSafety();
+    if (lengthWarn?.warn) {
+      notify.warn(lengthWarn.message);
+    }
+
     // If script was edited, offer to fix pause timings
     if (_scriptEditedSinceGen) {
       const fix = await confirmAsync('You\'ve edited the script. Would you like to recalculate pause timings to match your changes?\n\nYes = auto-fix pause markers based on sentence length\nNo = keep current timings as-is', { okText: 'recalculate', cancelText: 'keep as-is' });
@@ -10266,11 +13086,26 @@ ${s.text.trim()}`).join('\n\n').trim();
     state._pausedTotalMs = 0;      // cumulative time spent paused
     state._pauseStartedAt = null;  // wallclock of current pause start (if paused)
     state._currentPhase = 'settling';
+    // Estimated total runtime for completedFraction metric (used by rules/triggers).
+    // Pulled from script metrics × 60. Null-safe — defaults to 0 if unknown.
+    const _estMetrics = getScriptMetrics(state.fullScript || '');
+    state._estimatedTotalSec = Math.max(0, (_estMetrics.estimatedMin || 0) * 60);
+    // Capture the user's selected speech rate as the BASE for playback dynamics
+    // to scale against. Without this, repeated sessions would compound modulation.
+    state._baseSpeechRate = state.speechRate;
+    resetPlaybackDynamics(); // smoothedScale → 1.0, last apply timestamps cleared
 
     // Start the audio-reactive RAF loop. It polls the soundscape FFT + ticks
     // the voice envelope. Zero-impact if audioReactiveMode is 'off' — the
     // getAudioMod() read-time helper short-circuits to zeros.
     startAudioReactiveLoop();
+
+    // Webcam awareness — per-session opt-in. If the user checked the box in Step 5,
+    // start the camera (consent dialog already shown when they checked the box).
+    // Non-blocking — startWebcam handles its own errors and shows status.
+    if ($('webcamOptInThisSession')?.checked) {
+      startWebcam().catch(e => console.warn('[webcam] start in startSession failed:', e));
+    }
 
     // Hard-commit any pending diffs — session start is a durable anchor point.
     // Bypasses the magnitude gate but still requires hasChange, so identical
@@ -10299,6 +13134,9 @@ ${s.text.trim()}`).join('\n\n').trim();
     switchScreen('session-screen');
     document.body.classList.add('in-session');
     showSessionControls(); // start auto-hide timer
+    // First-session entry — show grouped warning if capabilities are missing.
+    // Idempotent (warnMissingCapabilities sets _capsWarnedOnce true on first call).
+    warnMissingCapabilities();
     $('personaIndicator').textContent = '· ' + getPersona().name.toLowerCase() + ' ·';
     $('methodIndicator').textContent = '· ' + method.name.toLowerCase() + ' ·';
 
@@ -10735,6 +13573,17 @@ ${s.text.trim()}`).join('\n\n').trim();
     clearTimeout(state._safetyTimeout);
     state.paused = false; // don't leak paused state into the next session
     stopAudioReactiveLoop(); // stop the audio-reactive RAF loop
+    resetStateEngine();      // clear engagement EMA, phase tracking, external signals
+    clearRuntimeRuleState(); // clear per-rule runtime state (heldSec, lastFiredSec)
+    clearTriggerWindowState(); // clear trigger window state (status, openedAt, lastFiredAt)
+    state._rulesPreDuckVolume = null;
+    // Webcam: stop the stream + clear signals. Per-session opt-in resets — checkbox
+    // unticked so the next session starts off; user re-opts in if they want it.
+    stopWebcam();
+    const _wcCb = $('webcamOptInThisSession'); if (_wcCb) _wcCb.checked = false;
+    // Playback dynamics — restore base speech rate so the next session starts at user's choice
+    resetPlaybackDynamics();
+    state._baseSpeechRate = null;
     closeLivePanel();
     stopRecording(); // Stop any active recording before tearing down audio
     await drone.stop(); stopVisuals(); speechSynthesis.cancel();
@@ -10800,6 +13649,10 @@ ${s.text.trim()}`).join('\n\n').trim();
     if (history.length > 50) history.length = 50; // Keep last 50
     await idbSet('stillness_history_v1', history);
     await recordAnalytics(sessionRecord, wasEmergency);
+    // Daily metrics aggregate — independent of per-session log, gives Smart Director
+    // time-series shape (completion rate, mood trends) over the last 180 days.
+    // postMood/depth still null at this point (filled in via post-checkin handler).
+    recordSessionInMetricsHistory(sessionRecord, wasEmergency ? 'emergency' : 'completed').catch(e => console.warn('[metrics] record failed:', e));
     updateAdaptiveProfile(sessionRecord, wasEmergency); // non-blocking
     updateSessionMemory(state.fullScript, sessionRecord); // Memory system — non-blocking
     renderHeatmap(); // Refresh activity heatmap
@@ -10860,10 +13713,11 @@ ${s.text.trim()}`).join('\n\n').trim();
       </div>`;
     }
 
-    // Emergency cooldown (30s after emergency end)
+    // Emergency cooldown — duration from safetyConfig (default 30s, user-tunable)
     const statusIcon = $('postStatusIcon');
     if (wasEmergency) {
-      state._cooldownUntil = Date.now() + 30000;
+      const cooldownSec = getSafetyConfig().emergencyCooldownSec;
+      state._cooldownUntil = Date.now() + cooldownSec * 1000;
       if ($('groundingBox')) $('groundingBox').style.display = 'block';
       if (statusIcon) { statusIcon.textContent = '⚠'; statusIcon.style.color = 'var(--neon-amber)'; }
       if ($('postMessage')) $('postMessage').textContent = 'You ended early. That\'s okay — take a moment to re-orient.';
@@ -11002,6 +13856,11 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   // scriptText input handler — updates state when user edits/pastes
   $('scriptText').addEventListener('input', () => {
     const text = $('scriptText').value.trim();
+    // Debounced undo checkpoint — coalesces rapid typing into one snapshot.
+    // Snapshot captures the PRE-input state (this handler fires BEFORE the
+    // state.fullScript assignment below, so the current state still reflects
+    // what was there before this keystroke).
+    history.pushDebounced(500);
     if (text.length > 20) {
       if (state.fullScript && text !== state.fullScript.trim()) {
         _scriptEditedSinceGen = true;
@@ -11354,6 +14213,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('generateScriptBtn').addEventListener('click', generateFullScript);
   $('regenScriptBtn').addEventListener('click', generateFullScript);
   $('exportScriptBtn').addEventListener('click', exportScript);
+  $('exportBundleBtn')?.addEventListener('click', exportSessionBundle);
   $('shareConfigBtn')?.addEventListener('click', shareCurrentConfig);
 
   $('beginBtn').addEventListener('click', startSession);
@@ -11365,6 +14225,21 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('addWakePhaseBtn')?.addEventListener('click', () => addPhaseSection('wake'));
   $('addReintroPhaseBtn')?.addEventListener('click', () => addPhaseSection('reintroduction'));
   $('normalizePhaseOrderBtn')?.addEventListener('click', resetPhaseOrderToDefault);
+  $('undoBtn')?.addEventListener('click', () => history.undo());
+  $('redoBtn')?.addEventListener('click', () => history.redo());
+
+  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z = redo.
+  // Only fires while Step 4 (script preview / phase editor) is visible AND
+  // focus is not inside a textarea/input (users expect native undo there).
+  document.addEventListener('keydown', e => {
+    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return;
+    const preview = $('scriptPreview');
+    if (!preview || !preview.classList.contains('visible')) return;
+    const tag = (document.activeElement?.tagName || '').toLowerCase();
+    if (tag === 'textarea' || tag === 'input') return; // let native undo win
+    e.preventDefault();
+    if (e.shiftKey) history.redo(); else history.undo();
+  });
 
   // Pre-session mood emoji buttons
   document.querySelectorAll('.mood-emoji').forEach(btn => {
@@ -11385,40 +14260,59 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   });
 
   // Post-session mood slider (0-10)
-  $('postStateSlider')?.addEventListener('input', async e => {
+  // Debounce timer for post-mood persistence — fires 600ms after last drag step
+  // so a slider drag from 5 to 8 doesn't write 4 entries / inflate metrics samples.
+  let _postMoodPersistTimer = null;
+
+  $('postStateSlider')?.addEventListener('input', e => {
     const val = parseInt(e.target.value, 10);
     const el = $('postStateVal'); if (el) el.textContent = e.target.value;
     const fb = $('moodFeedback');
     const delta = val - (state._preMood ?? 5);
     if (fb) fb.textContent = delta > 0 ? `+${delta} improvement` : delta === 0 ? 'same as before' : `${delta} — be gentle with yourself`;
-    // Save to most recent session record
-    const history = (await idbGet('stillness_history_v1')) || [];
-    if (history.length > 0) {
-      history[0].postMood = val;
-      history[0].preMood = state._preMood ?? null;
-      history[0].preTension = state._preTension ?? null;
-      history[0].preEnergy = state._preEnergy ?? null;
-      history[0].depth = parseInt($('depthSlider')?.value ?? 5, 10);
-      await idbSet('stillness_history_v1', history);
-    }
-    recordPostMood(val);
-    // Retroactively correct adaptive reward now that real postMood is known
-    try {
-      const adaptive = await getAdaptive();
-      const h = (await idbGet('stillness_history_v1')) || [];
-      if (h.length > 0 && adaptive.ts > 0) {
-        const rec = h[0];
-        const oldReward = ((5) - (rec.preMood ?? 5)) + (rec.completed ? 1 : -1);
-        const newReward = (val - (rec.preMood ?? 5)) + (rec.completed ? 1 : -1);
-        const correction = newReward - oldReward;
-        if (Math.abs(correction) > 0.01) {
-          const bump = (map, key) => { if (key) map[key] = (map[key] || 0) + correction; };
-          bump(adaptive.w.p, rec.personaId); bump(adaptive.w.m, rec.methodId);
-          bump(adaptive.w.s, rec.soundscape); bump(adaptive.w.ln, rec.length);
-          await idbSet(ADAPTIVE_KEY, adaptive);
+    // Persist + downstream effects after debounce — avoids amplifying per-day
+    // metric samples and adaptive corrections on every drag step.
+    clearTimeout(_postMoodPersistTimer);
+    _postMoodPersistTimer = setTimeout(async () => {
+      _postMoodPersistTimer = null;
+      try {
+        const history = (await idbGet('stillness_history_v1')) || [];
+        if (history.length > 0) {
+          history[0].postMood = val;
+          history[0].preMood = state._preMood ?? null;
+          history[0].preTension = state._preTension ?? null;
+          history[0].preEnergy = state._preEnergy ?? null;
+          history[0].depth = parseInt($('depthSlider')?.value ?? 5, 10);
+          await idbSet('stillness_history_v1', history);
         }
-      }
-    } catch {}
+        recordPostMood(val);
+        // Patch today's metrics-history aggregate with the post-checkin signals.
+        // Single call per debounced settle, so per-day samples accumulate cleanly
+        // (one mood/depth sample per session, not one per slider step).
+        updateMetricsHistoryWithPostCheckin({
+          postMood: val,
+          preMood:  state._preMood ?? null,
+          depth:    parseInt($('depthSlider')?.value ?? 5, 10),
+        }).catch(err => console.warn('[metrics] post-checkin patch failed:', err));
+        // Retroactively correct adaptive reward now that real postMood is known
+        try {
+          const adaptive = await getAdaptive();
+          const h = (await idbGet('stillness_history_v1')) || [];
+          if (h.length > 0 && adaptive.ts > 0) {
+            const rec = h[0];
+            const oldReward = ((5) - (rec.preMood ?? 5)) + (rec.completed ? 1 : -1);
+            const newReward = (val - (rec.preMood ?? 5)) + (rec.completed ? 1 : -1);
+            const correction = newReward - oldReward;
+            if (Math.abs(correction) > 0.01) {
+              const bump = (map, key) => { if (key) map[key] = (map[key] || 0) + correction; };
+              bump(adaptive.w.p, rec.personaId); bump(adaptive.w.m, rec.methodId);
+              bump(adaptive.w.s, rec.soundscape); bump(adaptive.w.ln, rec.length);
+              await idbSet(ADAPTIVE_KEY, adaptive);
+            }
+          }
+        } catch {}
+      } catch (err) { console.warn('[postMood] persistence failed:', err); }
+    }, 600);
   });
 
   // Depth slider
@@ -11772,17 +14666,16 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   // ====================================================================
   // CAPABILITY DETECTION (from Studio capabilities.js)
   // ====================================================================
-  const caps = { tts: false, webAudio: false, wakeLock: false, fullscreen: false, vibration: false };
+  // ────────────────────────────────────────────────────────────────────
+  // Legacy aliases — the comprehensive replacement is `detectCapabilities`
+  // and `state.caps` higher in this file. Kept for backward compat with
+  // any code that still references `caps.vibration` / `caps.tts` etc.
+  // ────────────────────────────────────────────────────────────────────
+  const caps = state.caps;
   function detectCaps() {
-    caps.tts = 'speechSynthesis' in window;
-    caps.webAudio = 'AudioContext' in window || 'webkitAudioContext' in window;
-    caps.wakeLock = 'wakeLock' in navigator;
-    caps.fullscreen = 'requestFullscreen' in document.documentElement || 'webkitRequestFullscreen' in document.documentElement;
-    caps.vibration = 'vibrate' in navigator;
-    const missing = [];
-    if (!caps.tts) missing.push('Text-to-speech is not available — sessions will be visual only.');
-    if (!caps.webAudio) missing.push('Web Audio is not available — no soundscapes.');
-    if (missing.length) notify.warn(missing.join(' '));
+    detectCapabilities();
+    // Don't show warnings here — that's warnMissingCapabilities's job, called
+    // later (after first session-screen entry) so the user has context.
   }
 
   // ====================================================================
@@ -12219,11 +15112,95 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('optionsCloseBtn')?.addEventListener('click', () => $('optionsModal')?.classList.remove('visible'));
 
   // External AI provider selection
+  // ── External AI provider + key handling ────────────────────────────────
+  // The key field in the UI is shared across providers but the underlying
+  // storage is per-provider so users can keep both populated. Each provider
+  // switch swaps the visible key without erasing the other.
+  // Warning modal fires on the first non-empty key entry per session — once
+  // dismissed (with the "I understand" checkbox), it doesn't re-fire.
+  let _apiKeyWarningShown = false;
+
+  function _showApiKeyWarning() {
+    return new Promise(resolve => {
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop visible';
+      backdrop.style.zIndex = 9999;
+      backdrop.innerHTML = `<div class="modal" style="max-width:480px;">
+        <h3 style="margin:0 0 12px;font-size:1.05rem;font-weight:500;color:var(--neon-amber);">⚠ API key — read this first</h3>
+        <div style="font-size:0.84rem;line-height:1.6;color:var(--text-dim);margin-bottom:12px;">
+          You're about to paste an API key into a browser tab. <strong>Anyone who can run JavaScript in this tab can read it</strong> — including extensions, injected scripts, or shared personas with malicious system prompts.
+        </div>
+        <ul style="margin:0 0 12px 18px;padding:0;font-size:0.78rem;line-height:1.65;color:var(--text-dim);">
+          <li>Use a <strong>scoped, low-spend key</strong> — never your primary account key</li>
+          <li>Set a <strong>monthly budget cap</strong> in your provider's dashboard</li>
+          <li>Don't import shared personas you don't trust while a key is pasted</li>
+          <li>If you suspect compromise, <strong>revoke the key immediately</strong></li>
+        </ul>
+        <div style="font-size:0.74rem;color:var(--text-faint);line-height:1.5;margin-bottom:14px;">
+          The key stays in browser memory only (session-only — cleared on reload). The "Perchance AI" provider option is free and requires no key if you'd rather avoid this.
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.78rem;cursor:pointer;margin-bottom:14px;">
+          <input type="checkbox" id="apiKeyWarnAck">
+          <span>I understand the risk</span>
+        </label>
+        <div style="display:flex;justify-content:flex-end;gap:8px;">
+          <button id="apiKeyWarnCancel" class="preview-btn">Cancel — use Perchance AI instead</button>
+          <button id="apiKeyWarnProceed" class="preview-btn primary" disabled>Proceed</button>
+        </div>
+      </div>`;
+      document.body.appendChild(backdrop);
+      const ack = backdrop.querySelector('#apiKeyWarnAck');
+      const proceedBtn = backdrop.querySelector('#apiKeyWarnProceed');
+      ack?.addEventListener('change', () => { proceedBtn.disabled = !ack.checked; });
+      const cleanup = (val) => { backdrop.remove(); resolve(val); };
+      backdrop.querySelector('#apiKeyWarnCancel')?.addEventListener('click', () => cleanup(false));
+      proceedBtn?.addEventListener('click', () => cleanup(true));
+    });
+  }
+
   $('extAiProvider')?.addEventListener('change', e => {
     state.extAiProvider = e.target.value;
     $('extAiKeyRow').style.display = e.target.value === 'perchance' ? 'none' : '';
+    // Migrate from legacy single-slot _extAiKey on first switch — preserves the
+    // user's already-pasted key under whatever provider was active before.
+    if (state._extAiKey && !state._extAiKeysByProvider[e.target.value]) {
+      // Don't auto-attribute the legacy key to the NEW provider; leave it on the OLD
+      // one if we can guess. Conservative: drop the legacy slot, user re-pastes.
+      state._extAiKey = null;
+    }
+    // Swap the input value to the cached key for the new provider (or empty)
+    const keyInput = $('extAiKey');
+    if (keyInput) {
+      const cachedKey = state._extAiKeysByProvider[e.target.value] || '';
+      keyInput.value = cachedKey;
+      state._extAiKey = cachedKey || null;
+    }
   });
-  $('extAiKey')?.addEventListener('input', e => { state._extAiKey = e.target.value || null; });
+
+  $('extAiKey')?.addEventListener('input', async e => {
+    const newVal = e.target.value || null;
+    const prev = state._extAiKey;
+    // First non-empty key entry this session — show the security warning.
+    // If the user cancels, clear the field and bail back to Perchance.
+    if (newVal && !prev && !_apiKeyWarningShown) {
+      _apiKeyWarningShown = true; // gate before await so we don't double-fire
+      const proceed = await _showApiKeyWarning();
+      if (!proceed) {
+        e.target.value = '';
+        state._extAiKey = null;
+        state.extAiProvider = 'perchance';
+        const sel = $('extAiProvider'); if (sel) sel.value = 'perchance';
+        $('extAiKeyRow').style.display = 'none';
+        return;
+      }
+    }
+    state._extAiKey = newVal;
+    // Mirror to the per-provider cache so a provider switch + back doesn't lose it.
+    const provider = state.extAiProvider;
+    if (provider === 'anthropic' || provider === 'openai') {
+      state._extAiKeysByProvider[provider] = newVal;
+    }
+  });
 
   // Debug mode — all flags session-only, never persisted. Any change triggers a
   // re-sync of state._debug and re-renders the floating "DEBUG" banner.
@@ -12328,6 +15305,120 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     saveUserSettings();
     _updateDirectorBiasUI(); // grey out the bias row when director is off
   });
+  $('runtimeRulesEnabled')?.addEventListener('change', e => {
+    state.runtimeRulesEnabled = !!e.target.checked;
+    saveUserSettings();
+    if (!state.runtimeRulesEnabled) clearRuntimeRuleState();
+  });
+  // Webcam opt-in checkbox (Step 5) — first tick triggers the consent modal.
+  // If the user declines, immediately untick. Permission is per-session; the
+  // checkbox is reset to off at finishSession so the next session re-prompts.
+  $('webcamOptInThisSession')?.addEventListener('change', async e => {
+    if (e.target.checked) {
+      const consent = await requestWebcamConsent();
+      if (!consent) {
+        e.target.checked = false;
+        return;
+      }
+      // Consent obtained but camera doesn't start until startSession — we just
+      // record the intent. The camera itself starts at session begin to avoid
+      // burning battery during script editing.
+      notify.info('Webcam will activate when the session starts');
+    } else {
+      // Untick mid-flow — if a session is already running, stop the camera now.
+      if (state._webcam.status === 'active') stopWebcam();
+    }
+  });
+  // Live in-session toggle — same modal, immediate start/stop. Lets users turn
+  // the camera on or off mid-session without going back to the config screen.
+  $('webcamLiveToggle')?.addEventListener('click', async () => {
+    const w = state._webcam;
+    if (w.status === 'active' || w.status === 'requesting' || w.status === 'loading') {
+      stopWebcam();
+      notify.info('Webcam off');
+      return;
+    }
+    const consent = await requestWebcamConsent();
+    if (!consent) return;
+    startWebcam().catch(err => console.warn('[webcam] live toggle start failed:', err));
+  });
+  // Safety panel — wire the field inputs + reset button. Each change persists
+  // immediately so users see settings stick across reloads. Inputs are clamped
+  // again on save (defense in depth — load already clamps but a hand-edited
+  // value during the session shouldn't slip through).
+  function _wireSafetyInput(inputId, field, parse, lo, hi) {
+    $(inputId)?.addEventListener('change', e => {
+      if (!state.safetyConfig) state.safetyConfig = { ...SAFETY_DEFAULTS };
+      const raw = parse(e.target.value);
+      if (!Number.isFinite(raw)) return; // ignore garbage input
+      const clamped = Math.max(lo, Math.min(hi, raw));
+      state.safetyConfig[field] = clamped;
+      // Repair min>=max swap on the speech rate fields
+      if ((field === 'minSpeechRate' || field === 'maxSpeechRate')
+          && state.safetyConfig.minSpeechRate >= state.safetyConfig.maxSpeechRate) {
+        notify.warn('Min speech rate must be below max — reset to defaults');
+        state.safetyConfig.minSpeechRate = SAFETY_DEFAULTS.minSpeechRate;
+        state.safetyConfig.maxSpeechRate = SAFETY_DEFAULTS.maxSpeechRate;
+        _renderSafetyPanel();
+      }
+      // Reflect clamping in the UI if user typed an out-of-range value
+      if (Math.abs(clamped - raw) > 0.001) _renderSafetyPanel();
+      saveUserSettings();
+    });
+  }
+  _wireSafetyInput('safety_minSpeechRate',        'minSpeechRate',        Number, 0.5, 2.0);
+  _wireSafetyInput('safety_maxSpeechRate',        'maxSpeechRate',        Number, 0.5, 2.0);
+  _wireSafetyInput('safety_maxSoundscapeVolume',  'maxSoundscapeVolume',  v => Number(v) / 100, 0.0, 1.0);
+  _wireSafetyInput('safety_emergencyCooldownSec', 'emergencyCooldownSec', Number, 0, 300);
+  _wireSafetyInput('safety_maxSessionMinutes',    'maxSessionMinutes',    Number, 5, 180);
+  $('safetyResetBtn')?.addEventListener('click', _resetSafetyConfig);
+  _renderSafetyPanel(); // initial render from default state — load() will refresh later
+  // Session mode dropdown — apply on change, refresh description + icon.
+  $('sessionModeSelect')?.addEventListener('change', e => {
+    applySessionMode(e.target.value);
+    const mode = SESSION_MODES.find(m => m.id === e.target.value);
+    if (mode) {
+      const ic = $('sessionModeIcon'); if (ic) ic.textContent = mode.icon;
+      const dc = $('sessionModeDescription'); if (dc) dc.textContent = mode.description;
+    }
+  });
+  // Playback dynamics panel — wire the inputs. Each change clamps + persists.
+  // The renderer below pushes current state values into the inputs.
+  function _renderPlaybackDynamicsPanel() {
+    const c = getPlaybackDynamicsConfig();
+    const set = (id, v) => { const el = $(id); if (el) el.value = v; };
+    const cb = $('pdEnabled'); if (cb) cb.checked = !!c.enabled;
+    set('pdMode',           c.mode);
+    set('pdCurve',          c.curve);
+    set('pdStartScale',     c.startScale);
+    set('pdEndScale',       c.endScale);
+    set('pdEngagementMin',  c.engagementMin);
+    set('pdEngagementMax',  c.engagementMax);
+    set('pdSmoothingSec',   c.smoothingSec);
+  }
+  function _wirePdInput(inputId, field, parse, lo, hi) {
+    $(inputId)?.addEventListener('change', e => {
+      if (!state.playbackDynamics) state.playbackDynamics = { ...PLAYBACK_DYNAMICS_DEFAULTS };
+      const raw = parse ? parse(e.target.value) : e.target.value;
+      const val = (lo != null && hi != null && Number.isFinite(raw)) ? Math.max(lo, Math.min(hi, raw)) : raw;
+      state.playbackDynamics[field] = val;
+      saveUserSettings();
+    });
+  }
+  $('pdEnabled')?.addEventListener('change', e => {
+    if (!state.playbackDynamics) state.playbackDynamics = { ...PLAYBACK_DYNAMICS_DEFAULTS };
+    state.playbackDynamics.enabled = !!e.target.checked;
+    saveUserSettings();
+    if (!state.playbackDynamics.enabled) resetPlaybackDynamics();
+  });
+  _wirePdInput('pdMode',           'mode',           v => v, null, null);
+  _wirePdInput('pdCurve',          'curve',          v => v, null, null);
+  _wirePdInput('pdStartScale',     'startScale',     Number, 0.5, 1.5);
+  _wirePdInput('pdEndScale',       'endScale',       Number, 0.5, 1.5);
+  _wirePdInput('pdEngagementMin',  'engagementMin',  Number, 0.5, 1.5);
+  _wirePdInput('pdEngagementMax',  'engagementMax',  Number, 0.5, 1.5);
+  _wirePdInput('pdSmoothingSec',   'smoothingSec',   Number, 1, 30);
+  _renderPlaybackDynamicsPanel();
   // Director calibration slider — updates label live, persists on change (release).
   // Semantic labels are chosen to reinforce "neutral default is 0" rather than
   // implying more-cautious-is-better or vice versa.
@@ -12499,6 +15590,75 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     // state._debug matches the visible UI in all cases). Banner re-renders from here.
     _syncDebugState();
     _updateDirectorBiasUI();
+
+    // prefers-reduced-motion handling — if user's OS asks for less motion, gentle
+    // visualizers and softer audio-reactive defaults. Only applied if the user
+    // hasn't explicitly chosen a viz / settings (hadSavedSettings === false).
+    // The list below is the "intense" category from the viz dropdown — visuals
+    // most likely to be motion-sickness-inducing or seizure-risk-adjacent.
+    const INTENSE_VIZUALS = new Set(['flowfield', 'plasma', 'kaleidoscope-flow', 'kaleidoscope-plasma', 'starfield', 'tunnel', 'vortex']);
+    if (state.caps.reducedMotion) {
+      // Tag intense viz options visually so any future selection signals the risk
+      document.querySelectorAll('#vizSelect option').forEach(opt => {
+        if (INTENSE_VIZUALS.has(opt.value)) {
+          opt.textContent = '⚠ ' + opt.textContent + ' (motion-heavy)';
+        }
+      });
+      if (!hadSavedSettings) {
+        // Defaults: gentle visual + halved viz dynamics + subtle (not dramatic) audio-reactive
+        state.vizOverride = 'candle';
+        const vs = $('vizSelect'); if (vs) vs.value = 'candle';
+        state.vizSettings.intensity = (state.vizSettings.intensity || 1.0) * 0.5;
+        state.vizSettings.speed     = (state.vizSettings.speed     || 1.0) * 0.5;
+        if (state.audioReactiveMode === 'dramatic') state.audioReactiveMode = 'subtle';
+        notify.info('Reduced-motion preference detected — gentler visualizer defaults applied.');
+      }
+    }
+
+    // Second persistence attempt — per the perchance-api skill: the first call
+    // (inside _initStorage) often gets denied because the browser hasn't seen
+    // any user interaction yet. After a user interacts (clicks a step, etc.),
+    // browsers are far more likely to grant persistent storage. We re-try once
+    // 5s after init in case persistence was denied first time.
+    setTimeout(() => {
+      if (navigator.storage?.persist) {
+        navigator.storage.persist().catch(() => {}); // silent — best-effort
+      }
+    }, 5000);
+
+    // Emergency-export failsafe — if the page hasn't progressed beyond the first
+    // screen after 30 seconds (suggesting a soft-lock somewhere in the boot flow),
+    // surface a corner button that lets the user grab their session history before
+    // they refresh out of frustration. Self-deletes on first interaction with the
+    // app so it doesn't appear in normal usage.
+    let _emergencyExportShown = false;
+    function _showEmergencyExportButton() {
+      if (_emergencyExportShown) return;
+      _emergencyExportShown = true;
+      const btn = document.createElement('button');
+      btn.id = 'emergencyExportFailsafe';
+      btn.textContent = '⚠ download backup (page may be stuck)';
+      btn.title = 'If the app seems frozen, click to download your session history before reloading.';
+      btn.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:99999;background:rgba(80,20,20,0.95);color:#fff;border:1px solid #ff6b6b;padding:8px 14px;border-radius:6px;font-size:0.78rem;cursor:pointer;font-family:var(--font-body);';
+      btn.addEventListener('click', () => {
+        if (typeof exportBackup === 'function') exportBackup();
+        else notify.warn('exportBackup unavailable — try refreshing.');
+      });
+      document.body.appendChild(btn);
+    }
+    setTimeout(() => {
+      // Only show if user hasn't progressed past step 1 — implies a stuck boot
+      const stillOnStep1 = document.body.classList.contains('step-1') ||
+                           !document.querySelector('.in-session') &&
+                           !document.querySelector('#scriptPreview.visible');
+      if (stillOnStep1 && !_emergencyExportShown) _showEmergencyExportButton();
+    }, 30000);
+    // Cancel the failsafe on first user click anywhere — they're clearly not stuck.
+    document.addEventListener('click', () => {
+      const btn = document.getElementById('emergencyExportFailsafe');
+      if (btn) btn.remove();
+      _emergencyExportShown = true; // prevent later display
+    }, { once: true, capture: true });
   })();
 </script>
 
