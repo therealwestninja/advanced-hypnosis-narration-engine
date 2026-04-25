@@ -26,6 +26,9 @@
     --wood: #131110;
     --wood-light: #1e1b18;
     --glass: #131110;
+    /* User-tunable: how visible the session background image/video should be.
+       Set live by the bgImgOpacitySlider. Default 0.35 keeps the bg subliminal. */
+    --bg-img-opacity: 0.35;
     --glass-border: #282420;
     --radius: 0;
     --font-display: 'Nunito', system-ui, -apple-system, sans-serif;
@@ -743,6 +746,57 @@
     content: '▍'; color: var(--neon-cyan); animation: pcCursor 0.9s steps(2) infinite;
     margin-left: 2px;
   }
+  /* System directive + slash-command-result messages — visually distinct
+     from user/persona turns so the steering layer is obvious. */
+  .pc-msg.system {
+    align-self: center; max-width: 92%;
+    background: rgba(255,255,255,0.03);
+    border: 1px dashed var(--text-faint);
+    color: var(--text-dim);
+    font-size: 0.74rem; line-height: 1.45;
+    font-style: italic; letter-spacing: 0.02em;
+    padding: 6px 10px;
+  }
+  .pc-msg.system .pc-msg-tag {
+    font-style: normal; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--accent-warm);
+    margin-right: 6px; font-size: 0.62rem;
+  }
+  .pc-msg.system.error { border-color: var(--neon-magenta); color: var(--neon-magenta); }
+  .pc-msg.system.error .pc-msg-tag { color: var(--neon-magenta); }
+  /* Help popover triggered by /help and the ? button in the chat header */
+  .pc-help-btn {
+    background: transparent; border: 1px solid var(--glass-border);
+    color: var(--text-faint); border-radius: 50%;
+    width: 22px; height: 22px; padding: 0; line-height: 20px;
+    font-size: 0.78rem; cursor: pointer; margin-right: 6px;
+    font-family: var(--font-body);
+  }
+  .pc-help-btn:hover { color: var(--neon-cyan); border-color: var(--neon-cyan); }
+  .pc-help-card {
+    background: var(--bg); border: 1px solid var(--neon-cyan);
+    box-shadow: 0 0 8px rgba(0,212,230,0.1);
+    padding: 12px 14px; margin: 8px 0;
+    font-size: 0.78rem; line-height: 1.55; color: var(--text);
+  }
+  .pc-help-card h4 {
+    margin: 0 0 8px; font-size: 0.78rem; color: var(--neon-cyan);
+    letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;
+  }
+  .pc-help-card code {
+    background: var(--bg-soft); border: 1px solid var(--glass-border);
+    padding: 1px 6px; font-size: 0.74rem; color: var(--accent-warm);
+    font-family: var(--font-body);
+  }
+  .pc-help-card .pc-help-row {
+    display: grid; grid-template-columns: 110px 1fr; gap: 8px;
+    padding: 3px 0; align-items: baseline;
+  }
+  .pc-help-card .pc-help-close {
+    float: right; background: transparent; border: none;
+    color: var(--text-faint); cursor: pointer; font-size: 0.85rem;
+    padding: 0; margin-top: -2px;
+  }
   @keyframes pcCursor { 50% { opacity: 0.2; } }
   .pc-empty {
     font-size: 0.78rem; color: var(--text-faint); font-style: italic;
@@ -877,7 +931,8 @@
   #session-screen { text-align: center; padding-top: 8px; position: relative; }
   .bg-layer { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
   .bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 3s ease-in-out; will-change: opacity, transform, filter, clip-path; }
-  .bg-img.active { opacity: 0.35; }
+  .bg-img.active { opacity: var(--bg-img-opacity, 0.35); }
+  .bg-video { opacity: var(--bg-img-opacity, 0.35); }
   .bg-flash { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 3; transition: opacity 0.5s ease; }
   .bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.3; }
   .phase-dots, .phase-indicator, .stage, .text-display, .session-controls, .session-time, .kb-hint { position: relative; z-index: 1; }
@@ -2606,6 +2661,16 @@ I return to myself easily"></textarea>
         <div id="bgUrlOptions" class="bg-options" style="display:none;margin-top:8px;">
           <input type="text" id="bgUrlInput" class="pf-input" placeholder="https://example.com/image.jpg" style="width:100%;">
         </div>
+        <!-- Visibility slider — applies to all bg sources (image / video / youtube).
+             Default 0.35 keeps the bg subliminal under visualizers + text. Crank
+             toward 1.0 to make the bg the dominant visual; lower to fade it
+             into near-black. Saved across sessions, also editable mid-session
+             via the live-settings panel. -->
+        <div id="bgVisibilityRow" style="display:none;margin-top:10px;">
+          <label class="ai-sublabel">background visibility <span class="ai-slider-val" id="bgImgOpacityVal">35</span>%</label>
+          <input type="range" id="bgImgOpacitySlider" min="5" max="100" step="1" value="35">
+          <div class="sublabel" style="font-size:0.72rem;color:var(--text-faint);">Lower = visualizers + text dominate. Higher = the background is the show.</div>
+        </div>
       </div>
 
       <!-- ── HUD ELEMENTS ── -->
@@ -3014,7 +3079,7 @@ I return to myself easily"></textarea>
     <div class="live-section" id="liveBgSection" style="display:none;">
       <div class="live-section-label">background</div>
       <div class="live-row"><label><input type="checkbox" id="liveBgToggle" checked> Show background</label></div>
-      <div class="live-row"><label>Opacity</label><input type="range" id="liveBgOpacity" min="10" max="80" value="35"><span class="live-val" id="liveBgOpacityVal">35%</span></div>
+      <div class="live-row"><label>Opacity</label><input type="range" id="liveBgOpacity" min="5" max="100" value="35"><span class="live-val" id="liveBgOpacityVal">35%</span></div>
     </div>
   </div>
 
@@ -3111,6 +3176,57 @@ I return to myself easily"></textarea>
       <button class="btn secondary" id="bgDownloadAllBtn">download all</button>
       <button class="btn secondary" id="bgClearAllBtn">clear all</button>
       <button class="btn" id="bgGalleryCloseBtn">close</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT LORE MODAL — pull a persona description from a .txt URL or pasted text -->
+<div class="modal-backdrop" id="importLoreModal">
+  <div class="modal" style="max-width:600px;">
+    <h2>import lore — turn a .txt into a persona</h2>
+    <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.55;margin-bottom:14px;">
+      Fetch a persona's role description from a public URL (Pastebin raw, GitHub raw, gists, Google Docs export-as-txt, anywhere that serves plain text with CORS allowed). If the fetch fails, paste the text directly in the textarea below.
+    </div>
+
+    <div class="field" style="margin-bottom:12px;">
+      <label class="field-label-sm">URL <span style="color:var(--text-faint);font-weight:400;">(.txt, optional if pasting)</span></label>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:6px;">
+        <input type="url" id="importLoreUrl" class="pf-input" placeholder="https://pastebin.com/raw/abc123 — or any direct text URL">
+        <button type="button" class="btn secondary" id="importLoreFetchBtn">fetch</button>
+      </div>
+      <div class="sublabel" id="importLoreFetchStatus" style="font-size:0.7rem;color:var(--text-faint);margin-top:4px;"></div>
+    </div>
+
+    <div class="field" style="margin-bottom:12px;">
+      <label class="field-label-sm">role / lore <span style="color:var(--text-faint);font-weight:400;">(this becomes the AI's voice instructions)</span></label>
+      <textarea id="importLoreText" class="pf-textarea" rows="8" placeholder="The full persona description. Voice, vocabulary, vibe, signature phrases, things to avoid, etc. Or click 'fetch' above to load it from a URL."></textarea>
+      <div class="sublabel" id="importLoreCharCount" style="font-size:0.7rem;color:var(--text-faint);margin-top:4px;">0 chars</div>
+    </div>
+
+    <div class="field" style="margin-bottom:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <label class="field-label-sm">name</label>
+        <input type="text" id="importLoreName" class="pf-input" placeholder="e.g. Mara the Cartographer">
+      </div>
+      <div>
+        <label class="field-label-sm">tagline <span style="color:var(--text-faint);font-weight:400;">(short)</span></label>
+        <input type="text" id="importLoreTagline" class="pf-input" placeholder="quiet voice, slow maps, found paths">
+      </div>
+    </div>
+
+    <div class="field" style="margin-bottom:14px;">
+      <label class="field-label-sm">category</label>
+      <select id="importLoreCategory" class="pf-select" style="width:100%;">
+        <option value="contemplative">contemplative — quiet, traditional, mystical</option>
+        <option value="authoritarian">authoritarian — direct, commanding</option>
+        <option value="showman">showman — theatrical, performance-driven</option>
+        <option value="somatic">somatic — body-focused, sensory</option>
+      </select>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn secondary" id="importLoreCancelBtn">cancel</button>
+      <button class="btn" id="importLoreSaveBtn">save as custom persona</button>
     </div>
   </div>
 </div>
@@ -3979,6 +4095,7 @@ I return to myself easily"></textarea>
     bgYoutubeUrl: '',
     bgStaticUrl: '',
     bgAutoGen: true,             // continuously generate images in background during session
+    bgImageOpacity: 0.35,        // 0.05-1.0; CSS var --bg-img-opacity drives .bg-img.active and .bg-video
     droneVolume: 0.35,
     affirmationMode: 'woven',
     // Auto-tempo cleanup options. stripChars is a string of single characters
@@ -6630,6 +6747,7 @@ I return to myself easily"></textarea>
       bgYoutubeUrl: state.bgYoutubeUrl,
       bgStaticUrl: state.bgStaticUrl,
       bgAutoGen: state.bgAutoGen,
+      bgImageOpacity: state.bgImageOpacity,
       droneVolume: state.droneVolume,
       vizOverride: state.vizOverride,
       audioReactiveMode: state.audioReactiveMode,
@@ -6847,6 +6965,16 @@ I return to myself easily"></textarea>
       if (s.bgYoutubeUrl) { state.bgYoutubeUrl = s.bgYoutubeUrl; const el = $('bgYoutubeUrl'); if (el) el.value = s.bgYoutubeUrl; }
       if (s.bgStaticUrl) { state.bgStaticUrl = s.bgStaticUrl; const el = $('bgUrlInput'); if (el) el.value = s.bgStaticUrl; }
       if (s.bgAutoGen != null) { state.bgAutoGen = s.bgAutoGen; const el = $('bgAutoGenToggle'); if (el) el.checked = s.bgAutoGen; }
+      if (s.bgImageOpacity != null) {
+        state.bgImageOpacity = Math.max(0.05, Math.min(1, Number(s.bgImageOpacity) || 0.35));
+        document.documentElement.style.setProperty('--bg-img-opacity', state.bgImageOpacity);
+        const setupSlider = $('bgImgOpacitySlider'); const setupVal = $('bgImgOpacityVal');
+        if (setupSlider) setupSlider.value = Math.round(state.bgImageOpacity * 100);
+        if (setupVal) setupVal.textContent = Math.round(state.bgImageOpacity * 100);
+        const liveSlider = $('liveBgOpacity'); const liveVal = $('liveBgOpacityVal');
+        if (liveSlider) liveSlider.value = Math.round(state.bgImageOpacity * 100);
+        if (liveVal) liveVal.textContent = Math.round(state.bgImageOpacity * 100) + '%';
+      }
       if (s.droneVolume != null) { state.droneVolume = s.droneVolume; const el = $('droneVolume'); if (el) el.value = Math.round(s.droneVolume * 100); const v = $('droneVolVal'); if (v) v.textContent = Math.round(s.droneVolume * 100); }
       if (s.vizOverride != null) { state.vizOverride = s.vizOverride; const el = $('vizSelect'); if (el) el.value = s.vizOverride; }
       // Audio reactive mode — with prefers-reduced-motion OS honor on first load
@@ -9057,6 +9185,15 @@ Practitioner profile (full, natural sentences):`;
     addCard.innerHTML = '<span>+ create custom</span>';
     addCard.addEventListener('click', () => openPersonaEditor(null));
     grid.appendChild(addCard);
+    // Import Lore — pull a persona description from a .txt URL (or paste).
+    // Same destination as create-custom (saveCustomPersonas); just a faster
+    // path when the user already has the role text written somewhere else
+    // (Pastebin, GitHub raw, Google Docs export, etc.).
+    const importCard = document.createElement('div');
+    importCard.className = 'card add-new';
+    importCard.innerHTML = '<span>📄 import lore</span><span class="card-tagline" style="font-size:0.62rem;color:var(--text-faint);margin-top:4px;">.txt URL → persona</span>';
+    importCard.addEventListener('click', () => openImportLoreModal());
+    grid.appendChild(importCard);
     // Phase 4: async-paint a "matches your usual hour" badge on the user's
     // most-used persona at the current hour. Non-blocking — first paint is
     // already complete by the time this resolves.
@@ -9125,12 +9262,15 @@ Practitioner profile (full, natural sentences):`;
     <div class="pc-panel" id="personaChatPanel" data-persona-id="${escapeHtml(p.id)}">
       <div class="pc-header">
         <div class="pc-name">${isSelf ? 'a conversation with yourself' : ('talking with ' + escapeHtml(p.name))}</div>
-        <button type="button" class="pc-close" id="personaChatCloseBtn" aria-label="close chat">✕</button>
+        <div style="display:flex;align-items:center;">
+          <button type="button" class="pc-help-btn" id="personaChatHelpBtn" title="commands &amp; tips">?</button>
+          <button type="button" class="pc-close" id="personaChatCloseBtn" aria-label="close chat">✕</button>
+        </div>
       </div>
       <div class="pc-transcript" id="personaChatTranscript"></div>
       <div class="pc-suggestions" id="personaChatSuggestions"></div>
       <div class="pc-input-row">
-        <textarea id="personaChatInput" class="pc-input" rows="1" placeholder="${isSelf ? 'ask yourself anything…' : ('ask ' + escapeHtml(p.name) + ' anything…')}"></textarea>
+        <textarea id="personaChatInput" class="pc-input" rows="1" placeholder="${isSelf ? 'ask yourself anything… or /help, [System: …]' : ('ask ' + escapeHtml(p.name) + ' anything… or /help, [System: …]')}"></textarea>
         <button type="button" class="pc-send" id="personaChatSendBtn">send</button>
       </div>
       <div class="pc-footer">
@@ -9210,8 +9350,10 @@ Practitioner profile (full, natural sentences):`;
   }
 
   /** Build the AI instruction for a chat turn. Uses Perchance's canonical
-   *  chat-completion format from §2.1 of the perchance-api skill. */
-  function _personaChatInstruction(persona, history, userMsg) {
+   *  chat-completion format from §2.1 of the perchance-api skill.
+   *  If `directive` is non-empty it's a transient steer for THIS reply only —
+   *  appended to the persona role, then dropped. */
+  function _personaChatInstruction(persona, history, userMsg, directive = '') {
     const role = getPersonaRole(persona) || `You are ${persona.name}, a hypnosis guide.`;
     const isSelf = !!persona.isSelf;
     // Chat-format messages block — model continues from the trailing [[Persona]]:
@@ -9226,11 +9368,17 @@ Practitioner profile (full, natural sentences):`;
     const instructionTask = isSelf
       ? `You are speaking as the user themself — their inner voice, reflected back. The "user" in the [[User]] turns IS you; the [[${persona.name}]] turns are your own deeper / quieter / honest voice replying. First-person throughout. Don't perform wisdom — be honest, be uncertain where uncertainty lives. 1-3 sentences per reply.`
       : `You are ${persona.name}. The user is considering choosing you as their hypnosis guide for a session, and is asking you questions to get a feel for your voice and style. This is a SHORT preview chat, NOT a hypnosis session — do not induce trance, do not give a script. Reply in your own voice as defined above. Keep replies brief (1-3 sentences). Stay fully in character — your voice, vocabulary, and cadence are the answer.`;
+    // Optional one-shot steering directive (from [System: …] or a Pass-B
+    // slash command). Inserted near the very end with high salience so the
+    // model honors it; dropped after this single reply.
+    const directiveBlock = directive
+      ? `\n\n>>> ONE-OFF STEERING (apply to this reply only, then return to normal voice): ${directive}`
+      : '';
     return `<ROLE>
 ${role}
 </ROLE>
 
-${instructionTask}
+${instructionTask}${directiveBlock}
 
 <MESSAGES>
 ${messages}
@@ -9296,17 +9444,66 @@ ${messages}
       });
     };
 
+    /** Parse the chat input and decide what KIND of turn it is.
+     *    [System: be more direct]    → { kind: 'system', directive }
+     *    /regen, /clear, /help, …    → { kind: 'command', cmd, args }
+     *    anything else               → { kind: 'message', text }
+     *  Recognized self-only commands: /honestly, /question, /show */
+    const parseChatInput = (raw) => {
+      const t = String(raw || '').trim();
+      if (!t) return { kind: 'empty' };
+      const sys = t.match(/^\[\s*(?:system|sys)\s*:\s*([\s\S]+?)\s*\]\s*$/i);
+      if (sys) return { kind: 'system', directive: sys[1].trim() };
+      const slash = t.match(/^\/([a-z]+)(?:\s+([\s\S]+))?$/i);
+      if (slash) return { kind: 'command', cmd: slash[1].toLowerCase(), args: (slash[2] || '').trim() };
+      return { kind: 'message', text: t };
+    };
+
+    /** Render a one-off system bubble inline in the transcript. Optionally
+     *  styled as an error. Used for slash-command results and steering acks. */
+    const renderSystemMessage = (text, opts = {}) => {
+      const empty = transcript.querySelector('.pc-empty');
+      if (empty) empty.remove();
+      const el = document.createElement('div');
+      el.className = 'pc-msg system' + (opts.error ? ' error' : '');
+      el.innerHTML = `<span class="pc-msg-tag">${escapeHtml(opts.tag || 'system')}</span>${escapeHtml(text)}`;
+      transcript.appendChild(el);
+      transcript.scrollTop = transcript.scrollHeight;
+    };
+
+    /** Build the help card content based on whether this is the Self persona. */
+    const renderHelpCard = () => {
+      const empty = transcript.querySelector('.pc-empty');
+      if (empty) empty.remove();
+      const isSelf = !!persona.isSelf;
+      const card = document.createElement('div');
+      card.className = 'pc-help-card';
+      const baseRows = [
+        ['<code>[System: …]</code>', 'one-off steering for the next reply only — try <code>[System: be more direct]</code> or <code>[System: shorter, 1 sentence]</code>'],
+        ['<code>/regen</code>', 'redo the last reply'],
+        ['<code>/clear</code>', "clear this guide's chat history"],
+        ['<code>/help</code>', 'show this card'],
+      ];
+      const selfRows = isSelf ? [
+        ['<code>/honestly</code>', 'next reply — strip the wisdom-performing layer; raw is fine'],
+        ['<code>/question</code>', 'instead of reflecting, have the mirror ask YOU a question'],
+        ['<code>/show</code>', 'dump what the AI is being told about you (debug)'],
+      ] : [];
+      card.innerHTML = `<button class="pc-help-close" aria-label="close help">✕</button>
+        <h4>commands</h4>
+        ${baseRows.concat(selfRows).map(([k, v]) => `<div class="pc-help-row"><span>${k}</span><span>${v}</span></div>`).join('')}`;
+      transcript.appendChild(card);
+      transcript.scrollTop = transcript.scrollHeight;
+      card.querySelector('.pc-help-close')?.addEventListener('click', () => card.remove());
+    };
+
     let _streaming = false;
-    const sendChat = async () => {
+    let _pendingDirective = ''; // consumed by the next AI call, then cleared
+    /** Core AI-reply path — used by normal messages, /regen, and Pass-B
+     *  command-driven sends. Pulls _pendingDirective into the instruction
+     *  builder for one-shot steering. */
+    const sendToAI = async (userText) => {
       if (_streaming) return;
-      const text = (input.value || '').trim();
-      if (!text) return;
-      const history = _personaChats[persona.id] = _personaChats[persona.id] || [];
-      if (history.filter(m => m.role === 'user').length >= PERSONA_CHAT_MAX_TURNS) return;
-      history.push({ role: 'user', text });
-      input.value = '';
-      renderTranscript();
-      // Insert a streaming placeholder for the persona's reply
       _streaming = true;
       sendBtn.disabled = true;
       const placeholder = document.createElement('div');
@@ -9315,12 +9512,13 @@ ${messages}
       transcript.appendChild(placeholder);
       transcript.scrollTop = transcript.scrollHeight;
       const bodyEl = placeholder.querySelector('.pc-msg-body');
+      const directive = _pendingDirective; // capture, then clear (one-shot)
+      _pendingDirective = '';
       try {
-        // Use the hardened aiGenerate wrapper. Stop sequences are merged with
-        // chat-format guards by the wrapper itself (Phase 1 change).
-        const instruction = _personaChatInstruction(persona, history.slice(0, -1), text);
-        // Direct streaming via aiTextPlugin so we get progressive rendering.
-        // aiGenerate would work but doesn't expose onChunk.
+        // History excludes the just-pushed user message AND any system bubbles
+        // (those are display-only; they don't go into the chat-format payload).
+        const aiHistory = (_personaChats[persona.id] || []).filter(m => m.role === 'user' || m.role === 'persona');
+        const instruction = _personaChatInstruction(persona, aiHistory.slice(0, -1), userText, directive);
         let acc = '';
         if (typeof root !== 'undefined' && root.aiTextPlugin) {
           const startWith = `[[${persona.name}]]:`;
@@ -9334,7 +9532,6 @@ ${messages}
               const chunk = data.textChunk || '';
               if (!chunk) return;
               acc += chunk;
-              // Strip any leaked role tags from the very first chunks
               const cleaned = acc.replace(/^\s*\[\[[^\]]+\]\]:\s*/, '').trim();
               bodyEl.textContent = cleaned;
               transcript.scrollTop = transcript.scrollHeight;
@@ -9343,7 +9540,6 @@ ${messages}
           const data = await streamObj;
           if (data?.stopReason === 'error' && !acc) throw new Error('plugin error');
         } else {
-          // No plugin — fall through to wrapper-based call (no streaming)
           const data = await aiGenerate(instruction, { stopSequences: ['\n[[User]]:'] });
           acc = (data?.generatedText || '').trim();
           bodyEl.textContent = acc.replace(/^\s*\[\[[^\]]+\]\]:\s*/, '').trim();
@@ -9352,7 +9548,7 @@ ${messages}
         if (!finalText) throw new Error('empty reply');
         placeholder.classList.remove('streaming');
         bodyEl.textContent = finalText;
-        history.push({ role: 'persona', text: finalText });
+        _personaChats[persona.id].push({ role: 'persona', text: finalText });
         renderTranscript();
       } catch (e) {
         placeholder.classList.remove('streaming');
@@ -9363,6 +9559,121 @@ ${messages}
         _streaming = false;
         sendBtn.disabled = false;
       }
+    };
+
+    const sendChat = async () => {
+      if (_streaming) return;
+      const raw = input.value || '';
+      input.value = '';
+      // Auto-shrink textarea after clearing
+      input.style.height = 'auto';
+      const parsed = parseChatInput(raw);
+      if (parsed.kind === 'empty') return;
+      const history = _personaChats[persona.id] = _personaChats[persona.id] || [];
+
+      // Slash command → handled locally, does NOT count against the turn cap
+      if (parsed.kind === 'command') {
+        const handled = await handleSlashCommand(parsed.cmd, parsed.args);
+        if (!handled) renderSystemMessage(`unknown command: /${parsed.cmd}. type /help for a list.`, { error: true });
+        return;
+      }
+
+      // System directive → queued for the next AI call, shown faded
+      if (parsed.kind === 'system') {
+        _pendingDirective = parsed.directive;
+        renderSystemMessage(parsed.directive, { tag: 'steering' });
+        return;
+      }
+
+      // Regular message → respect the turn cap and send to AI
+      if (history.filter(m => m.role === 'user').length >= PERSONA_CHAT_MAX_TURNS) return;
+      history.push({ role: 'user', text: parsed.text });
+      renderTranscript();
+      await sendToAI(parsed.text);
+    };
+
+    /** Slash command dispatch. Returns true if the command was recognized
+     *  (even if it errored), false if unknown. Self-persona-only commands
+     *  are gated by persona.isSelf. */
+    const handleSlashCommand = async (cmd, args) => {
+      const isSelf = !!persona.isSelf;
+      const history = _personaChats[persona.id] = _personaChats[persona.id] || [];
+      switch (cmd) {
+        case 'help':
+        case '?':
+          renderHelpCard();
+          return true;
+
+        case 'clear': {
+          _personaChats[persona.id] = [];
+          renderTranscript();
+          renderSystemMessage('chat cleared.');
+          return true;
+        }
+
+        case 'regen': {
+          // Find the last user message; drop any persona reply that came after it,
+          // then re-send. If there's no prior user message, complain.
+          let lastUserIdx = -1;
+          for (let i = history.length - 1; i >= 0; i--) {
+            if (history[i].role === 'user') { lastUserIdx = i; break; }
+          }
+          if (lastUserIdx < 0) {
+            renderSystemMessage('nothing to regenerate yet.', { error: true });
+            return true;
+          }
+          const lastUserText = history[lastUserIdx].text;
+          // Trim history to just before the persona reply we want to redo
+          _personaChats[persona.id] = history.slice(0, lastUserIdx + 1);
+          renderTranscript();
+          renderSystemMessage('regenerating…');
+          await sendToAI(lastUserText);
+          return true;
+        }
+
+        // ── Pass B: Self-persona-only commands ─────────────────────────────
+        case 'honestly': {
+          if (!isSelf) {
+            renderSystemMessage('/honestly only works with the Self persona (debug mode).', { error: true });
+            return true;
+          }
+          // Same as a steering directive, but command-formatted.
+          _pendingDirective = 'Strip away any wisdom-performing layer. Be raw, even if rough. Speak the way someone actually talks to themselves at 2am, not the way a guide speaks to a client. Imperfect honesty over polished insight.';
+          renderSystemMessage('next reply will be unvarnished. send a message to continue.', { tag: 'steering' });
+          return true;
+        }
+
+        case 'question': {
+          if (!isSelf) {
+            renderSystemMessage('/question only works with the Self persona (debug mode).', { error: true });
+            return true;
+          }
+          _pendingDirective = 'Instead of reflecting back, ask the user (yourself) ONE question that cuts to what is actually going on. Just the question — no preamble, no setup, no answer. The kind of question that you would only ask yourself if you were really paying attention.';
+          renderSystemMessage('next reply will be a question instead of a reflection.', { tag: 'steering' });
+          return true;
+        }
+
+        case 'show': {
+          if (!isSelf) {
+            renderSystemMessage('/show only works with the Self persona (debug mode).', { error: true });
+            return true;
+          }
+          // Compose the same instruction the AI would receive (with no user
+          // message — they haven't sent one yet) and dump it as a system msg.
+          const aiHistory = history.filter(m => m.role === 'user' || m.role === 'persona');
+          const sample = _personaChatInstruction(persona, aiHistory, '<your next message would go here>', _pendingDirective);
+          // Render as a <pre>-style system bubble so whitespace + line breaks stay
+          const empty = transcript.querySelector('.pc-empty');
+          if (empty) empty.remove();
+          const el = document.createElement('div');
+          el.className = 'pc-msg system';
+          el.innerHTML = `<span class="pc-msg-tag">debug · payload</span><pre style="white-space:pre-wrap;font-family:var(--font-body);font-size:0.74rem;line-height:1.45;margin:6px 0 0;color:var(--text);max-height:280px;overflow:auto;">${escapeHtml(sample)}</pre>`;
+          transcript.appendChild(el);
+          transcript.scrollTop = transcript.scrollHeight;
+          return true;
+        }
+      }
+      return false; // unknown command
     };
 
     if (toggleBtn) {
@@ -9379,6 +9690,8 @@ ${messages}
       });
     }
     if (closeBtn) closeBtn.addEventListener('click', () => panel.classList.remove('visible'));
+    const helpBtn = $('personaChatHelpBtn');
+    if (helpBtn) helpBtn.addEventListener('click', renderHelpCard);
     if (sendBtn) sendBtn.addEventListener('click', sendChat);
     if (input) {
       input.addEventListener('keydown', (e) => {
@@ -11995,6 +12308,142 @@ ${messages}
     if (stageResizeObs) { stageResizeObs.disconnect(); stageResizeObs = null; }
     if (neuralBloomRenderer && neuralBloomRenderer.mode) neuralBloomRenderer.stop();
   };
+
+  // ====================================================================
+  // IMPORT LORE — pull a persona from a .txt URL or pasted text
+  // ====================================================================
+  // Same destination as the create-custom path (saveCustomPersonas) — just a
+  // faster way in when the user already has the role text written somewhere.
+  // CORS is the main limiter; we catch fetch failures and prompt the user to
+  // paste the text manually.
+
+  /** Open the modal with all fields cleared and the URL field focused. */
+  function openImportLoreModal() {
+    const m = $('importLoreModal');
+    if (!m) return;
+    // Reset every field so a previous import doesn't leak in
+    const fields = ['importLoreUrl', 'importLoreText', 'importLoreName', 'importLoreTagline'];
+    fields.forEach(id => { const el = $(id); if (el) el.value = ''; });
+    const cat = $('importLoreCategory'); if (cat) cat.value = 'contemplative';
+    const status = $('importLoreFetchStatus'); if (status) { status.textContent = ''; status.style.color = ''; }
+    const count = $('importLoreCharCount'); if (count) count.textContent = '0 chars';
+    m.classList.add('visible');
+    setTimeout(() => $('importLoreUrl')?.focus(), 60);
+  }
+
+  function closeImportLoreModal() {
+    const m = $('importLoreModal');
+    if (m) m.classList.remove('visible');
+  }
+
+  /** Try to fetch the URL and load its contents into the textarea. CORS will
+   *  block plenty of hosts; we catch the failure and tell the user to paste
+   *  the text manually instead. */
+  async function fetchLoreUrl() {
+    const url = ($('importLoreUrl')?.value || '').trim();
+    const status = $('importLoreFetchStatus');
+    const text = $('importLoreText');
+    const count = $('importLoreCharCount');
+    if (!url) {
+      if (status) { status.textContent = 'enter a URL first, or paste the text below.'; status.style.color = 'var(--neon-magenta)'; }
+      return;
+    }
+    if (status) { status.textContent = 'fetching…'; status.style.color = 'var(--text-dim)'; }
+    try {
+      // mode 'cors' is the default; explicit for clarity. Many text hosts (Pastebin
+      // raw, GitHub raw, gists, Google Docs export) allow CORS for plain text.
+      const resp = await fetch(url, { mode: 'cors', redirect: 'follow' });
+      if (!resp.ok) {
+        if (status) { status.textContent = `✗ HTTP ${resp.status} — server returned an error.`; status.style.color = 'var(--neon-magenta)'; }
+        return;
+      }
+      const body = await resp.text();
+      const trimmed = (body || '').trim();
+      if (!trimmed) {
+        if (status) { status.textContent = '✗ URL returned empty response.'; status.style.color = 'var(--neon-magenta)'; }
+        return;
+      }
+      // Hard cap so a giant fetched payload doesn't break the UI or storage
+      const capped = trimmed.length > 8000 ? trimmed.slice(0, 8000) : trimmed;
+      if (text) text.value = capped;
+      if (count) count.textContent = `${capped.length} chars` + (trimmed.length > 8000 ? ' (truncated to 8000)' : '');
+      if (status) { status.textContent = `✓ loaded ${capped.length.toLocaleString()} chars` + (trimmed.length > 8000 ? ' — truncated to 8000' : ''); status.style.color = 'var(--accent-green)'; }
+      // If name field is empty, try to derive a sensible default from the URL
+      const nameField = $('importLoreName');
+      if (nameField && !nameField.value.trim()) {
+        try {
+          const u = new URL(url);
+          const last = u.pathname.split('/').filter(Boolean).pop() || u.hostname;
+          // Strip extension, replace dashes/underscores, title-case
+          const cleaned = last.replace(/\.(txt|md|html?)$/i, '').replace(/[-_]+/g, ' ').trim();
+          if (cleaned) nameField.value = cleaned.replace(/\b\w/g, c => c.toUpperCase()).slice(0, 40);
+        } catch { /* invalid URL — leave name blank */ }
+      }
+    } catch (e) {
+      // Most failures here are CORS — the network tab will show the real reason
+      if (status) {
+        status.textContent = '✗ fetch blocked (likely CORS) — paste the text below instead.';
+        status.style.color = 'var(--neon-magenta)';
+      }
+    }
+  }
+
+  /** Validate the form and save the imported lore as a custom persona. */
+  function saveImportedLore() {
+    const text = ($('importLoreText')?.value || '').trim();
+    const name = ($('importLoreName')?.value || '').trim();
+    const tagline = ($('importLoreTagline')?.value || '').trim();
+    const category = ($('importLoreCategory')?.value || 'contemplative').trim();
+    if (text.length < 50) {
+      notify.error('Lore is too short — at least 50 characters.');
+      return;
+    }
+    if (!name) {
+      notify.error('Give the persona a name.');
+      $('importLoreName')?.focus();
+      return;
+    }
+    const id = 'custom_' + Date.now();
+    const persona = normalizePersona({
+      id,
+      name: name.slice(0, 40),
+      tagline: (tagline || '(imported)').slice(0, 80),
+      roleInstruction: text.slice(0, 8000),
+      category,
+      isCustom: true,
+    });
+    const custom = loadCustomPersonas();
+    custom.push(persona);
+    if (!saveCustomPersonas(custom)) {
+      notify.error('Could not save: browser storage may be full.');
+      return;
+    }
+    state.selectedPersonaId = id;
+    markFeatureUsed(FEAT.CUSTOM_PERSONA);
+    refreshPersonas();
+    renderPersonaGrid();
+    renderPersonaDetail();
+    closeImportLoreModal();
+    notify.success(`Imported "${persona.name}" — ${text.length.toLocaleString()} chars`);
+  }
+
+  // Wire the Import Lore modal — guarded so missing elements don't throw
+  $('importLoreFetchBtn')?.addEventListener('click', fetchLoreUrl);
+  $('importLoreSaveBtn')?.addEventListener('click', saveImportedLore);
+  $('importLoreCancelBtn')?.addEventListener('click', closeImportLoreModal);
+  $('importLoreModal')?.addEventListener('click', (e) => {
+    // Backdrop click closes; clicks inside the .modal pane don't bubble out
+    if (e.target.id === 'importLoreModal') closeImportLoreModal();
+  });
+  $('importLoreText')?.addEventListener('input', () => {
+    const text = $('importLoreText')?.value || '';
+    const count = $('importLoreCharCount');
+    if (count) count.textContent = `${text.length} chars`;
+  });
+  $('importLoreUrl')?.addEventListener('keydown', (e) => {
+    // Enter in the URL field triggers fetch (a common ergonomic expectation)
+    if (e.key === 'Enter') { e.preventDefault(); fetchLoreUrl(); }
+  });
 
   // ====================================================================
   // PERSONA EDITOR
@@ -16695,6 +17144,9 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const optMap = { ai: 'bgAiOptions', 'local-image': 'bgLocalOptions', 'local-video': 'bgLocalOptions', youtube: 'bgYoutubeOptions', url: 'bgUrlOptions' };
     const target = optMap[e.target.value];
     if (target) $(target).style.display = '';
+    // Visibility row applies to every source EXCEPT 'none' (no bg = no opacity to set)
+    const visRow = $('bgVisibilityRow');
+    if (visRow) visRow.style.display = (e.target.value && e.target.value !== 'none') ? '' : 'none';
     saveUserSettings();
   });
   $('bgPromptInput')?.addEventListener('input', e => {
@@ -17297,8 +17749,29 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('liveBgOpacity')?.addEventListener('input', e => {
     const val = parseInt(e.target.value, 10);
     const v = $('liveBgOpacityVal'); if (v) v.textContent = val + '%';
-    document.querySelectorAll('.bg-img.active').forEach(img => { img.style.opacity = val / 100; });
-    document.querySelectorAll('.bg-video').forEach(vid => { vid.style.opacity = val / 100; });
+    // Drive the CSS variable instead of inline-styling each img/video. New
+    // images entering the rotation pick up the variable automatically.
+    state.bgImageOpacity = val / 100;
+    document.documentElement.style.setProperty('--bg-img-opacity', state.bgImageOpacity);
+    saveUserSettings();
+    // Mirror the value into the Step-5 slider so the two stay in sync
+    const setup = $('bgImgOpacitySlider');
+    if (setup) setup.value = val;
+    const setupVal = $('bgImgOpacityVal');
+    if (setupVal) setupVal.textContent = val;
+  });
+
+  // Step-5 visibility slider — same plumbing, mirrored to live panel
+  $('bgImgOpacitySlider')?.addEventListener('input', e => {
+    const val = parseInt(e.target.value, 10);
+    const v = $('bgImgOpacityVal'); if (v) v.textContent = val;
+    state.bgImageOpacity = val / 100;
+    document.documentElement.style.setProperty('--bg-img-opacity', state.bgImageOpacity);
+    saveUserSettings();
+    const live = $('liveBgOpacity');
+    if (live) live.value = val;
+    const liveVal = $('liveBgOpacityVal');
+    if (liveVal) liveVal.textContent = val + '%';
   });
 
   // Live HUD toggles — apply immediately during session
