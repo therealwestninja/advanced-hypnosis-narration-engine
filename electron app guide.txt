@@ -1,0 +1,105 @@
+═══════════════════════════════════════════════════════════════════════════════
+  STILLNESS HYPNOSIS ENGINE — ELECTRON DESKTOP APP
+  COMPLETE SETUP PACKAGE
+═══════════════════════════════════════════════════════════════════════════════
+
+📦 WHAT YOU HAVE
+
+This ZIP contains everything needed to:
+  1. Run the hypnosis engine as a desktop app on Windows/Mac
+  2. Build your own .exe installer and portable executable
+  3. Distribute the app to others
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 INSIDE THE ZIP
+
+stillness-electron-app/
+  ├── QUICKSTART.txt              ← Start here! One-page cheat sheet
+  ├── README.md                   ← Full documentation
+  ├── package.json                ← NPM config + build scripts
+  ├── .gitignore                  ← (Ignore if you're not using Git)
+  ├── src/
+  │   ├── main.js                 ← Electron window management
+  │   └── preload.js              ← Security sandbox
+  └── app/
+      └── index.html              ← The complete hypnosis engine
+
+(When you build: a 'dist/' folder will be created with .exe files)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🚀 THREE-STEP GETTING STARTED
+
+STEP 1: Install Node.js (one-time only)
+  • Download from: https://nodejs.org (LTS version, 18+)
+  • Run the installer, accept all defaults
+  • Restart Command Prompt or your computer
+
+STEP 2: Prepare the folder
+  • Extract the ZIP to any folder (e.g., C:\Users\YourName\Desktop\stillness-electron-app)
+  • Open Command Prompt and navigate to that folder
+  • OR: Shift+Right-click in the folder → "Open command window here"
+
+STEP 3: Run these two commands
+  npm install
+  npm start
+
+  First time: npm install takes 2-5 minutes (downloads dependencies).
+  Then: npm start launches the app.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🏗️  BUILDING FOR DISTRIBUTION
+
+Once you've tested npm start and everything works:
+
+  npm run build:win
+
+  This creates two files in the 'dist/' folder:
+    • Stillness Hypnosis Engine-1.0.0.exe (portable)
+    • Stillness Hypnosis Engine-1.0.0.msi (installer)
+
+  Either file can be shared with others. They just download and run.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+❓ QUICK Q&A
+
+Q: Do I need the internet?
+A: Internet is OPTIONAL. You can use the full app offline, except AI generation
+   requires internet to call Perchance's API.
+
+Q: What about macOS?
+A: The setup is the same. The build command will create a .dmg on a Mac.
+   Currently configured for Windows only; let me know if you need Mac.
+
+Q: Can I modify the app?
+A: Yes. Edit app/index.html or rebuild it from the original perchance_2.txt.
+   Then: npm start to test your changes.
+
+Q: How big is the .exe?
+A: ~150 MB. It includes Chromium + Node runtime + the app code.
+
+Q: Can I use this commercially?
+A: Check with Perchance's author (@Dojomouse) about redistribution rights
+   for the ai-text-plugin. The Electron wrapper is yours.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔗 NEXT STEPS
+
+1. Extract the ZIP
+2. Open QUICKSTART.txt (or README.md for full details)
+3. Install Node.js from https://nodejs.org
+4. Run: npm install
+5. Run: npm start
+6. Once working: npm run build:win to create .exe files
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Need help?
+  • See QUICKSTART.txt or README.md in the ZIP for troubleshooting
+  • All files are plain text — fully readable and modifiable
+
+═══════════════════════════════════════════════════════════════════════════════
