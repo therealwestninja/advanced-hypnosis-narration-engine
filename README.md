@@ -12,16 +12,21 @@ No account required. No downloads.
 
 ## What's New
 
+* **Level phase between paired deepeners** — when a session has two or more deepener phases (auto-placed in marathon, or via manual edits), a Level block is inserted between them. The Level holds the user at the current depth, ratifies the trance, and prepares for the next descent — the tonic period from clinical multi-layered fractionation. Lighteners stay continuous (no Level between them) so the ascent feels unbroken.
+* **Self / Mirror persona** *(debug only)* — toggle Debug in your profile settings and a "You" persona appears at the top of Step 1. It speaks AS you, drawing from your profile + Smart Director memory + inferred modality. Talk to yourself, hear your own affirmations in your own voice, run a fully-mirrored session. The role text is shown in a collapsible panel so you can see exactly what the AI knows about you.
+* **Sounding blocks** — a new phase type for meta-awareness pauses. Insert one anywhere in the session (typically between deepener and work) and the narrator invites the user to *notice how they feel right now without changing it* — interoceptive moment pulled from clinical mindfulness + somatic-experiencing protocols
+* **Custom blocks with Reimagine** — write your own text into the script timeline and have the AI rewrite it in your guide's voice. A global mode toggle picks between **Guide voice only** (no profile injection) or **Smart Director** (full profile + memory context)
 * **Chat with each guide before you commit** — open a short preview chat with any persona right from Step 1; their voice, vocabulary, and cadence come through immediately so you can pick the right one without running a full session
-* **Tiered emergency exit** — first <kbd>Esc</kbd> opens a soft-pause overlay (you're safe, take a breath, continue or end); second <kbd>Esc</kbd> commits to a full counted re-alert. Pulled from clinical hypnosis literature on abreaction-vs-discomfort distinction
+* **Tiered emergency exit** — first <kbd>Esc</kbd> opens a soft-pause overlay (you're safe, take a breath, continue or end); second <kbd>Esc</kbd> commits to a full counted re-alert. The live-settings panel intercepts the first <kbd>Esc</kbd> if it's open (closes the panel instead of triggering the soft pause). Pulled from clinical hypnosis literature on abreaction-vs-discomfort distinction
 * **Interactive 5-4-3-2-1 grounding** — tap each step as you find the items; combined with a time/place reorientation card after every emergency exit
-* **Eight session lengths, up to 90 minutes** — added Extended (~45m), Deep (~60m), and Marathon (~90m) for users who want longer arcs. Marathon doubles the descent with nested deepener+lightener pairs (LIFO unwind)
-* **Local AI voice (offline, neural-quality)** — opt-in toggle loads Hugging Face SpeechT5 from CDN once (~80 MB cached), then runs entirely offline. Five speakers across male/female ranges. No cloud, no internet needed once cached
+* **Eight session lengths, up to 90 minutes** — added Extended (~45m), Deep (~60m), and Marathon (~90m) for users who want longer arcs. Marathon doubles the descent with nested deepener+lightener pairs (LIFO unwind) and a Level block between the two deepeners
+* **Local AI voice (offline, neural-quality)** — opt-in toggle loads Hugging Face SpeechT5 from CDN once (~80 MB cached), then runs entirely offline. Five speakers across male/female ranges. Routes through the soundscape audio graph so the **Record audio** button now captures voice + ambience together. Race-safe against emergency exits via a synth-generation token
 * **Persona-voiced affirmations** — AI-drafted affirmations now sound like the persona who'd deliver them: a Commander writes commands, the Inner Voice writes thoughts-just-below-words, the Old Master writes elemental fragments
 * **Re-roll diversity** — when you retry a phase, the AI is told what the previous draft sounded like and instructed to vary opening, rhythm, and metaphor. Repeated retries no longer cluster around the same opening
 * **Time-of-day signals** — small ✦ badges on the persona/method you usually pick at this hour, so your favorites surface automatically
 * **Modality inference** — generation lightly steers toward visual/auditory/kinesthetic descriptions based on your settings + somatic-method usage patterns. Conservative — only kicks in when the signal is clear
-* **AI background visibility fix** — the session stage no longer dims AI background images to ~9% opacity. Selected images now render at the intended ~30% (bug fix)
+* **AI background visibility fix** — the session stage no longer dims AI background images to ~9% opacity. Selected images now render at the intended ~30%
+* **Image gallery desync fix** — generating or deleting images while the gallery modal is open no longer leaves the grid out of sync with the cache. A render-generation token cancels in-flight thumbnail loads when the manifest changes; the count badge stays accurate
 * **Hardened generation guards** — defensive `[[Speaker]]:` chat-format stop sequences merged into every AI call so chat-style bleed never reaches your script
 
 ---
@@ -65,21 +70,27 @@ No account required. No downloads.
 
 Sessions are no longer fixed to 5 phases.
 
-They now include:
+The default arc:
 
 * settling
 * induction
-* deepener (or **deepener-1 → deepener-2** for marathon's nested descent)
+* deepener (or **deepener-1 → level → deepener-2** for marathon's nested descent)
 * **multiple work blocks (up to 8 for marathon sessions)**
 * affirmation phases (dynamic — paired with each work block)
 * **lightener** (or **lightener-2 → lightener-1** mirrored unwind for marathon)
 * wake
 * **reintroduction**
 
+Three optional phase types you can insert anywhere via the Step-6 phase editor:
+
+* **Level** — a sustained-depth tonic that holds the user at the current depth, ratifies the trance, and prepares for the next descent. Auto-placed between paired deepeners; available for manual insertion in any session. Lighteners stay continuous (no Level between them) so the ascent feels unbroken.
+* **Sounding** — a meta-awareness pause where the narrator invites the user to register their current state (body, breath, mind, awareness itself) without changing it. Useful between deepener and work, or as a midpoint check during long work sections
+* **Custom** — your own text. Bypasses AI generation entirely; passes through verbatim during playback. Pair with the **Reimagine** button to bounce your draft through the AI in the persona's voice (Guide-only or Smart-Director mode)
+
 This creates a full arc:
 **descent → work → recovery → return**
 
-Marathon sessions explicitly model double-depth descent, with each lightener handling one level back up — the same protocol used in clinical multi-layered fractionation.
+Marathon sessions explicitly model double-depth descent with a Level block between the two deepeners — clinical multi-layered fractionation includes this period of consolidation between descents (Erickson's "ratification" pattern). Each lightener handles one level back up.
 
 ---
 
@@ -104,10 +115,11 @@ Marathon sessions explicitly model double-depth descent, with each lightener han
 You can:
 
 * reorder phases
-* remove or add phases
+* remove or add phases (including **Sounding** awareness pauses and **Custom** user-authored blocks)
 * adjust structure
 * edit full script text
 * regenerate individual phases and compare outputs
+* **Reimagine custom blocks** — rewrite your own text in the persona's voice, with a global toggle for Guide-only vs. Smart-Director mode
 * control session flow directly
 
 This is a core feature, not just a preview step.
@@ -120,9 +132,10 @@ This is a core feature, not just a preview step.
 * narration ducking during speech
 * **two narration paths**:
    - **system voices** — instant, integrates with mobile lock-screen controls, quality varies by OS
-   - **local AI voice (opt-in)** — neural quality via Hugging Face SpeechT5 running entirely in your browser; ~80 MB one-time download, then cached and offline. Five speaker variants
+   - **local AI voice (opt-in)** — neural quality via Hugging Face SpeechT5 running entirely in your browser; ~80 MB one-time download, then cached and offline. Five speaker variants. Routes through the soundscape audio graph so the **Record audio** button captures voice + ambience together (system voices route through the OS audio stack and can't be tapped this way)
 * live adjustment during session (volume, pitch, rate, tempo)
 * mobile lock-screen media controls
+* **Record audio** during a session (`⏺` button) — produces a downloadable `.webm` of soundscape + local-TTS narration mixed together
 
 ---
 
@@ -267,6 +280,7 @@ The safety layer was reworked around clinical hypnosis literature on abreaction 
    - first <kbd>Esc</kbd> press → soft-pause overlay with current day/time. Speech and drone pause. You can resume (Continue / <kbd>Space</kbd> / <kbd>Enter</kbd>) or commit to ending
    - second <kbd>Esc</kbd> press while overlay is open → full counted re-alert in your guide's voice, then post-session screen
    - the dedicated "end & re-alert" button still goes straight to the hard end (deliberate clicks aren't intercepted)
+   - if the live-settings panel is open during a session, the first <kbd>Esc</kbd> closes that panel instead — the soft-pause path only fires when no other dialog is open
 * **Interactive 5-4-3-2-1 grounding** — tap each step as you find items; status persists until you start a new session
 * **Reorientation card** — after emergency exit, an anchor card displays current day + time and "you're here, in your body, in this room"
 * **Howard Alertness Scale check** — auto-suggests the grounding exercise if you self-rate low after a session
@@ -286,6 +300,20 @@ The safety layer was reworked around clinical hypnosis literature on abreaction 
 * focus indicators
 * ARIA labels on navigation
 * tiered <kbd>Esc</kbd> means accidental presses don't end the session abruptly — there's a forgiving middle layer
+
+---
+
+## Debug Mode
+
+A single toggle in your profile settings unlocks several developer affordances. Session-only — never persisted across reloads. While debug is on, a small red banner appears in the top-right corner.
+
+* **Self / Mirror persona** — adds a "You" persona at the top of Step 1, built live from your profile fields, Smart Director memory (recent rolling window + long-term profile), and inferred sensory modality. The role text is shown in a collapsible `<details>` panel below the persona's name so you can see exactly what the AI is being told about you. Talk to yourself in the chat preview, or pick the persona for a full session — the AI will narrate as your inner voice, in first-person ("I notice…", "I find myself…"). When you turn debug back off, the persona disappears from the grid; if you had it selected, the wizard falls back to the first regular persona.
+* **Skip rescue sequence** — emergency exit goes straight to the post-session screen instead of playing the counted re-alert. Useful for testing.
+* **Skip cooldown** — bypass the post-emergency cool-down timer.
+* **Skip method gating** — every method is selectable regardless of category locks.
+* **Skip safety gate** — `validateSessionSafety` is bypassed; the session begins even if a critical issue is detected.
+* **Verbose Smart Director logs** — `[SmartDirector]` log lines appear in the browser console as profile context, modality, and adaptive signals are computed.
+* **Inspect memories** — the memories modal (raw long-term profile text, rolling-window summary, per-session digests) becomes accessible from the profile section.
 
 ---
 

@@ -192,6 +192,13 @@
   .card.add-new { align-items: center; justify-content: center; border-style: dashed; border-left-style: dashed; color: var(--text-dim); min-height: 80px; text-align: center; }
   .card .card-badge { display: inline-block; background: rgba(184,154,74,0.12); color: var(--accent-warm); font-size: 0.56rem; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; margin-left: 6px; vertical-align: middle; }
 
+  /* Self / mirror persona — debug-only. Subtle red-violet edge so it's
+     visually distinct from the normal palette without being loud. */
+  .card.is-self { border-left: 3px solid #c85a8a !important; background: rgba(200, 90, 138, 0.04); }
+  .card.is-self .card-category-label { color: #c85a8a; }
+  .card.is-self.selected { border-color: var(--neon-cyan); border-left-color: #c85a8a; }
+  .self-badge { display: inline-block; background: rgba(200, 90, 138, 0.12); color: #c85a8a; font-size: 0.56rem; padding: 1px 6px; border-radius: 3px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; vertical-align: middle; }
+
   /* ============ FILTER TABS ============ */
   .filter-tabs { display: flex; gap: 4px; margin-bottom: 12px; justify-content: center; flex-wrap: wrap; }
   .filter-tab { background: var(--wood); border: 1px solid var(--wood-light); color: var(--text-dim); border-radius: var(--radius); padding: 6px 14px; cursor: pointer; font-size: 0.76rem; transition: all 0.25s; letter-spacing: 0.04em; font-weight: 600; }
@@ -2686,6 +2693,7 @@ I return to myself easily"></textarea>
           <div class="preview-row" style="margin-top:10px;">
             <button class="preview-btn" id="addInductionPhaseBtn" title="Adds an Induction — auto-adds Wake + Reintroduction if missing">+ add induction</button>
             <button class="preview-btn" id="addDeepenerPhaseBtn" title="Adds a Deepener — auto-adds a paired Lightener. Stackable for nested deepening.">+ add deepener (nest)</button>
+            <button class="preview-btn" id="addLevelPhaseBtn" title="Adds a Level — sustained-depth tonic between two deepeners. Holds the user at the current depth before going deeper.">+ add level</button>
             <button class="preview-btn" id="addWorkPhaseBtn">+ add work block</button>
             <button class="preview-btn" id="addAffirmPhaseBtn">+ add affirmation</button>
             <button class="preview-btn" id="addSoundingPhaseBtn" title="Adds a Sounding — a brief meta-awareness pause where the user notices their current internal state without changing it.">+ add sounding</button>
@@ -2885,7 +2893,7 @@ I return to myself easily"></textarea>
       <button class="btn secondary" id="endBtn">end & re-alert</button>
       <button class="btn secondary" id="backToEditBtn">← back to script</button>
       <button class="transcript-toggle" id="transcriptToggle">📜 script</button>
-      <button class="transcript-toggle" id="recordBtn">⏺ record ambience</button>
+      <button class="transcript-toggle" id="recordBtn" title="Records soundscape + local AI voice (if enabled). System voices route through OS audio and can't be captured.">⏺ record audio</button>
       <button class="transcript-toggle" id="fullscreenBtn">⛶ fullscreen</button>
       <button class="transcript-toggle" id="webcamLiveToggle" title="Toggle webcam awareness for this session">📷 webcam</button>
       <button class="transcript-toggle" id="liveSettingsBtn">⚙ settings</button>
@@ -4100,17 +4108,20 @@ I return to myself easily"></textarea>
   }
 
   const PHASE_DURATIONS = {
-    micro:    { settling: 15,  induction: 30,  deepener: 15,  work: 60,   lightener: 15,  wake: 12, reintroduction: 20 },
-    quick:    { settling: 30,  induction: 90,  deepener: 30,  work: 120,  lightener: 30,  wake: 20, reintroduction: 30 },
-    short:    { settling: 60,  induction: 180, deepener: 60,  work: 240,  lightener: 45,  wake: 30, reintroduction: 45 },
-    medium:   { settling: 90,  induction: 300, deepener: 180, work: 360,  lightener: 60,  wake: 40, reintroduction: 60 },
-    long:     { settling: 120, induction: 420, deepener: 300, work: 540,  lightener: 75,  wake: 50, reintroduction: 75 },
+    micro:    { settling: 15,  induction: 30,  deepener: 15,  level: 10,  work: 60,   lightener: 15,  wake: 12, reintroduction: 20 },
+    quick:    { settling: 30,  induction: 90,  deepener: 30,  level: 20,  work: 120,  lightener: 30,  wake: 20, reintroduction: 30 },
+    short:    { settling: 60,  induction: 180, deepener: 60,  level: 40,  work: 240,  lightener: 45,  wake: 30, reintroduction: 45 },
+    medium:   { settling: 90,  induction: 300, deepener: 180, level: 60,  work: 360,  lightener: 60,  wake: 40, reintroduction: 60 },
+    long:     { settling: 120, induction: 420, deepener: 300, level: 90,  work: 540,  lightener: 75,  wake: 50, reintroduction: 75 },
     // Phase 6 length-picker expansion. Each step adds ~1 Work + ~1 Affirm
     // pair; marathon also doubles the deepener/lightener depth (handled in
     // getSessionPhaseBlueprint), so its `deepener` total is split across two phases.
-    extended: { settling: 150, induction: 480, deepener: 360, work: 720,  lightener: 90,  wake: 60, reintroduction: 90 },
-    deep:     { settling: 180, induction: 540, deepener: 420, work: 900,  lightener: 105, wake: 70, reintroduction: 105 },
-    marathon: { settling: 180, induction: 600, deepener: 540, work: 1080, lightener: 120, wake: 80, reintroduction: 120 },
+    // The `level` value is the budget for EACH level-block when it appears
+    // (only marathon auto-places one; other lengths only use it if the user
+    // manually adds a second deepener via the script editor).
+    extended: { settling: 150, induction: 480, deepener: 360, level: 100, work: 720,  lightener: 90,  wake: 60, reintroduction: 90 },
+    deep:     { settling: 180, induction: 540, deepener: 420, level: 120, work: 900,  lightener: 105, wake: 70, reintroduction: 105 },
+    marathon: { settling: 180, induction: 600, deepener: 540, level: 180, work: 1080, lightener: 120, wake: 80, reintroduction: 120 },
   };
 
   const _FALLBACK_PERSONA = { id: 'fallback', name: 'Guide', tagline: '', category: 'contemplative', systemPrompt: '' };
@@ -4135,6 +4146,11 @@ I return to myself easily"></textarea>
    *  legacy `systemPrompt` field so existing data and shared personas keep working. */
   function getPersonaRole(persona) {
     if (!persona) return '';
+    // Self persona gets a freshly-composed role each time, so changes to
+    // profile / memory / modality reflect immediately.
+    if (persona.isSelf || persona.id === SELF_PERSONA_ID) {
+      return _buildSelfRoleInstruction();
+    }
     return persona.roleInstruction || persona.systemPrompt || '';
   }
 
@@ -5073,6 +5089,7 @@ I return to myself easily"></textarea>
       case 'settling':
       case 'induction':
       case 'deepener':
+      case 'level':
       case 'work':
       case 'affirm':
         // Trance phases — closed eyes are appropriate, expected, GOOD.
@@ -6023,7 +6040,7 @@ I return to myself easily"></textarea>
     if (!c.webAudio)        missing.push('Web Audio is not supported — no soundscape, no audio-reactive visualizer.');
     if (!c.indexedDB)       missing.push('IndexedDB is not available — session history and adaptive learning won\'t persist.');
     if (!c.getUserMedia)    missing.push('Webcam awareness unavailable — getUserMedia not supported in this browser/context.');
-    if (!c.mediaRecorder)   missing.push('Ambience recording unavailable — MediaRecorder not supported.');
+    if (!c.mediaRecorder)   missing.push('Audio recording unavailable — MediaRecorder not supported.');
     // fullscreen is non-critical — not warned, button just no-ops gracefully
     if (missing.length === 0) return;
     if (missing.length === 1) {
@@ -6088,6 +6105,11 @@ I return to myself easily"></textarea>
     return out;
   }
 
+  /** True when any debug flag is on (single switch in the UI sets all). */
+  function isDebugOn() {
+    return !!(state._debug?.verbose || state._debug?.skipRescue || state._debug?.skipSafetyGate || state._debug?.skipMethodGating);
+  }
+
   function refreshPersonas() {
     // Apply normalizePersona to every entry — backfills missing v2 fields
     // (uuid, reminderMessage, imagePromptPrefix/Suffix, metaTitle/Desc/Image,
@@ -6097,7 +6119,100 @@ I return to myself easily"></textarea>
     const custom    = loadCustomPersonas().map(p => normalizePersona({ ...p, isCustom: true, category: p.category || 'contemplative' }));
     const community = loadCommunityPackPersonas().map(p => normalizePersona(p));
     state.personas = [...builtin, ...community, ...custom];
+    // Debug-only: inject the Self persona at the top so the user can talk
+    // to (or be guided by) their own profile-driven mirror.
+    if (isDebugOn()) {
+      state.personas.unshift(SELF_PERSONA);
+    }
   }
+
+  // ── SELF PERSONA (debug-only) ─────────────────────────────────────
+  // A virtual persona that speaks AS the user, drawing from their own
+  // profile + Smart Director memory. Lets the user talk to themselves —
+  // for self-coaching sessions, hearing affirmations in their own voice,
+  // or just exploring what the AI thinks they sound like.
+  //
+  // The roleInstruction is computed LIVE every time getPersonaRole is
+  // called, so it always reflects the current profile + memory state.
+  // The stub object below holds metadata only.
+  const SELF_PERSONA_ID = 'self-mirror';
+  const SELF_PERSONA = {
+    id: SELF_PERSONA_ID,
+    uuid: SELF_PERSONA_ID,
+    name: 'You',
+    tagline: 'a mirror — your own voice from your profile + memory',
+    category: 'contemplative',
+    isSelf: true, // marker flag for special handling
+    roleInstruction: '', // computed dynamically — see _buildSelfRoleInstruction
+    systemPrompt: '',
+    reminderMessage: 'Speak as the user, not at them. First-person ("I am…", "I notice…"). Their own voice, their own vocabulary.',
+    imagePromptPrefix: '',
+    imagePromptSuffix: '',
+    metaTitle: 'A mirror — talk to yourself',
+    metaDesc: 'Self persona reflects your own profile and history back to you.',
+    metaImage: '',
+    creationTime: 0,
+  };
+
+  /** Compose the Self persona's roleInstruction from current profile + memory.
+   *  Called from getPersonaRole when the persona is the Self persona. Intended
+   *  to be a SHORT (~200-400 word) first-person voice the AI then speaks in. */
+  function _buildSelfRoleInstruction() {
+    const p = (typeof getProfile === 'function') ? getProfile() : {};
+    const lines = [];
+    // Identity anchor — first person, intimate
+    const name = (p.useFirstName && p.name) ? p.name : null;
+    lines.push(`You are speaking AS the user — their own inner voice reflected back. Use first-person ("I am", "I notice", "I feel") throughout. You are not a guide separate from them — you ARE them, talking to themselves.`);
+    if (name) lines.push(`Your name is ${name}.`);
+    if (p.pronouns) lines.push(`Pronouns: ${p.pronouns}.`);
+    if (p.age) lines.push(`Age range: ${p.age}.`);
+    if (p.experience) lines.push(`Experience with hypnosis: ${p.experience}.`);
+    if (p.about) lines.push(`What's true about you: ${p.about}`);
+    if (p.goals) lines.push(`What you're working on: ${p.goals}`);
+    if (p.appearance) lines.push(`How you look (only mention if relevant — visual self-imagery): ${p.appearance}`);
+    // Modality preference if inferred
+    if (state._inferredModality) {
+      const m = state._inferredModality;
+      const guidance = {
+        visual:      'Lean on what you see in your mind\'s eye — light, color, scenes.',
+        auditory:    'Lean on what you hear — sounds, rhythms, the texture of the inner voice.',
+        kinesthetic: 'Lean on what you feel in your body — weight, warmth, breath, pressure.',
+      }[m];
+      if (guidance) lines.push(`When describing experience, lean ${m}. ${guidance}`);
+    }
+    // Smart Director memory snapshot — refreshed at app load and after each
+    // session via _refreshSelfMemorySnapshot. Synchronous read keeps the
+    // role-builder fast (it's called every time the AI sees the persona).
+    try {
+      const recentDigest = state._recentMemorySummary || '';
+      if (recentDigest) lines.push(`Recent themes from your sessions: ${recentDigest.slice(0, 240)}`);
+      const longTerm = state._longTermProfileSummary || '';
+      if (longTerm) lines.push(`Longer pattern (after many sessions): ${longTerm.slice(0, 240)}`);
+    } catch {}
+    lines.push('');
+    lines.push(`HOW TO WRITE AS THIS PERSONA:
+• Always first-person ("I", "my", "me"). NEVER "you" — you're not addressing someone separate, you ARE the person.
+• Honest, unvarnished — the way someone talks to themselves when nobody else is listening.
+• Match the cadence of inner speech — fragments, half-thoughts, returns to the same image, gentle revisions ("I think… no, more accurately, I…")
+• Don't perform wisdom you don't have. If something is uncertain, sound uncertain.
+• Avoid clinical language and wellness platitudes — speak the way a person actually thinks.
+• When delivering hypnotic suggestions, frame them as recognitions, not commands: "I already know this", "I notice this is true", "I find myself…".`);
+    return lines.filter(l => l !== null && l !== undefined).join('\n');
+  }
+
+  /** Refresh the cached memory snapshot used by the Self persona. Async, but
+   *  doesn't block — fire-and-forget. Called at module load + after each
+   *  recordAnalytics so the Self persona stays current. */
+  async function _refreshSelfMemorySnapshot() {
+    try {
+      if (typeof getMemory !== 'function') return;
+      const m = await getMemory();
+      state._recentMemorySummary = m?.rollingWindow || '';
+      state._longTermProfileSummary = m?.longTermProfile || '';
+    } catch { /* ignore — snapshot stays stale */ }
+  }
+  // Refresh once at module load so the Self persona has data on first open.
+  setTimeout(() => { _refreshSelfMemorySnapshot().catch(() => {}); }, 1500);
   const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 
   // ── Reusable helpers ─────────────────────────────────────────────
@@ -8016,6 +8131,8 @@ I return to myself easily"></textarea>
       // Phase 4: refresh inferred modality so the next session's prompt has
       // an updated read. Fire-and-forget — never block the analytics write.
       refreshInferredModality().catch(() => {});
+      // Self persona memory snapshot — refresh too. Fire-and-forget.
+      if (typeof _refreshSelfMemorySnapshot === 'function') _refreshSelfMemorySnapshot().catch(() => {});
     } catch(e) { console.error('Analytics write failed:', e); }
   }
 
@@ -8919,9 +9036,13 @@ Practitioner profile (full, natural sentences):`;
     const filtered = state.personaFilter === 'all' ? state.personas : state.personas.filter(p => p.category === state.personaFilter);
     filtered.forEach(p => {
       const card = document.createElement('div');
-      card.className = `card category-${p.category || 'contemplative'}` + (p.id === state.selectedPersonaId ? ' selected' : '') + (p.isCustom ? ' is-custom' : '');
+      card.className = `card category-${p.category || 'contemplative'}`
+        + (p.id === state.selectedPersonaId ? ' selected' : '')
+        + (p.isCustom ? ' is-custom' : '')
+        + (p.isSelf ? ' is-self' : '');
       card.dataset.personaId = p.id;
-      card.innerHTML = `<div class="card-category-label">${escapeHtml(p.category || 'contemplative')}</div><div class="card-name">${escapeHtml(p.name)}</div><div class="card-tagline">${escapeHtml(p.tagline)}</div>${p.isCustom ? `<div class="card-actions"><button class="card-action-btn" data-action="edit">edit</button><button class="card-action-btn" data-action="delete">×</button></div>` : ''}`;
+      const categoryLabel = p.isSelf ? 'mirror · debug' : (p.category || 'contemplative');
+      card.innerHTML = `<div class="card-category-label">${escapeHtml(categoryLabel)}</div><div class="card-name">${escapeHtml(p.name)}${p.isSelf ? ' <span class="self-badge" title="Built from your profile + Smart Director memory">YOU</span>' : ''}</div><div class="card-tagline">${escapeHtml(p.tagline)}</div>${p.isCustom ? `<div class="card-actions"><button class="card-action-btn" data-action="edit">edit</button><button class="card-action-btn" data-action="delete">×</button></div>` : ''}`;
       card.addEventListener('click', e => {
         if (e.target.dataset.action === 'edit') { e.stopPropagation(); openPersonaEditor(p.id); return; }
         if (e.target.dataset.action === 'delete') { e.stopPropagation(); deletePersona(p.id); return; }
@@ -8971,48 +9092,64 @@ Practitioner profile (full, natural sentences):`;
     const p = getPersona();
     const el = $('personaDetail');
     if (!p) { el.innerHTML = ''; return; }
-    // Build base structure first; then async-fill the portrait region. The
-    // portrait box exists either way — empty placeholder while loading,
-    // image once cached, "generate" button if neither.
+    const isSelf = !!p.isSelf;
+    // For Self, render the role instruction in a collapsed "what I know about you"
+    // panel so the user can SEE what's being fed to the AI as them. For other
+    // personas, just show the role text directly.
+    const roleText = getPersonaRole(p);
+    const roleBlock = isSelf
+      ? `<details style="margin-top:6px;font-size:0.78rem;color:var(--text-dim);"><summary style="cursor:pointer;color:var(--neon-cyan);">show what I'm telling the AI about you (${roleText.length} chars)</summary><pre style="white-space:pre-wrap;font-family:var(--font-body);font-size:0.78rem;line-height:1.5;background:var(--bg-soft);padding:10px;border:1px solid var(--glass-border);margin-top:6px;color:var(--text);max-height:280px;overflow:auto;">${escapeHtml(roleText)}</pre></details>`
+      : `<div>${escapeHtml(roleText)}</div>`;
+    // Self persona portrait — no AI generation. Show a neutral "you" silhouette
+    // or, if user has uploaded a profile picture, use that. (For now: a clean
+    // monogram of the user's first initial.)
+    const portraitInner = isSelf
+      ? `<div style="font-size:1.5rem;font-weight:600;color:var(--neon-cyan);letter-spacing:0.05em;">${escapeHtml(((typeof getProfile === 'function' && getProfile().name) || 'you').slice(0,1).toUpperCase())}</div>`
+      : `<span class="persona-portrait-placeholder" style="font-size:0.62rem;color:var(--text-faint);text-align:center;line-height:1.4;padding:6px;">no portrait yet</span>`;
+    const portraitButton = isSelf
+      ? '' // no AI portrait for the self persona — it's the user
+      : `<button id="generatePortraitBtn" class="preview-btn" style="font-size:0.7rem;padding:3px 10px;">🎨 generate portrait</button>`;
     el.innerHTML = `<div class="persona-detail-row" style="display:flex;gap:14px;align-items:flex-start;">
       <div id="personaPortraitBox" data-persona-id="${escapeHtml(p.id)}" style="flex:0 0 96px;width:96px;height:96px;border-radius:8px;background:var(--glass);border:1px solid var(--glass-border);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;">
-        <span class="persona-portrait-placeholder" style="font-size:0.62rem;color:var(--text-faint);text-align:center;line-height:1.4;padding:6px;">no portrait yet</span>
+        ${portraitInner}
       </div>
       <div style="flex:1;min-width:0;">
-        <div class="detail-title">${escapeHtml(p.name)}</div>
-        <div>${escapeHtml(getPersonaRole(p))}</div>
+        <div class="detail-title">${escapeHtml(p.name)}${isSelf ? ' <span class="self-badge" style="margin-left:6px;">DEBUG</span>' : ''}</div>
+        ${roleBlock}
         <div class="pc-toggle-row">
-          <button id="generatePortraitBtn" class="preview-btn" style="font-size:0.7rem;padding:3px 10px;">🎨 generate portrait</button>
-          <button id="personaChatToggleBtn" class="pc-toggle" data-persona-id="${escapeHtml(p.id)}">💬 try out <span class="pc-toggle-name">${escapeHtml(p.name)}</span></button>
+          ${portraitButton}
+          <button id="personaChatToggleBtn" class="pc-toggle" data-persona-id="${escapeHtml(p.id)}">💬 ${isSelf ? 'talk to yourself' : ('try out <span class="pc-toggle-name">' + escapeHtml(p.name) + '</span>')}</button>
         </div>
       </div>
     </div>
     <div class="pc-panel" id="personaChatPanel" data-persona-id="${escapeHtml(p.id)}">
       <div class="pc-header">
-        <div class="pc-name">talking with ${escapeHtml(p.name)}</div>
+        <div class="pc-name">${isSelf ? 'a conversation with yourself' : ('talking with ' + escapeHtml(p.name))}</div>
         <button type="button" class="pc-close" id="personaChatCloseBtn" aria-label="close chat">✕</button>
       </div>
       <div class="pc-transcript" id="personaChatTranscript"></div>
       <div class="pc-suggestions" id="personaChatSuggestions"></div>
       <div class="pc-input-row">
-        <textarea id="personaChatInput" class="pc-input" rows="1" placeholder="ask ${escapeHtml(p.name)} anything…"></textarea>
+        <textarea id="personaChatInput" class="pc-input" rows="1" placeholder="${isSelf ? 'ask yourself anything…' : ('ask ' + escapeHtml(p.name) + ' anything…')}"></textarea>
         <button type="button" class="pc-send" id="personaChatSendBtn">send</button>
       </div>
       <div class="pc-footer">
         <div class="pc-footer-status" id="personaChatStatus">Ephemeral — clears when you switch guides or change steps.</div>
-        <button type="button" class="pc-commit" id="personaChatCommitBtn">use ${escapeHtml(p.name)} →</button>
+        <button type="button" class="pc-commit" id="personaChatCommitBtn">use ${isSelf ? 'this mirror' : escapeHtml(p.name)} →</button>
       </div>
     </div>`;
-    // Async load cached portrait if available (no API call — IDB lookup only)
-    _hydratePersonaPortrait(p.id);
-    // Wire the generate button — fires async generation, swaps placeholder for image
-    $('generatePortraitBtn')?.addEventListener('click', async () => {
-      const btn = $('generatePortraitBtn');
-      if (btn) { btn.disabled = true; btn.textContent = '⏳ generating…'; }
-      const url = await generatePersonaPortrait(p);
-      if (btn) { btn.disabled = false; btn.textContent = url ? '🔄 regenerate portrait' : '🎨 generate portrait'; }
-      if (url) _setPortraitImage(url, p.id);
-    });
+    if (!isSelf) {
+      // Async load cached portrait if available (no API call — IDB lookup only)
+      _hydratePersonaPortrait(p.id);
+      // Wire the generate button — fires async generation, swaps placeholder for image
+      $('generatePortraitBtn')?.addEventListener('click', async () => {
+        const btn = $('generatePortraitBtn');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ generating…'; }
+        const url = await generatePersonaPortrait(p);
+        if (btn) { btn.disabled = false; btn.textContent = url ? '🔄 regenerate portrait' : '🎨 generate portrait'; }
+        if (url) _setPortraitImage(url, p.id);
+      });
+    }
     // Wire the chat-with-guide affordances (Phase 3)
     _wirePersonaChat(p);
   }
@@ -9053,9 +9190,17 @@ Practitioner profile (full, natural sentences):`;
   const _personaChats = {}; // personaId → [{role: 'user'|'persona', text}]
 
   /** Suggested starter prompts shown as chips when chat is empty. The chip
-   *  text becomes the user's message verbatim — kept short, persona-agnostic,
-   *  designed to surface voice/style differences quickly. */
-  function _personaChatStarters() {
+   *  text becomes the user's message verbatim. Self persona gets reflective
+   *  prompts that lean into the mirror dynamic. */
+  function _personaChatStarters(persona) {
+    if (persona && persona.isSelf) {
+      return [
+        "what's actually been on my mind?",
+        'what am I avoiding right now?',
+        'what would I tell myself if I really listened?',
+        "what's the truest thing I haven't said yet?",
+      ];
+    }
     return [
       'how would you start a session with me?',
       "what's your style?",
@@ -9068,17 +9213,24 @@ Practitioner profile (full, natural sentences):`;
    *  chat-completion format from §2.1 of the perchance-api skill. */
   function _personaChatInstruction(persona, history, userMsg) {
     const role = getPersonaRole(persona) || `You are ${persona.name}, a hypnosis guide.`;
+    const isSelf = !!persona.isSelf;
     // Chat-format messages block — model continues from the trailing [[Persona]]:
     const messages = history.concat([{ role: 'user', text: userMsg }])
       .map(m => m.role === 'user'
         ? `[[User]]: ${m.text}`
         : `[[${persona.name}]]: ${m.text}`)
       .join('\n');
+    // Different instruction for the Self mirror: not a "preview chat with a
+    // guide" — it's a conversation with one's own inner voice. The AI is
+    // the user's reflection, speaking honestly back at them.
+    const instructionTask = isSelf
+      ? `You are speaking as the user themself — their inner voice, reflected back. The "user" in the [[User]] turns IS you; the [[${persona.name}]] turns are your own deeper / quieter / honest voice replying. First-person throughout. Don't perform wisdom — be honest, be uncertain where uncertainty lives. 1-3 sentences per reply.`
+      : `You are ${persona.name}. The user is considering choosing you as their hypnosis guide for a session, and is asking you questions to get a feel for your voice and style. This is a SHORT preview chat, NOT a hypnosis session — do not induce trance, do not give a script. Reply in your own voice as defined above. Keep replies brief (1-3 sentences). Stay fully in character — your voice, vocabulary, and cadence are the answer.`;
     return `<ROLE>
 ${role}
 </ROLE>
 
-You are ${persona.name}. The user is considering choosing you as their hypnosis guide for a session, and is asking you questions to get a feel for your voice and style. This is a SHORT preview chat, NOT a hypnosis session — do not induce trance, do not give a script. Reply in your own voice as defined above. Keep replies brief (1-3 sentences). Stay fully in character — your voice, vocabulary, and cadence are the answer.
+${instructionTask}
 
 <MESSAGES>
 ${messages}
@@ -9132,7 +9284,7 @@ ${messages}
     };
 
     const renderSuggestions = () => {
-      const starters = _personaChatStarters();
+      const starters = _personaChatStarters(persona);
       suggestions.innerHTML = starters.map(s =>
         `<button type="button" class="pc-suggest">${escapeHtml(s)}</button>`
       ).join('');
@@ -10425,6 +10577,9 @@ ${messages}
     }
     await idbSet('bg_img_' + id, blob);
     await idbSet(BG_MANIFEST_KEY, manifest);
+    // Update count badge + refresh gallery if open (Phase 6 desync fix)
+    const countEl = $('bgCacheCount'); if (countEl) countEl.textContent = manifest.length;
+    _maybeRefreshGallery();
     return id;
   }
   async function bgCacheGetManifest() { return (await idbGet(BG_MANIFEST_KEY)) || []; }
@@ -10444,12 +10599,17 @@ ${messages}
   async function bgCacheDelete(id) {
     await idbDel('bg_img_' + id);
     const manifest = (await idbGet(BG_MANIFEST_KEY)) || [];
-    await idbSet(BG_MANIFEST_KEY, manifest.filter(m => m.id !== id));
+    const next = manifest.filter(m => m.id !== id);
+    await idbSet(BG_MANIFEST_KEY, next);
+    const countEl = $('bgCacheCount'); if (countEl) countEl.textContent = next.length;
+    _maybeRefreshGallery();
   }
   async function bgCacheClear() {
     const manifest = (await idbGet(BG_MANIFEST_KEY)) || [];
     for (const entry of manifest) await idbDel('bg_img_' + entry.id);
     await idbSet(BG_MANIFEST_KEY, []);
+    const countEl = $('bgCacheCount'); if (countEl) countEl.textContent = '0';
+    _maybeRefreshGallery();
   }
   async function bgCacheDownload(id) {
     const blob = await idbGet('bg_img_' + id);
@@ -10587,12 +10747,23 @@ ${messages}
     return promise;
   }
 
+  // Gallery render generation — each call increments. Concurrent thumbnail
+  // loads check this counter and bail out if a newer render has started.
+  // Prevents the desync race where a delete or new-image mid-render leaves
+  // the DOM and IDB in disagreement.
+  let _galleryRenderGen = 0;
+  let _galleryOpen = false;
+
   async function renderBgGallery() {
     const grid = $('bgGalleryGrid');
     const info = $('bgGalleryInfo');
     const countEl = $('bgCacheCount');
     if (!grid) return;
+    // Snapshot a generation id; if another render starts during our async
+    // work, our id will be stale and we'll bail before mutating the DOM.
+    const myGen = ++_galleryRenderGen;
     const manifest = await bgCacheGetManifest();
+    if (myGen !== _galleryRenderGen) return; // a newer render started
     if (countEl) countEl.textContent = manifest.length;
     if (info) info.textContent = `${manifest.length} image${manifest.length === 1 ? '' : 's'} · stored as binary blobs (no base64 overhead)`;
     if (!manifest.length) { grid.innerHTML = '<div class="sublabel" style="text-align:center;padding:20px;">No cached images yet. Generate some with the preview button or during a session.</div>'; return; }
@@ -10603,16 +10774,30 @@ ${messages}
         <button class="bg-del" data-id="${c.id}" title="delete">✕</button>
         <button class="bg-dl" data-id="${c.id}" title="download">⬇</button>
       </div>`).join('');
-    // Load thumbnails lazily
+    // Load thumbnails lazily — bail per-iteration if a newer render started OR
+    // if the matching DOM node is gone (item was deleted concurrently).
     for (const entry of manifest) {
+      if (myGen !== _galleryRenderGen) return;
       const url = await bgCacheGetUrl(entry.id);
+      if (myGen !== _galleryRenderGen) {
+        if (url) URL.revokeObjectURL(url); // we're not going to use this — release
+        return;
+      }
       const img = grid.querySelector(`.bg-gallery-item[data-id="${entry.id}"] img`);
-      if (img && url) img.src = url;
+      if (img && url) {
+        img.src = url;
+      } else if (url) {
+        // Item vanished from the DOM (deleted while we were fetching its
+        // thumbnail) — release the object URL we just created.
+        URL.revokeObjectURL(url);
+      }
     }
     grid.querySelectorAll('.bg-del').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         await bgCacheDelete(btn.dataset.id);
+        // bgCacheDelete already triggers a re-render via _maybeRefreshGallery,
+        // but call directly too in case the event hook is bypassed.
         renderBgGallery();
       });
     });
@@ -10622,6 +10807,13 @@ ${messages}
         bgCacheDownload(btn.dataset.id);
       });
     });
+  }
+
+  /** Called by bgCacheStore / bgCacheDelete after they mutate the manifest.
+   *  No-op when the modal is closed; otherwise triggers a fresh render which
+   *  uses the generation-token guard to invalidate any in-flight load loop. */
+  function _maybeRefreshGallery() {
+    if (_galleryOpen) renderBgGallery();
   }
 
   let highwayRAF = null;
@@ -12162,6 +12354,7 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       settling: 'Settling',
       induction: 'Induction',
       deepener: idx ? `Deepener ${idx}` : 'Deepener',
+      level: idx ? `Level ${idx}` : 'Level',
       lightener: idx ? `Lightener ${idx}` : 'Lightener',
       wake: 'Wake',
       reintroduction: 'Reintroduction',
@@ -12197,6 +12390,7 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       settling: 'settling',
       induction: 'induction',
       deepener: 'deepener',
+      level: 'level',
       lightener: 'lightener',
       wake: 'wake',
       reintroduction: 'reintroduction',
@@ -12251,11 +12445,21 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
   function getSessionPhaseBlueprint() {
     // Marathon length doubles the descent: two deepener phases on the way
     // down, two lighteners on the way back up (LIFO unwind, mirrored).
-    // Other lengths use a single deepener+lightener pair.
+    // Between the two deepeners, a "Level" phase consolidates the user at the
+    // first depth before going deeper — clinical multi-layered fractionation
+    // includes a tonic / sustaining period between deepenings. Lighteners do
+    // NOT need a level between them — lightening should feel continuous.
+    // Other lengths use a single deepener+lightener pair (no Level needed).
     const deepenerCount = state.length === 'marathon' ? 2 : 1;
     const phases = ['settling', 'induction'];
     for (let d = 1; d <= deepenerCount; d++) {
       phases.push(deepenerCount > 1 ? `deepener-${d}` : 'deepener');
+      // Insert a Level phase between (not after the last) deepeners.
+      // Two deepeners → one level between them. Three deepeners (manual edit)
+      // → two levels between them. Generally: levels = deepeners - 1.
+      if (deepenerCount > 1 && d < deepenerCount) {
+        phases.push(deepenerCount > 2 ? `level-${d}` : 'level');
+      }
     }
     const workCount = getWorkBlockCount();
     const userAff = $('userAffirmations')?.value?.trim();
@@ -12267,7 +12471,8 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
     }
     if (state.intentionType === 'sleep') return phases;
     // Mirror the deepener depth on the way out — innermost lightener first,
-    // unwinding back to surface awareness layer by layer.
+    // unwinding back to surface awareness layer by layer. NO level between
+    // lighteners — the ascent is meant to feel continuous.
     for (let l = deepenerCount; l >= 1; l--) {
       phases.push(deepenerCount > 1 ? `lightener-${l}` : 'lightener');
     }
@@ -12353,6 +12558,31 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       const beforeWork = idxOf(s => ['work','affirm','lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
       if (beforeWork >= 0) return beforeWork;
       if (lastDeepener >= 0) return lastDeepener + 1;
+      return sections.length;
+    }
+    if (kind === 'level') {
+      // Level (sustained-depth tonic) — slots BETWEEN existing deepeners.
+      // If there are 2+ deepeners and at least one gap between them with no
+      // existing level, place there. Otherwise default to right after the
+      // last deepener (before work) where it acts as a pause-before-work.
+      // Manual placement after the last deepener still makes sense (pre-work
+      // sustaining moment), so we don't reject the case.
+      const deepenerIdxs = [];
+      sections.forEach((s, i) => { if (phaseBase(s.phaseId) === 'deepener') deepenerIdxs.push(i); });
+      // Look for the first gap between consecutive deepeners with no level
+      // already inserted.
+      for (let i = 0; i < deepenerIdxs.length - 1; i++) {
+        const a = deepenerIdxs[i];
+        const b = deepenerIdxs[i + 1];
+        const gapHasLevel = sections.slice(a + 1, b).some(s => phaseBase(s.phaseId) === 'level');
+        if (!gapHasLevel) return a + 1;
+      }
+      // No empty gap; place after the last deepener
+      const lastDeepener = lastIdxOf(s => phaseBase(s.phaseId) === 'deepener');
+      if (lastDeepener >= 0) return lastDeepener + 1;
+      // No deepeners at all — fall back to before work
+      const beforeWork = idxOf(s => ['work','affirm','lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (beforeWork >= 0) return beforeWork;
       return sections.length;
     }
     if (kind === 'custom') {
@@ -12444,6 +12674,7 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
    */
   function buildPhaseInstructions(phases, targetWords, persona, method, affirmLines) {
     const deepenerPhases = phases.filter(p => phaseBase(p) === 'deepener');
+    const levelPhases = phases.filter(p => phaseBase(p) === 'level');
     const lightenerPhases = phases.filter(p => phaseBase(p) === 'lightener');
     const totalDepth = deepenerPhases.length;
 
@@ -12463,6 +12694,19 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       else if (depth === totalDepth) intensity = 'deep trance (innermost layer)';
       else intensity = `medium trance (layer ${depth} of ${totalDepth})`;
       phaseInstructions[p] = `Write DEEPENER phase ${depth} of ${totalDepth} (~${deepenerWordsEach} words). Target state: ${intensity}. ${depth === 1 ? 'Move from post-induction awareness into the first layer of trance.' : `The user is already at layer ${depth - 1}; take them ONE LEVEL deeper, not all the way from waking.`}${state.craftedSuggestion && depth === totalDepth ? ' Foreshadow the crafted suggestion at this innermost layer.' : ''}${affirmLines.length && depth === totalDepth ? ' Begin weaving affirmations.' : ''} Use \x5BPAUSE n\x5D. Output ONLY script text.`;
+    });
+
+    // LEVEL phase — sustained-depth tonic between two deepeners. The user is
+    // already at depth N from the previous deepener; this phase HOLDS them
+    // there and reinforces the trance state before the next deepener takes
+    // them deeper. Clinical multi-layered fractionation includes this period
+    // of consolidation between descents (Erickson's "ratification" pattern).
+    const levelWordsEach = levelPhases.length > 0 ? Math.round((targetWords.level || Math.round(deepenerWordsEach * 0.5)) / levelPhases.length) : (targetWords.level || 60);
+    levelPhases.forEach((p, i) => {
+      // The level-N phase holds the user at depth N (between deepener-N and deepener-(N+1))
+      const heldDepth = i + 1;
+      const totalLevels = levelPhases.length;
+      phaseInstructions[p] = `Write a LEVEL phase (~${levelWordsEach} words). The user is currently at depth ${heldDepth} of ${totalDepth}. DO NOT take them deeper — HOLD them here. Reinforce the present state with quiet observations: breath continuing on its own, body weight settled, the depth they've already reached. Ratify the trance ("notice how easily you went there", "this state is yours now"). This is a tonic, sustaining period BEFORE the next deepener takes them further down. Use long pauses — \x5BPAUSE 5-8\x5D between phrases. Phrases short, paced, almost still. Do not introduce new imagery or scenes. Just rest the user in what they've already found. Output ONLY script text.`;
     });
 
     const lightenerWordsEach = lightenerPhases.length > 0 ? Math.round(targetWords.lightener / lightenerPhases.length) : targetWords.lightener;
@@ -13508,6 +13752,10 @@ ${s.text.trim()}`).join('\n\n').trim();
         const depth = pair ? pair.depth : 1;
         meta[i] = { pairGroup: 'depth', depth };
         if (curDepth > 0) curDepth--;
+      } else if (base === 'level') {
+        // Level holds at the current depth. Annotate with that depth so the
+        // editor can display "Level (holding at depth N)" if it wants.
+        meta[i] = { pairGroup: 'depth', depth: curDepth };
       } else if (base === 'induction' || base === 'wake' || base === 'reintroduction') {
         meta[i] = { pairGroup: 'trance', depth: null };
       }
@@ -13690,6 +13938,11 @@ ${s.text.trim()}`).join('\n\n').trim();
       if (depth <= 1) return 'Begin easing intensity down. Notice the room. Notice the body. \x5BPAUSE 3\x5D';
       return `Come back up one level — from depth ${depth} toward ${depth - 1}. \x5BPAUSE 3\x5D`;
     }
+    if (phaseBase(phaseId) === 'level') {
+      // Sustained-depth tonic between two deepeners. Holds the user at the
+      // current depth, ratifies the trance, prepares for the next descent.
+      return 'Resting here now, at this depth. \x5BPAUSE 6\x5D Nothing to do. \x5BPAUSE 6\x5D Just continuing — breath finding its own rhythm, body settling deeper into stillness. \x5BPAUSE 6\x5D';
+    }
     if (phaseBase(phaseId) === 'work') return 'Continue the work here. \x5BPAUSE 3\x5D';
     if (phaseBase(phaseId) === 'affirm') return 'Return to the user\'s affirmations here. \x5BPAUSE 3\x5D';
     if (phaseBase(phaseId) === 'sounding') {
@@ -13758,8 +14011,20 @@ ${s.text.trim()}`).join('\n\n').trim();
       }
     } else if (base === 'deepener') {
       // Nesting — each call adds one deepener + one lightener (paired).
+      // When this brings the deepener count to 2+, ALSO insert a Level
+      // between the new deepener and the previous one — see clinical
+      // multi-layered fractionation (tonic period between descents).
       const depthBefore = countPhaseBase(sections, 'deepener');
       const depth = depthBefore + 1;
+      if (depth >= 2) {
+        // Place a level FIRST so it lands between the existing last deepener
+        // and the new one we're about to add. (insertSection uses
+        // findPhaseInsertionIdx which puts new levels right after the last
+        // existing deepener — i.e. the gap we want to fill.)
+        const levelDepth = depth - 1; // level holds at depth (depth-1)
+        const levelId = depth > 2 ? `level-${levelDepth}` : 'level';
+        insertSection({ phaseId: levelId, text: scaffoldForPhase('level', levelDepth) });
+      }
       insertSection({ phaseId: depth > 1 ? `deepener-${depth}` : 'deepener', text: scaffoldForPhase('deepener', depth) });
       insertSection({ phaseId: depth > 1 ? `lightener-${depth}` : 'lightener', text: scaffoldForPhase('lightener', depth) });
     } else if (base === 'settling' || base === 'wake' || base === 'reintroduction') {
@@ -13777,7 +14042,7 @@ ${s.text.trim()}`).join('\n\n').trim();
 
     // Normalize IDs: if we now have 2+ of a kind where the first was unnumbered,
     // promote it to `-1` so downstream code sees consistent numbering.
-    ['work', 'affirm', 'deepener', 'lightener', 'sounding', 'custom'].forEach(kind => {
+    ['work', 'affirm', 'deepener', 'level', 'lightener', 'sounding', 'custom'].forEach(kind => {
       const indexes = sections.map((s, i) => phaseBase(s.phaseId) === kind ? i : -1).filter(i => i >= 0);
       if (indexes.length >= 2) {
         indexes.forEach((sectionIdx, n) => {
@@ -15436,6 +15701,7 @@ Start immediately:`;
     pausedAt: 0,
     pausedBuffer: null,
     abortFlag: false,
+    _genId: 0,              // bumped on cancel() to invalidate in-flight synth
     // CDN sources — pinned so updates don't break this app silently
     CDN_TRANSFORMERS: 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2',
     SPEAKER_BASE: 'https://huggingface.co/datasets/Matthijs/cmu-arctic-xvectors/resolve/main/',
@@ -15513,26 +15779,45 @@ Start immediately:`;
         this.loading = false;
       }
     },
-    /** Synthesize and play one chunk. Resolves when playback ends. */
+    /** Synthesize and play one chunk. Resolves when playback ends.
+     *
+     *  Race-safe via generation counter — if cancel() is called while a
+     *  synthesizer call is in flight, the in-flight call's resolution is
+     *  detected by comparing _genId snapshots, and we drop the buffer
+     *  instead of playing it. (Without this, emergencyEnd's cancel + the
+     *  subsequent rescue-script speak would be vulnerable to: the cancelled
+     *  synth completes after the new speak resets abortFlag, and the
+     *  cancelled audio plays anyway.) */
     async speak(text) {
       if (!this.ready || !text || !text.trim()) return;
       this.abortFlag = false;
+      const myGen = ++this._genId;
       try {
         const out = await this.synthesizer(text, { speaker_embeddings: this.speakerEmbeddings });
-        if (this.abortFlag) return;
+        if (this.abortFlag || myGen !== this._genId) return;
         const audioData = out.audio;          // Float32Array
         const sr = out.sampling_rate || 16000;
-        await this._playBuffer(audioData, sr);
+        await this._playBuffer(audioData, sr, myGen);
       } catch (e) {
         console.warn('[localTTS] synth failed for chunk:', e);
         // Don't throw — caller treats as best-effort. Falling back here would
         // require restructuring; instead we log and silently drop the chunk.
       }
     },
-    async _playBuffer(audioData, sampleRate) {
-      if (!this.audioCtx) {
+    async _playBuffer(audioData, sampleRate, myGen) {
+      // Prefer the soundscape's audio context if it's running — that way the
+      // ambience recorder (which taps drone.master) captures local TTS audio
+      // as part of the recording. Fall back to a dedicated context if drone
+      // isn't active (e.g. voice-preview before any session has started).
+      if (drone && drone.ctx && drone.ctx.state !== 'closed') {
+        this.audioCtx = drone.ctx;
+        this._sharedCtx = true;
+      } else if (!this.audioCtx) {
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        this._sharedCtx = false;
       }
+      // Re-check generation just before scheduling — defense in depth
+      if (myGen != null && myGen !== this._genId) return;
       // Fire word-pulse pings on a timer for visualizer compatibility (no
       // real boundary events from neural TTS).
       const dur = audioData.length / sampleRate;
@@ -15540,7 +15825,7 @@ Start immediately:`;
       const pulseInterval = (dur / wordCount) * 1000;
       let pulsesFired = 0;
       const pulseTimer = setInterval(() => {
-        if (this.abortFlag || pulsesFired >= wordCount) { clearInterval(pulseTimer); return; }
+        if (this.abortFlag || (myGen != null && myGen !== this._genId) || pulsesFired >= wordCount) { clearInterval(pulseTimer); return; }
         if (state.audioReactive) state.audioReactive._voicePulseSpawnedAt = performance.now();
         pulsesFired++;
       }, pulseInterval);
@@ -15551,7 +15836,13 @@ Start immediately:`;
       // Apply user volume
       const gainNode = this.audioCtx.createGain();
       gainNode.gain.value = state.voiceVolume ?? 1.0;
-      source.connect(gainNode).connect(this.audioCtx.destination);
+      // When sharing the soundscape's context, route through drone.master so
+      // ambience recorder picks us up. Otherwise route directly to destination.
+      if (this._sharedCtx && drone && drone.master) {
+        source.connect(gainNode).connect(drone.master);
+      } else {
+        source.connect(gainNode).connect(this.audioCtx.destination);
+      }
       // Apply rate as playbackRate (rough analog of state.speechRate)
       source.playbackRate.value = Math.max(0.5, Math.min(2, state.speechRate || 1));
       this.currentSource = source;
@@ -15576,6 +15867,13 @@ Start immediately:`;
     },
     cancel() {
       this.abortFlag = true;
+      // Bumping the generation id invalidates any synthesizer call still
+      // in flight — when its `await this.synthesizer(text)` resolves, the
+      // myGen !== this._genId check fires and the buffer is dropped instead
+      // of being scheduled for playback. Without this bump, a cancel during
+      // synth + a quick subsequent speak() would race-play the cancelled
+      // audio (because the new speak resets abortFlag back to false).
+      this._genId++;
       if (this.currentSource) {
         try { this.currentSource.stop(0); } catch {}
         this.currentSource = null;
@@ -15695,8 +15993,12 @@ Start immediately:`;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   // ====================================================================
-  // AUDIO RECORDER (ambience-only — TTS can't be captured via Web Audio)
   // ====================================================================
+  // AUDIO RECORDER — captures the soundscape audio graph
+  // ====================================================================
+  // Taps drone.master (which now also receives local AI voice output when
+  // that's enabled). System speechSynthesis still can't be captured — it
+  // routes through the OS audio stack, not the page's Web Audio graph.
   let _recorder = null, _recordedChunks = [];
 
   function startRecording() {
@@ -15712,11 +16014,11 @@ Start immediately:`;
         const blob = new Blob(_recordedChunks, { type: 'audio/webm' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `stillness-ambience-${Date.now()}.webm`;
+        a.download = `stillness-session-${Date.now()}.webm`;
         a.click();
         // Delay revoke so the browser actually initiates the download
         setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-        notify.success('Ambience recording downloaded.');
+        notify.success('Session audio downloaded.');
         _recordedChunks = [];
       };
       _recorder.start();
@@ -15730,7 +16032,7 @@ Start immediately:`;
     if (_recorder && _recorder.state === 'recording') {
       _recorder.stop(); _recorder = null;
       const btn = $('recordBtn');
-      if (btn) { btn.textContent = '⏺ record ambience'; btn.classList.remove('recording'); }
+      if (btn) { btn.textContent = '⏺ record audio'; btn.classList.remove('recording'); }
     }
   }
 
@@ -16593,8 +16895,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       notify.success('Image saved to your device.');
     }
   });
-  $('bgManageBtn')?.addEventListener('click', () => { renderBgGallery(); $('bgGalleryModal')?.classList.add('visible'); });
-  $('bgGalleryCloseBtn')?.addEventListener('click', () => $('bgGalleryModal')?.classList.remove('visible'));
+  $('bgManageBtn')?.addEventListener('click', () => { _galleryOpen = true; renderBgGallery(); $('bgGalleryModal')?.classList.add('visible'); });
+  $('bgGalleryCloseBtn')?.addEventListener('click', () => { _galleryOpen = false; $('bgGalleryModal')?.classList.remove('visible'); });
   $('bgClearAllBtn')?.addEventListener('click', async () => {
     if (!await confirmAsync('Clear all cached background images?')) return;
     await bgCacheClear(); renderBgGallery(); notify.info('Background cache cleared.');
@@ -16648,6 +16950,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('beginBtn').addEventListener('click', startSession);
   $('addInductionPhaseBtn')?.addEventListener('click', () => addPhaseSection('induction'));
   $('addDeepenerPhaseBtn')?.addEventListener('click', () => addPhaseSection('deepener'));
+  $('addLevelPhaseBtn')?.addEventListener('click', () => addPhaseSection('level'));
   $('addWorkPhaseBtn')?.addEventListener('click', () => addPhaseSection('work'));
   $('addAffirmPhaseBtn')?.addEventListener('click', () => addPhaseSection('affirm'));
   $('addSoundingPhaseBtn')?.addEventListener('click', () => addPhaseSection('sounding'));
@@ -17095,6 +17398,16 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     const overlay = document.getElementById('softPauseOverlay');
     const overlayOpen = overlay && overlay.classList.contains('visible');
+    // Live settings panel: if it's open, Esc closes it FIRST (before any
+    // soft-pause logic). The user's intent is "close this dialog", not
+    // "trigger the rescue path".
+    const livePanel = document.getElementById('livePanel');
+    const livePanelOpen = livePanel && livePanel.classList.contains('open');
+    if (e.key === 'Escape' && livePanelOpen && !overlayOpen) {
+      e.preventDefault();
+      if (typeof closeLivePanel === 'function') closeLivePanel();
+      return;
+    }
     if (e.key === 'Escape') {
       e.preventDefault();
       if (overlayOpen) {
@@ -17762,6 +18075,16 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const memBtn = $('viewMemoriesBtn');
     if (memBtn) memBtn.style.display = on ? '' : 'none';
     applyMethodGating(); // re-evaluate the visible tab locks immediately
+    // Self persona is gated on debug — re-render the persona grid so it
+    // appears/disappears immediately. If the user had Self selected and is
+    // turning debug OFF, fall back to the first available persona.
+    refreshPersonas();
+    if (!on && state.selectedPersonaId === SELF_PERSONA_ID) {
+      state.selectedPersonaId = state.personas[0]?.id || null;
+      saveUserSettings();
+    }
+    if (typeof renderPersonaGrid === 'function') renderPersonaGrid();
+    if (typeof renderPersonaDetail === 'function') renderPersonaDetail();
   });
 
   // ── Memories modal (Perchance-chat style: editable cards) ──
