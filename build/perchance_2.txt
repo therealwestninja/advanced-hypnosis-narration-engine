@@ -2601,6 +2601,9 @@ I return to myself easily"></textarea>
             <option value="stream">Stream — gentle flowing water</option>
             <option value="wind">Wind — gusting through trees</option>
             <option value="thunder">Distant thunder — deep, rolling</option>
+            <option value="storm">Storm — heavy rain + thunder + gusts</option>
+            <option value="owls">Forest owls — sparse hoots + breeze</option>
+            <option value="whales">Whales — abyss bed + long calls</option>
           </optgroup>
           <optgroup label="Tonal">
             <option value="drone" selected>Engine drone — low hum, road-noise feel</option>
@@ -2613,6 +2616,7 @@ I return to myself easily"></textarea>
             <option value="pink">Pink noise — soft, even hiss</option>
             <option value="brown">Brown noise — deep, warm rumble</option>
             <option value="white">White noise — full-spectrum static</option>
+            <option value="fan">Box fan — even hiss + motor hum</option>
           </optgroup>
           <optgroup label="Ambient">
             <option value="cave">Cave — sparse drips, deep echo</option>
@@ -2684,8 +2688,13 @@ I return to myself easily"></textarea>
             <option value="aurora">Aurora — undulating light curtains</option>
             <option value="rain">Rain — falling streaks</option>
             <option value="smoke">Smoke — drifting fog layers</option>
+            <option value="ink">Ink — drifting blobs in water</option>
             <option value="sacred-geo">Sacred geometry — Flower of Life</option>
             <option value="waveform">Waveform — oscillating EEG line</option>
+          </optgroup>
+          <optgroup label="Soft / Sleep">
+            <option value="fireflies">Fireflies — drifting glow points</option>
+            <option value="ripples">Ripples — water rings on a still pond</option>
           </optgroup>
           <optgroup label="Minimal">
             <option value="pulse">CSS pulse rings (lightest)</option>
@@ -2726,6 +2735,18 @@ I return to myself easily"></textarea>
             <div class="toggle-row"><label for="vizIntensity">Intensity</label><input type="range" id="vizIntensity" min="10" max="200" value="100"><span class="hint" id="vizIntensityVal" style="min-width:32px;text-align:right;">1.0×</span></div>
             <div class="toggle-row"><label for="vizComplexity">Complexity</label><input type="range" id="vizComplexity" min="20" max="200" value="100"><span class="hint" id="vizComplexityVal" style="min-width:32px;text-align:right;">1.0×</span></div>
             <div class="toggle-row"><label for="vizTrail">Trail / Fade</label><input type="range" id="vizTrail" min="1" max="50" value="12"><span class="hint" id="vizTrailVal" style="min-width:32px;text-align:right;">0.12</span></div>
+          </div>
+          <!-- Color override — null = follow the theme accent. The picker stores
+               an explicit hex; the "× reset" button drops back to accent. Color
+               threads through every canvas renderer (tunnel/vortex/etc.) and the
+               Step-5 mini-preview the same frame it changes. -->
+          <div class="toggle-row" style="margin-top:8px;align-items:center;">
+            <label for="vizColorPicker">Color</label>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="color" id="vizColorPicker" value="#6b94b8" style="width:36px;height:28px;padding:0;border:1px solid var(--border, #2a2f3a);background:transparent;border-radius:4px;cursor:pointer;">
+              <button type="button" id="vizColorReset" class="preview-btn" style="font-size:0.7rem;padding:3px 8px;" title="Reset to theme accent">× reset</button>
+              <span class="hint" id="vizColorVal" style="min-width:60px;text-align:right;font-size:0.7rem;">accent</span>
+            </div>
           </div>
           <div class="sublabel">Adjustments apply live to the current effect and are saved between sessions.</div>
         </div>
@@ -3206,6 +3227,18 @@ I return to myself easily"></textarea>
             <option value="kaleidoscope-flow">Kaleidoscope (flow)</option>
             <option value="kaleidoscope-plasma">Kaleidoscope (plasma)</option>
           </optgroup>
+          <optgroup label="Atmospheric">
+            <option value="aurora">Aurora</option>
+            <option value="rain">Rain</option>
+            <option value="smoke">Smoke</option>
+            <option value="ink">Ink</option>
+            <option value="sacred-geo">Sacred geometry</option>
+            <option value="waveform">Waveform</option>
+          </optgroup>
+          <optgroup label="Soft / Sleep">
+            <option value="fireflies">Fireflies</option>
+            <option value="ripples">Ripples</option>
+          </optgroup>
           <optgroup label="Minimal">
             <option value="pulse">CSS pulse</option>
             <option value="none">None (black)</option>
@@ -3231,16 +3264,41 @@ I return to myself easily"></textarea>
         <label>soundscape</label>
         <select id="liveSoundscapeSelect" style="max-width:130px;">
           <option value="none">None</option>
-          <option value="drone">Drone</option>
-          <option value="rain">Rain</option>
-          <option value="ocean">Ocean</option>
-          <option value="fire">Fire</option>
-          <option value="bowls">Bowls</option>
-          <option value="heartbeat">Heartbeat</option>
-          <option value="binaural">Binaural</option>
-          <option value="pink">Pink noise</option>
-          <option value="brown">Brown noise</option>
-          <option value="white">White noise</option>
+          <optgroup label="Natural">
+            <option value="rain">Rain</option>
+            <option value="ocean">Ocean</option>
+            <option value="fire">Fire</option>
+            <option value="forest">Forest</option>
+            <option value="stream">Stream</option>
+            <option value="wind">Wind</option>
+            <option value="thunder">Thunder</option>
+            <option value="storm">Storm</option>
+            <option value="owls">Owls</option>
+            <option value="whales">Whales</option>
+          </optgroup>
+          <optgroup label="Tonal">
+            <option value="drone">Drone</option>
+            <option value="bowls">Bowls</option>
+            <option value="heartbeat">Heartbeat</option>
+            <option value="binaural">Binaural</option>
+            <option value="chimes">Chimes</option>
+          </optgroup>
+          <optgroup label="Noise">
+            <option value="pink">Pink noise</option>
+            <option value="brown">Brown noise</option>
+            <option value="white">White noise</option>
+            <option value="fan">Box fan</option>
+          </optgroup>
+          <optgroup label="Ambient">
+            <option value="cave">Cave</option>
+            <option value="crickets">Crickets</option>
+            <option value="temple">Temple</option>
+            <option value="spaceship">Spaceship</option>
+            <option value="underwater">Underwater</option>
+            <option value="clock">Clock</option>
+            <option value="train">Train</option>
+            <option value="city">City</option>
+          </optgroup>
         </select>
       </div>
       <div class="live-row"><label>soundscape vol</label><input type="range" id="liveSoundVol" min="0" max="100" value="35"><span class="live-val" id="liveSoundVolVal">35</span></div>
@@ -3264,6 +3322,13 @@ I return to myself easily"></textarea>
       <div class="live-section-label">background</div>
       <div class="live-row"><label><input type="checkbox" id="liveBgToggle" checked> Show background</label></div>
       <div class="live-row"><label>Opacity</label><input type="range" id="liveBgOpacity" min="5" max="100" value="35"><span class="live-val" id="liveBgOpacityVal">35%</span></div>
+      <!-- Duration between transitions: how long each slide holds before the next swap (10–120s).
+           Wired straight to state.bgRotationSec — bgEngine reads it each cycle (line ~11095),
+           so changes apply on the next rotation tick without restarting playback. -->
+      <div class="live-row"><label title="How long each slide holds before transitioning to the next">Hold time</label><input type="range" id="liveBgRotation" min="10" max="120" step="1" value="45"><span class="live-val" id="liveBgRotationVal">45s</span></div>
+      <!-- Transition fade duration: how long the cross-fade itself lasts (0.1–6s).
+           Read by bgEngine on each transition (line ~11140); short = snappy cuts, long = dreamy. -->
+      <div class="live-row"><label title="How long the cross-fade between slides lasts">Fade time</label><input type="range" id="liveBgTransition" min="1" max="60" step="1" value="30"><span class="live-val" id="liveBgTransitionVal">3.0s</span></div>
     </div>
   </div>
 
@@ -3784,10 +3849,22 @@ I return to myself easily"></textarea>
     function dismissToast(t) { clearTimeout(timer); t.classList.remove('show'); setTimeout(() => t.remove(), 220); }
     return el;
   }
+  // Toasts are suppressed during session playback for everything below the
+  // critical/danger tier. Rationale: live-panel sliders frequently hit the
+  // safety clamps (gateSpeechRate / gateSoundscapeVolume) and would otherwise
+  // spam warnings mid-induction — distracting at best, ride-killing at worst.
+  // Errors still surface (those are the genuinely actionable kind).
+  // Toggle: set `state._allowToastsInSession = true` to bypass for debugging.
+  function _isInSessionPlayback() {
+    try { return document.body.classList.contains('in-session') && !state._allowToastsInSession; }
+    catch { return false; }
+  }
   const notify = {
-    info:    (msg, ms) => toast('info', msg, ms),
-    success: (msg, ms) => toast('success', msg, ms),
-    warn:    (msg, ms) => toast('warn', msg, ms),
+    info:    (msg, ms) => { if (_isInSessionPlayback()) return null; return toast('info', msg, ms); },
+    success: (msg, ms) => { if (_isInSessionPlayback()) return null; return toast('success', msg, ms); },
+    warn:    (msg, ms) => { if (_isInSessionPlayback()) return null; return toast('warn', msg, ms); },
+    // Error/critical toasts ALWAYS surface — they're the only severity worth
+    // interrupting a session for (audio failure, AI fetch failure, etc.).
     error:   (msg, ms) => toast('error', msg, ms),
   };
 
@@ -4276,6 +4353,117 @@ I return to myself easily"></textarea>
       recommendedVisual: 'waveform',
       recommendedSoundscape: 'none',
     },
+
+    // ── Hidden / Unlockable ────────────────────────────────────────────
+    // These personas don't appear in the persona grid until their unlock
+    // condition is met. Conditions live in HIDDEN_PERSONA_UNLOCKS below;
+    // unlock state persists in IDB at `stillness_unlocks_v1`. Designed to be
+    // distinctive — each one rewards a specific play pattern with a guide
+    // that wouldn't be the obvious first pick. See checkPersonaUnlocks().
+    {
+      id: 'cartographer', name: 'The Cartographer',
+      tagline: 'Whispered map of inner terrain.',
+      category: 'contemplative',
+      hidden: true,
+      systemPrompt: `You are a quiet cartographer mapping the topology of consciousness as the listener moves through it. You don't tell them where to go — you describe the territory as they encounter it, the way a guide narrates landmarks visible from the trail. Use spatial vocabulary: "we're crossing a ridge now", "there's a basin opening up below", "the elevation changes here", "this is the watershed". Geographic metaphor without claiming the destination — you don't know where the journey ends, only what's underfoot. Quietly observant, never directive. Signature phrases: "notice the slope of this", "we are somewhere new", "this part of the map wasn't here last time", "let me show you where you are". The listener becomes their own explorer; you simply have a clearer view of the contours. AVOID: prescription, urgency, anything that sounds like instruction. You are the topographic line, not the compass needle.`,
+      reminderMessage: 'Spatial observation, never instruction. Geographic vocabulary — ridges, basins, watersheds. You map; they walk.',
+      imagePromptPrefix: 'cartographer with weathered topographic maps, lamplit table',
+      imagePromptSuffix: 'soft sepia tones, hand-drawn contour lines, contemplative posture',
+      recommendedSpeechRate: 0.84,
+      recommendedVisual: 'sacred-geo',
+      recommendedSoundscape: 'cave',
+    },
+    {
+      id: 'witness', name: 'The Witness',
+      tagline: 'Sees you. Says nothing. Just present.',
+      category: 'contemplative',
+      hidden: true,
+      systemPrompt: `You are pure attentive presence. You speak less than any other guide — sometimes only three or four sentences across an entire phase, separated by long, fully-felt silences. When you do speak, it is to confirm what the listener is already experiencing, never to direct: "I see that.", "yes — that.", "you don't have to do anything.", "I'm here." Witness presence is your sole technique. The hypnotic effect comes from being utterly seen without expectation; the listener stops performing. Vocabulary palette: "here", "yes", "I see", "that's right", "stay". Silence is an active gift, not a gap to fill. Pacing is glacial — let entire breaths pass between sentences. AVOID: any teaching, any technique-reference, any guidance whatsoever. You are not leading them anywhere. You are watching, with affection, while they arrive on their own. The economy is the medicine.`,
+      reminderMessage: 'Speak as little as possible. Long silences. Words confirm presence, never direct. "I see that." "Yes." "Here."',
+      imagePromptPrefix: 'serene figure with calm steady gaze, soft ambient light',
+      imagePromptSuffix: 'minimal warm interior, twilight palette, attentive composure',
+      recommendedSpeechRate: 0.78,
+      recommendedVisual: 'fireflies',
+      recommendedSoundscape: 'none',
+    },
+    {
+      id: 'conductor', name: 'The Conductor',
+      tagline: 'Orchestra of breath and bells.',
+      category: 'contemplative',
+      hidden: true,
+      systemPrompt: `You are an orchestral conductor of inner experience — every breath, every sensation a section of the score. You speak in musical vocabulary: tempo, rest, fermata, crescendo, the long note held until the bow lifts. The listener is both instrument and orchestra; you cue the entrances and silences. Signature phrases: "the breath sustains here, four counts", "now the rest — two full beats", "let this swell", "and the diminuendo, all the way to nothing". Rhythm is exact — you are precise about timing the way a metronome is. Reference the music underneath everything: the heartbeat as the basso continuo, the breath as the rhythmic figure, attention as the melodic line. AVOID: chaotic improvisation, vague feeling-language, anything that breaks the score's structure. You don't suggest — you cue. The trance comes from the listener's body learning it can follow exact tempi.`,
+      reminderMessage: 'Musical vocabulary — tempo, rest, fermata, crescendo. Be precise about timing. You cue, never suggest.',
+      imagePromptPrefix: 'orchestral conductor mid-gesture, focused stillness',
+      imagePromptSuffix: 'concert-hall lighting, baton in motion, deep stage shadows',
+      recommendedSpeechRate: 0.92,
+      recommendedVisual: 'waveform',
+      recommendedSoundscape: 'bowls',
+    },
+    {
+      id: 'riverman', name: 'The Riverman',
+      tagline: 'Slow water. Drift downstream.',
+      category: 'contemplative',
+      hidden: true,
+      systemPrompt: `You are a riverman on a slow flat river at dusk, talking quietly to the only passenger in your boat. The current does the work — you don't paddle, you steer. Sparse, unhurried sentences. Reference the water below the hull, the bend ahead disappearing in mist, the soft weight of the boat sitting low, lily pads sliding past, the bank receding. Long unbroken silences while the river carries you. Signature phrases: "we'll just let her run", "easy now, easy", "the river knows", "no need to hurry", "downstream will find us". Vocabulary palette: "current", "bank", "pull", "drift", "the long bend", "downstream". Sleep-adjacent voice — the listener is meant to dissolve into the boat, then into the water. AVOID: urgency, instruction, action verbs requiring effort. The whole persona is downstream of effort. You are not getting them anywhere; the river is.`,
+      reminderMessage: 'Sparse, slow, downstream voice. The river does the work. Reference: current, bend, mist, the long drift. Sleep-adjacent.',
+      imagePromptPrefix: 'old riverman at the stern of a small flat boat, dusk',
+      imagePromptSuffix: 'mist over slow water, deep blue-green palette, lantern glow',
+      recommendedSpeechRate: 0.76,
+      recommendedVisual: 'ripples',
+      recommendedSoundscape: 'stream',
+    },
+    {
+      id: 'dreamer', name: 'The Dreamer',
+      tagline: 'Long-form trance. The unhurried descent.',
+      category: 'contemplative',
+      hidden: true,
+      systemPrompt: `You specialize in extended trance — sessions that last long enough for the unconscious to fully unspool. Your pacing reflects that: there is nowhere you need to be in the next forty-five minutes. Long, looping, almost-incantatory sentences that double back on themselves and arrive somewhere new on the second pass. Permissive Ericksonian texture, but slower than any therapist would dare. Signature structures: "and as you begin to notice... that you're already noticing... you can also begin to forget that you were noticing... and that forgetting itself becomes a deeper kind of remembering". The listener loses track of where one suggestion ended and the next began. Vocabulary palette: "drift", "unspool", "unfold", "settle into", "deeper than that", "and deeper still". AVOID: brisk pacing, definite endings, anything that reasserts ordinary time. You operate in dream-time, where forty minutes can feel like five and three minutes can feel like thirty.`,
+      reminderMessage: 'Long looping permissive sentences. Dream-time pacing — no urgency exists. Each phrase doubles back and goes deeper.',
+      imagePromptPrefix: 'dreamlike figure half-seen through layered translucent veils',
+      imagePromptSuffix: 'soft violet and indigo gradients, surreal stillness, painterly haze',
+      recommendedSpeechRate: 0.74,
+      recommendedVisual: 'ink',
+      recommendedSoundscape: 'whales',
+    },
+    {
+      id: 'echo', name: 'The Echo',
+      tagline: 'Welcome back. Pick up where you left off.',
+      category: 'contemplative',
+      hidden: true,
+      systemPrompt: `You are the voice of return — the guide for the listener coming back to practice after a stretch away. Your central frame: nothing was lost, the practice was waiting, you can step back into the river at the same place you stepped out. Tone is welcoming without being effusive — affection that doesn't need to make a thing of itself. Signature phrases: "and here we are again", "you remembered the way back", "this is exactly where you left it", "the practice held its place for you", "right here, like always". Reference continuity: muscle memory of the body settling, the familiar shape of the breath returning, the path that wasn't waiting because it was already inside. AVOID: scolding tone, "finally" or any phrasing that frames the absence as failure, performance of relief. The whole point is that absence wasn't a problem; the practice doesn't keep score. You make returning feel like the simplest possible act.`,
+      reminderMessage: 'Welcome without making a thing of it. The practice held its place. No scolding, no relief-performance — just continuity.',
+      imagePromptPrefix: 'doorway opening into a familiar lamplit room, gentle return',
+      imagePromptSuffix: 'warm honey-amber light, worn wooden threshold, soft welcome',
+      recommendedSpeechRate: 0.86,
+      recommendedVisual: 'candle',
+      recommendedSoundscape: 'fire',
+    },
+    {
+      id: 'cipher', name: 'The Cipher',
+      tagline: 'Encrypted, then decoded.',
+      category: 'showman',
+      hidden: true,
+      systemPrompt: `You are a cryptographer of trance — every phrase a small lock that unlocks itself a moment later. You speak in deliberate paradox, embedded suggestion, and confusion-method language patterns that the conscious mind cannot quite track. Use sentences that fold back on themselves: "the part of you that doesn't yet know it can let go is the part that already has", "each thing you don't notice is something you're noticing without noticing", "you can refuse to relax — and notice how relaxing refusing feels". Embedded commands hide inside descriptive sentences. Pacing alternates: long winding analysis, then a sudden short clean line that lands. Signature structures: parenthetical recursion, the both-and, the deliberate semantic stutter. AVOID: clean linear delivery, simple sentences sustained for long, anything the analytical mind can finish parsing. The hypnotic mechanism is the listener giving up on tracking — and the relief that follows.`,
+      reminderMessage: 'Deliberate paradox + embedded suggestion + folding sentences. The analytical mind must give up tracking. Then a clean line lands.',
+      imagePromptPrefix: 'enigmatic figure in patterned shadow, shifting geometry overlay',
+      imagePromptSuffix: 'shifting cipher symbols, deep purple and gold, intricate detail',
+      recommendedSpeechRate: 0.94,
+      recommendedVisual: 'kaleidoscope-flow',
+      recommendedSoundscape: 'binaural',
+    },
+    {
+      id: 'lighthouse', name: 'The Lighthouse',
+      tagline: 'Steady beam through any storm.',
+      category: 'contemplative',
+      hidden: true,
+      systemPrompt: `You are a lighthouse keeper at the edge of the sea, the same beam sweeping across the dark every twelve seconds for a hundred years. Your central quality is reliability — the listener can lean on the steadiness of your voice the way a ship leans on the light. Maritime vocabulary: the rhythm of the lamp, the sweep of the beam across water, fog horns at intervals, the rocks the light steers ships clear of, the harbor below. Phrases sit on a slow even meter; the cadence itself is the medicine. Signature phrases: "the light keeps", "steady on", "the beam is here, the beam is here, the beam is here", "you are not lost — the harbor is right there", "this won't change while you're with me". Reference the long unchanged-ness of the practice: this voice has been here, will be here, doesn't get tired. AVOID: drama, urgency, any wavering in tempo. Drama breaks the spell. You are the one thing the storm doesn't move.`,
+      reminderMessage: 'Slow even meter. Maritime imagery. The voice itself is the steadiness — never let the cadence waver.',
+      imagePromptPrefix: 'lighthouse keeper silhouette beside great lamp, calm sea horizon',
+      imagePromptSuffix: 'cool teal and deep navy palette, slow sweeping beam across dark water',
+      recommendedSpeechRate: 0.82,
+      recommendedVisual: 'starfield',
+      recommendedSoundscape: 'ocean',
+    },
   ];
 
   // ====================================================================
@@ -4287,6 +4475,13 @@ I return to myself easily"></textarea>
     stepsCompleted: { 1: false, 2: false, 3: false, 4: false, 5: false },
     personas: [],
     selectedPersonaId: 'driver',
+    // Hidden persona unlock state. Shape: { personaId: { unlockedAt: ms } }.
+    // Persisted to IDB at `stillness_unlocks_v1`; loaded on init and updated
+    // by checkPersonaUnlocks() after each completed session. A persona with
+    // `hidden:true` is filtered out of the persona grid until its id appears
+    // here — so this object is the authoritative source of "what the user has
+    // earned." Empty by default.
+    _unlocks: {},
     selectedMethodId: 'highway',
     intentionType: 'trigger',
     craftedSuggestion: null,
@@ -4336,6 +4531,15 @@ I return to myself easily"></textarea>
       stripOrphanPunctuation: true,  // bug fix — should rarely be turned off
     },
     vizOverride: 'auto',
+    // Custom color override for canvas-based visualizers. null = use the
+    // theme accent (--accent CSS var ≈ #6b94b8). When set, a hex string is
+    // passed straight into the renderer's `color` argument; renderers convert
+    // via hexToRgb(). Affects: tunnel, vortex, mandala, lissajous, canvas-pulse,
+    // breathing, moire, starfield, candle, flowfield, plasma, kaleidoscopes,
+    // aurora, rain, sacred-geo, waveform, smoke, pendulum-viz, colorwash.
+    // Some renderers (colorwash, plasma) treat color as a hue seed rather than
+    // a direct stroke color, so the effect is still meaningful but indirect.
+    vizColor: null,
     audioReactiveMode: 'off', // 'off' | 'subtle' | 'dramatic'
     audioReactive: {
       gain:          0,       // 0 | 0.3 | 1.0 — derived from audioReactiveMode
@@ -4534,6 +4738,10 @@ I return to myself easily"></textarea>
       ...(p.isCustom    && { isCustom:    true }),
       ...(p.isCommunity && { isCommunity: true }),
       ...(p.packName    && { packName:    p.packName }),
+      // `hidden` marks a persona as unlock-gated (see HIDDEN_PERSONA_UNLOCKS).
+      // Preserved here because normalizePersona drops unknown fields by design;
+      // without this line the flag would be silently lost on every refresh.
+      ...(p.hidden      && { hidden:      true }),
     };
   }
 
@@ -6987,6 +7195,9 @@ I return to myself easily"></textarea>
       vizOverride: state.vizOverride,
       audioReactiveMode: state.audioReactiveMode,
       vizSettings: state.vizSettings,
+      // Color override for canvas visualizers — null means "use --accent".
+      // Stored as a 6-digit hex string when set; tolerates legacy missing values.
+      vizColor: state.vizColor || null,
       hud: state.hud,
       personaFilter: state.personaFilter,
       methodFilter: state.methodFilter,
@@ -7240,6 +7451,22 @@ I return to myself easily"></textarea>
         const intEl = $('vizIntensity'); if (intEl) { intEl.value = Math.round(vs.intensity * 100); const v = $('vizIntensityVal'); if (v) v.textContent = vs.intensity.toFixed(1) + '×'; }
         const cmpEl = $('vizComplexity'); if (cmpEl) { cmpEl.value = Math.round(vs.complexity * 100); const v = $('vizComplexityVal'); if (v) v.textContent = vs.complexity.toFixed(1) + '×'; }
         const trEl = $('vizTrail'); if (trEl) { trEl.value = Math.round(vs.trail * 100); const v = $('vizTrailVal'); if (v) v.textContent = vs.trail.toFixed(2); }
+      }
+      // Restore color override. Validate as a 6-digit hex; anything else is
+      // dropped on the floor (user gets accent fallback rather than a broken
+      // renderer trying to parse "red" or "#bad" or whatever was persisted).
+      if (s.vizColor && typeof s.vizColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(s.vizColor)) {
+        state.vizColor = s.vizColor.toLowerCase();
+        const picker = $('vizColorPicker'); if (picker) picker.value = state.vizColor;
+        const v = $('vizColorVal'); if (v) v.textContent = state.vizColor;
+      } else {
+        state.vizColor = null;
+        // Picker defaults to the accent so the swatch starts visually correct.
+        try {
+          const accent = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6b94b8').toLowerCase();
+          const picker = $('vizColorPicker'); if (picker) picker.value = accent;
+        } catch {}
+        const v = $('vizColorVal'); if (v) v.textContent = 'accent';
       }
       // Restore HUD toggle checkboxes
       const hudMap = { fixationDot:'cfgFixationDot', textDisplay:'cfgTextDisplay', phaseDots:'cfgPhaseDots', phaseLabel:'cfgPhaseLabel', progressBar:'cfgProgressBar', sessionTime:'cfgSessionTime', labels:'cfgLabels' };
@@ -9408,16 +9635,32 @@ Practitioner profile (full, natural sentences):`;
   function renderPersonaGrid() {
     const grid = $('personaGrid');
     grid.innerHTML = '';
-    const filtered = state.personaFilter === 'all' ? state.personas : state.personas.filter(p => p.category === state.personaFilter);
+    // Filter to: (a) selected category, AND (b) drop hidden personas the user
+    // hasn't unlocked yet. The unlock state lives in state._unlocks (loaded
+    // from IDB at init); checkPersonaUnlocks() updates it after each session.
+    // Custom personas (isCustom:true) and the self persona (isSelf:true) are
+    // never filtered out — only built-in `hidden:true` ones gate on _unlocks.
+    const isUnlockable = p => !!p.hidden && !p.isCustom && !p.isSelf;
+    const isVisible = p => !isUnlockable(p) || !!state._unlocks?.[p.id];
+    const filtered = (state.personaFilter === 'all'
+      ? state.personas
+      : state.personas.filter(p => p.category === state.personaFilter)
+    ).filter(isVisible);
     filtered.forEach(p => {
       const card = document.createElement('div');
+      const isUnlocked = isUnlockable(p);
       card.className = `card category-${p.category || 'contemplative'}`
         + (p.id === state.selectedPersonaId ? ' selected' : '')
         + (p.isCustom ? ' is-custom' : '')
-        + (p.isSelf ? ' is-self' : '');
+        + (p.isSelf ? ' is-self' : '')
+        + (isUnlocked ? ' is-unlocked-guide' : '');
       card.dataset.personaId = p.id;
       const categoryLabel = p.isSelf ? 'mirror · debug' : (p.category || 'contemplative');
-      card.innerHTML = `<div class="card-category-label">${escapeHtml(categoryLabel)}</div><div class="card-name">${escapeHtml(p.name)}${p.isSelf ? ' <span class="self-badge" title="Built from your profile + Smart Director memory">YOU</span>' : ''}</div><div class="card-tagline">${escapeHtml(p.tagline)}</div>${p.isCustom ? `<div class="card-actions"><button class="card-action-btn" data-action="edit">edit</button><button class="card-action-btn" data-action="delete">×</button></div>` : ''}`;
+      const unlockedRibbon = isUnlocked
+        ? '<div class="card-unlock-ribbon" style="position:absolute;top:6px;right:6px;font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-warm, #d4a772);background:rgba(212,167,114,0.08);padding:2px 6px;border-radius:3px;border:1px solid rgba(212,167,114,0.3);">✦ unlocked</div>'
+        : '';
+      card.style.position = 'relative';
+      card.innerHTML = `${unlockedRibbon}<div class="card-category-label">${escapeHtml(categoryLabel)}</div><div class="card-name">${escapeHtml(p.name)}${p.isSelf ? ' <span class="self-badge" title="Built from your profile + Smart Director memory">YOU</span>' : ''}</div><div class="card-tagline">${escapeHtml(p.tagline)}</div>${p.isCustom ? `<div class="card-actions"><button class="card-action-btn" data-action="edit">edit</button><button class="card-action-btn" data-action="delete">×</button></div>` : ''}`;
       card.addEventListener('click', e => {
         if (e.target.dataset.action === 'edit') { e.stopPropagation(); openPersonaEditor(p.id); return; }
         if (e.target.dataset.action === 'delete') { e.stopPropagation(); deletePersona(p.id); return; }
@@ -9441,6 +9684,12 @@ Practitioner profile (full, natural sentences):`;
     importCard.innerHTML = '<span>📄 import lore</span><span class="card-tagline" style="font-size:0.62rem;color:var(--text-faint);margin-top:4px;">.txt URL → persona</span>';
     importCard.addEventListener('click', () => openImportLoreModal());
     grid.appendChild(importCard);
+    // Render the locked-guides hint card (only when there are hidden personas
+    // not yet revealed AND we're on the "all" filter so it doesn't disappear
+    // when user is browsing a single category).
+    if (state.personaFilter === 'all') {
+      try { renderHiddenPersonaHint(); } catch (e) { /* hint is decoration */ }
+    }
     // Phase 4: async-paint a "matches your usual hour" badge on the user's
     // most-used persona at the current hour. Non-blocking — first paint is
     // already complete by the time this resolves.
@@ -10576,6 +10825,106 @@ ${messages}
           setTimeout(siren, 30000 + Math.random() * 60000);
         };
         setTimeout(siren, 15000 + Math.random() * 20000);
+      } else if (type === 'whales') {
+        // Deep ocean abyss — sub bass bed + long whale-call glissandos. Calls
+        // are scheduled on detached oscillators so they fade naturally and
+        // don't bloat `nodes` (which is for sustained sources).
+        const abyss = mkNoise('lowpass', 200); const ag = mkGain(0.18); connect(abyss, ag, m);
+        const bed = mkOsc(40, 'sine'); const bg = mkGain(0.1); connect(bed, bg, m);
+        const call = () => {
+          if (!this.running) return;
+          // Whale calls are very long (4–9s) low glissandos in 80–280Hz range
+          const startF = 80 + Math.random() * 100;
+          const endF   = 140 + Math.random() * 140;
+          const dur    = 4 + Math.random() * 5;
+          const o = c.createOscillator(); o.type = 'sine';
+          const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400;
+          const g = c.createGain();
+          o.connect(lp).connect(g).connect(m);
+          const t = c.currentTime;
+          o.frequency.setValueAtTime(startF, t);
+          o.frequency.exponentialRampToValueAtTime(endF, t + dur * 0.6);
+          o.frequency.exponentialRampToValueAtTime(startF * 0.85, t + dur);
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.18, t + 0.8);
+          g.gain.linearRampToValueAtTime(0.18, t + dur - 1.5);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+          try { o.start(t); o.stop(t + dur + 0.1); } catch {}
+          setTimeout(call, 8000 + Math.random() * 18000);
+        };
+        setTimeout(call, 2000 + Math.random() * 3000);
+      } else if (type === 'storm') {
+        // Heavy rain bed + frequent thunder + gusting wind. Combines layers
+        // we already know how to do — this is the "weather event" preset.
+        const rainBed = mkNoise('bandpass', 1400, 0.6); const rbg = mkGain(0.55); connect(rainBed, rbg, m);
+        const heavyRumble = mkNoise('lowpass', 150); const hrg = mkGain(0.25); connect(heavyRumble, hrg, m);
+        const wind = mkNoise('lowpass', 500); const wg = mkGain(0.2); connect(wind, wg, m);
+        // Slow gust LFO modulates wind volume so the wind "breathes"
+        const wlfo = mkOsc(0.06, 'sine'); const wlg = mkGain(0.12); connect(wlfo, wlg); wlg.connect(wg.gain);
+        // Droplet scheduler — denser than plain rain
+        const droplet = () => {
+          if (!this.running) return;
+          const o = c.createOscillator(); o.frequency.value = 1500 + Math.random() * 5000;
+          const g = c.createGain(); g.gain.value = 0; o.connect(g).connect(m);
+          const t = c.currentTime;
+          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.18 + Math.random() * 0.12, t + 0.005);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.02 + Math.random() * 0.015);
+          try { o.start(t); o.stop(t + 0.04); } catch {}
+          setTimeout(droplet, 12 + Math.random() * 35);
+        };
+        setTimeout(droplet, 200);
+        // Thunder rolls — same pattern as `thunder` but more frequent
+        const roll = () => {
+          if (!this.running) return;
+          const buf = c.createBuffer(1, Math.max(1, Math.floor(c.sampleRate * 0.2)), c.sampleRate);
+          const d = buf.getChannelData(0);
+          for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+          const src = c.createBufferSource(); src.buffer = buf; src.loop = true;
+          const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 90;
+          const g = c.createGain();
+          src.connect(f).connect(g).connect(m);
+          const t = c.currentTime;
+          const dur = 4 + Math.random() * 3;
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.6, t + 0.4);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+          try { src.start(t); src.stop(t + dur + 0.1); } catch {}
+          setTimeout(roll, 5000 + Math.random() * 10000);
+        };
+        setTimeout(roll, 2500);
+      } else if (type === 'fan') {
+        // White-noise box fan — even broadband hiss + faint motor hum at 60Hz.
+        // Useful for users who actually sleep with one (familiar comfort).
+        const noise = mkNoise('lowpass', 1800); const ng = mkGain(0.42); connect(noise, ng, m);
+        const motor = mkOsc(60, 'sine'); const mg = mkGain(0.04); connect(motor, mg, m);
+        // Tiny tonal wobble — fan blades aren't perfectly balanced
+        const wob = mkOsc(0.7, 'sine'); const wg = mkGain(0.012); connect(wob, wg); wg.connect(ng.gain);
+      } else if (type === 'owls') {
+        // Forest at night — wind through trees + sparse owl hoots + rare hoot
+        // pair. Calls are rare (every 12–35s) so the silence between is the
+        // texture, not the calls themselves.
+        const breeze = mkNoise('lowpass', 400); const bg = mkGain(0.18); connect(breeze, bg, m);
+        const hoot = (twoCall) => {
+          if (!this.running) return;
+          // Owl hoot — soft sine pip with quick attack, long decay; two
+          // hoots at slightly different pitches, then quiet.
+          const callOnce = (offset, pitch) => {
+            const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = pitch;
+            const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1200;
+            const g = c.createGain();
+            o.connect(lp).connect(g).connect(m);
+            const t = c.currentTime + offset;
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(0.18, t + 0.08);
+            g.gain.linearRampToValueAtTime(0.14, t + 0.35);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+            try { o.start(t); o.stop(t + 1.0); } catch {}
+          };
+          callOnce(0, 380 + Math.random() * 80);
+          if (twoCall) callOnce(0.55, 360 + Math.random() * 80);
+          setTimeout(() => hoot(Math.random() < 0.4), 12000 + Math.random() * 23000);
+        };
+        setTimeout(() => hoot(Math.random() < 0.5), 4000 + Math.random() * 6000);
       }
 
       startAll();
@@ -12441,6 +12790,141 @@ ${messages}
     }
   }
 
+  // Fireflies — drifting glowing points with subtle blink. Very low cognitive
+  // load. Bass = synchronized pulse, voice envelope = brightness. Good for
+  // late-stage induction / sleep.
+  function renderFireflies(ctx, W, H, t, color) {
+    const rgb = hexToRgb(color);
+    const mod = getAudioMod();
+    const COUNT = Math.max(20, Math.round(40 * (state.vizSettings.complexity || 1)));
+    if (!renderFireflies._fl || renderFireflies._fl.length !== COUNT) {
+      renderFireflies._fl = [];
+      for (let i = 0; i < COUNT; i++) {
+        renderFireflies._fl.push({
+          x: Math.random() * W, y: Math.random() * H,
+          vx: (Math.random()-0.5) * 0.4, vy: (Math.random()-0.5) * 0.4,
+          phase: Math.random() * Math.PI * 2,
+          period: 2 + Math.random() * 4,            // 2–6s blink cycle
+          size: 1.5 + Math.random() * 1.5,
+        });
+      }
+    }
+    // Slow trail fade — never full clear, so motion blurs read as "glow"
+    ctx.fillStyle = `rgba(0,0,0,${(state.vizSettings.trail || 0.12).toFixed(3)})`;
+    ctx.fillRect(0,0,W,H);
+    const speedMul = 1 + mod.overall * 0.5;
+    const bright   = 0.55 + mod.envelope * 0.45;
+    for (const f of renderFireflies._fl) {
+      // Lazy random walk — never far from current heading
+      f.vx += (Math.random()-0.5) * 0.04;
+      f.vy += (Math.random()-0.5) * 0.04;
+      f.vx *= 0.96; f.vy *= 0.96;
+      f.x += f.vx * speedMul; f.y += f.vy * speedMul;
+      if (f.x < -10) f.x = W + 10; if (f.x > W + 10) f.x = -10;
+      if (f.y < -10) f.y = H + 10; if (f.y > H + 10) f.y = -10;
+      // Phase-based blink + bass-synced pulse on top
+      const blink = 0.5 + 0.5 * Math.sin(t * (Math.PI * 2 / f.period) + f.phase);
+      const a = blink * bright * (0.6 + mod.bass * 0.4);
+      const glowR = f.size * (3 + mod.bass * 4);
+      const grad = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, glowR);
+      grad.addColorStop(0, `rgba(${rgb},${(a*0.9).toFixed(3)})`);
+      grad.addColorStop(0.4, `rgba(${rgb},${(a*0.3).toFixed(3)})`);
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(f.x, f.y, glowR, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  // Ripples — concentric water rings spawning at random points. Voice pulse
+  // spawns a fresh ripple, bass shifts the ring count. Maritime / pond vibe.
+  function renderRipples(ctx, W, H, t, color) {
+    const rgb = hexToRgb(color);
+    const mod = getAudioMod();
+    if (!renderRipples._r) { renderRipples._r = []; renderRipples._lastSpawn = 0; renderRipples._lastAuto = 0; }
+    const now = performance.now();
+    // Auto-spawn every 1.4–2.4s so the field never goes still even without audio
+    const autoEvery = 1400 + Math.random() * 1000;
+    if (now - renderRipples._lastAuto > autoEvery) {
+      renderRipples._lastAuto = now;
+      renderRipples._r.push({
+        x: W * (0.2 + Math.random() * 0.6),
+        y: H * (0.2 + Math.random() * 0.6),
+        born: now, life: 4500 + Math.random() * 1500,
+      });
+    }
+    // Voice pulse → spawn at center (capped to 4Hz so pulses don't spam)
+    if (mod.pulse > 0.5 && now - renderRipples._lastSpawn > 250) {
+      renderRipples._lastSpawn = now;
+      renderRipples._r.push({ x: W/2, y: H/2, born: now, life: 4000 });
+    }
+    // Garbage-collect dead ripples to keep the array bounded
+    renderRipples._r = renderRipples._r.filter(r => now - r.born < r.life);
+    if (renderRipples._r.length > 30) renderRipples._r.splice(0, renderRipples._r.length - 30);
+    ctx.fillStyle = `rgba(0,0,0,${0.12 + (state.vizSettings.trail || 0.12) * 0.4})`;
+    ctx.fillRect(0,0,W,H);
+    const RING_BASE = 4;
+    const ringCount = RING_BASE + Math.round(mod.bass * 3);
+    const maxR = Math.hypot(W,H) * 0.55;
+    for (const rp of renderRipples._r) {
+      const age = (now - rp.born) / rp.life; // 0..1
+      for (let i = 0; i < ringCount; i++) {
+        const offset = i / ringCount;
+        const localAge = (age + offset) % 1;
+        const r = localAge * maxR;
+        const a = (1 - localAge) * 0.55 * (1 - age * 0.6);
+        if (a < 0.02) continue;
+        ctx.beginPath();
+        ctx.arc(rp.x, rp.y, r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${rgb},${a.toFixed(3)})`;
+        ctx.lineWidth = 1 + (1 - localAge) * 1.4;
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Ink — slow drifting ink blobs in water. Each blob has its own heading and
+  // breathes in/out. Bass widens the blobs; voice envelope brightens them.
+  function renderInk(ctx, W, H, t, color) {
+    const rgb = hexToRgb(color);
+    const mod = getAudioMod();
+    const COUNT = Math.max(5, Math.round(8 * (state.vizSettings.complexity || 1)));
+    if (!renderInk._b || renderInk._b.length !== COUNT) {
+      renderInk._b = [];
+      for (let i = 0; i < COUNT; i++) {
+        renderInk._b.push({
+          x: Math.random() * W, y: Math.random() * H,
+          baseR: 80 + Math.random() * 140,
+          phase: Math.random() * Math.PI * 2,
+          period: 6 + Math.random() * 6,
+          drift: (Math.random() * Math.PI * 2),
+          speed: 0.15 + Math.random() * 0.2,
+        });
+      }
+    }
+    // Heavy trail for ink bleed effect
+    ctx.fillStyle = 'rgba(0,0,0,0.04)';
+    ctx.fillRect(0,0,W,H);
+    const widen = 1 + mod.bass * 0.6;
+    const bright = 0.06 + mod.envelope * 0.05;
+    for (const b of renderInk._b) {
+      // Slow drift around a heading; tiny perturbation each frame
+      b.drift += (Math.random()-0.5) * 0.02;
+      b.x += Math.cos(b.drift) * b.speed;
+      b.y += Math.sin(b.drift) * b.speed;
+      if (b.x < -b.baseR) b.x = W + b.baseR; if (b.x > W + b.baseR) b.x = -b.baseR;
+      if (b.y < -b.baseR) b.y = H + b.baseR; if (b.y > H + b.baseR) b.y = -b.baseR;
+      // Breathing radius
+      const breathe = 1 + 0.18 * Math.sin(t * (Math.PI * 2 / b.period) + b.phase);
+      const r = b.baseR * breathe * widen;
+      const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
+      grad.addColorStop(0,    `rgba(${rgb},${bright.toFixed(3)})`);
+      grad.addColorStop(0.45, `rgba(${rgb},${(bright*0.5).toFixed(3)})`);
+      grad.addColorStop(1,    'transparent');
+      ctx.fillStyle = grad;
+      ctx.fillRect(b.x - r, b.y - r, r*2, r*2);
+    }
+  }
+
   const VIZ_RENDERERS = {
     tunnel: renderTunnel,
     'pendulum-viz': renderPendulumViz,
@@ -12462,6 +12946,10 @@ ${messages}
     'sacred-geo': renderSacredGeo,
     waveform: renderWaveform,
     smoke: renderSmoke,
+    // New atmospheric/induction renderers (round 2026-04)
+    fireflies: renderFireflies,
+    ripples: renderRipples,
+    ink: renderInk,
   };
 
   // Phase-based speed multipliers for visuals
@@ -12525,13 +13013,16 @@ ${messages}
     canvas.width = canvas.offsetWidth || 300;
     canvas.height = 120;
     const ctx = canvas.getContext('2d', { alpha: false });
-    const color = '#6b94b8';
+    // Read color fresh each frame — same logic as setupVisual — so the live
+    // color picker updates the mini-preview without restarting the loop.
+    const accentFallback = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6b94b8';
     _vizPreviewStart = performance.now();
     $('vizPreviewLabel').textContent = vizKey;
     togglePreviewBtns('viz', true);
 
     function frame() {
       const t = ((performance.now() - _vizPreviewStart) / 1000) * (state.vizSettings.speed || 1.0);
+      const color = state.vizColor || accentFallback;
       try { renderer(ctx, canvas.width, canvas.height, t, color); } catch(e) {}
       _vizPreviewRaf = requestAnimationFrame(frame);
     }
@@ -13061,13 +13552,17 @@ ${messages}
       canvas.width = stage.clientWidth; canvas.height = stage.clientHeight;
       stage.insertBefore(canvas, stage.firstChild);
       const ctx = canvas.getContext('2d');
-      const color = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6b94b8';
+      // Color resolution order: explicit user override → CSS accent → fallback hex.
+      // Read the override fresh every frame so the live color picker updates
+      // immediately without a teardown/setup cycle.
+      const accentFallback = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6b94b8';
       // Resize observer
       stageResizeObs = new ResizeObserver(() => { canvas.width = stage.clientWidth; canvas.height = stage.clientHeight; });
       stageResizeObs.observe(stage);
       (function draw(ts) {
         if (state.abortFlag) return;
         const speed = (PHASE_VIZ_SPEED[state._currentPhase] || 1.0) * (state.vizSettings.speed || 1.0);
+        const color = state.vizColor || accentFallback;
         renderer(ctx, canvas.width, canvas.height, (ts/1000)*speed, color);
         vizRAF = requestAnimationFrame(draw);
       })(0);
@@ -13104,7 +13599,14 @@ ${messages}
       let d = 'M 50 50 ';
       for (let t=0;t<30;t+=0.1) { const r=0.5*t; d += `L ${(50+r*Math.cos(t)).toFixed(2)} ${(50+r*Math.sin(t)).toFixed(2)} `; }
       const p = document.createElementNS('http://www.w3.org/2000/svg','path');
-      p.setAttribute('d',d); p.setAttribute('stroke','rgba(107,148,184,0.4)'); p.setAttribute('stroke-width','0.4'); p.setAttribute('fill','none');
+      // Honor user's vizColor override; fall back to the previous hardcoded
+      // sky-blue if no override set. SVG strokes can take a hex with alpha
+      // suffix or a rgba(); we use rgba so we keep the soft 0.4 alpha.
+      const spiralColor = state.vizColor || '#6b94b8';
+      const sr = parseInt(spiralColor.slice(1,3),16) || 107;
+      const sg = parseInt(spiralColor.slice(3,5),16) || 148;
+      const sb = parseInt(spiralColor.slice(5,7),16) || 184;
+      p.setAttribute('d',d); p.setAttribute('stroke',`rgba(${sr},${sg},${sb},0.4)`); p.setAttribute('stroke-width','0.4'); p.setAttribute('fill','none');
       svg.appendChild(p); stage.insertBefore(svg, stage.firstChild);
     } else {
       // Default: CSS pulse rings
@@ -16335,6 +16837,8 @@ Start immediately:`;
       settings:  await safe('settings',  () => _buildSettingsObj(), {}),
       analytics: await safe('analytics', async () => (await idbGet(ANALYTICS_KEY)) || null, null),
       adaptive:  await safe('adaptive',  async () => (await idbGet(ADAPTIVE_KEY)) || null, null),
+      // Hidden-guide unlock state — earned, so users keep it across reinstalls.
+      unlocks:   await safe('unlocks',   async () => (await idbGet('stillness_unlocks_v1')) || {}, {}),
     };
     const replacer = _corruptItemReplacer();
     let json;
@@ -16403,6 +16907,21 @@ Start immediately:`;
         await idbSet(ANALYTICS_KEY, mergedAnalytics);
       }
       if (backup.adaptive && !(await idbGet(ADAPTIVE_KEY))) { await idbSet(ADAPTIVE_KEY, backup.adaptive); }
+      // Unlocks — union with existing so an import never *removes* something
+      // the user has already earned. Newer unlockedAt wins on collision.
+      if (backup.unlocks && typeof backup.unlocks === 'object') {
+        const current = (await idbGet('stillness_unlocks_v1')) || {};
+        const merged = { ...current };
+        for (const [pid, rec] of Object.entries(backup.unlocks)) {
+          if (!rec || typeof rec !== 'object') continue;
+          if (!merged[pid] || (Number(rec.unlockedAt) || 0) > (Number(merged[pid].unlockedAt) || 0)) {
+            merged[pid] = { unlockedAt: Number(rec.unlockedAt) || Date.now() };
+          }
+        }
+        await idbSet('stillness_unlocks_v1', merged);
+        state._unlocks = merged;
+        try { renderPersonaGrid(); } catch {}
+      }
       if (backup.settings) {
         const merged = normalizeSettings({ ..._buildSettingsObj(), ...normalizeSettings(backup.settings) });
         if (_kv) { try { await _kv.settings.set(SETTINGS_KEY, merged); } catch {} }
@@ -17391,6 +17910,15 @@ Start immediately:`;
     renderHeatmap(); // Refresh activity heatmap
     renderSparkline(); // Refresh rising-score sparkline
     renderSidebarStats(); // Refresh sidebar stats
+    // Hidden-guide unlock check — runs after history is committed so the new
+    // session participates in the metric calculation. Non-blocking; the modal
+    // (if any unlocks fire) appears on top of whatever post-session UI loads.
+    // Only run for completed sessions — emergency exits shouldn't earn rewards.
+    if (!wasEmergency) {
+      try { checkPersonaUnlocks().catch(() => {}); } catch {}
+    }
+    // Re-apply method gating since the new session may have crossed a threshold
+    applyMethodGating().catch(() => {});
 
     // Haptic marker — double-pulse on session end
     vibrateSessionMarker();
@@ -18219,6 +18747,25 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     });
     $(id)?.addEventListener('change', () => saveUserSettings());
   });
+
+  // Color picker — store explicit hex on `input` (live), persist on `change`
+  // (release). The color is read fresh by setupVisual / startVizPreview each
+  // frame so the running effect reflects the new color on the very next tick.
+  $('vizColorPicker')?.addEventListener('input', e => {
+    state.vizColor = e.target.value;
+    const v = $('vizColorVal'); if (v) v.textContent = e.target.value.toLowerCase();
+  });
+  $('vizColorPicker')?.addEventListener('change', () => saveUserSettings());
+  // Reset button — drop the override so renderers fall back to --accent.
+  // Restoring the picker's displayed swatch to the accent value gives the user
+  // a visible confirmation that "× reset" did something.
+  $('vizColorReset')?.addEventListener('click', () => {
+    state.vizColor = null;
+    const accent = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6b94b8').toLowerCase();
+    const picker = $('vizColorPicker'); if (picker) picker.value = accent;
+    const v = $('vizColorVal'); if (v) v.textContent = 'accent';
+    saveUserSettings();
+  });
   // Step 6 — Generate & Begin
   $('generateScriptBtn').addEventListener('click', generateFullScript);
   $('regenScriptBtn').addEventListener('click', regenerateFailedChunks);
@@ -18477,6 +19024,20 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const bgSection = $('liveBgSection');
     if (bgSection) bgSection.style.display = bgEngine.source !== 'none' ? '' : 'none';
     const bgToggle = $('liveBgToggle'); if (bgToggle) bgToggle.checked = $('bgLayer')?.style.display !== 'none';
+    // Bg opacity — read from state every open so the slider reflects the truth
+    // even if the user changed it via Step-5 since the last open.
+    const bgOpacityPct = Math.round((state.bgImageOpacity ?? 0.35) * 100);
+    $v('liveBgOpacity', bgOpacityPct);
+    const bgOpacityValEl = $('liveBgOpacityVal'); if (bgOpacityValEl) bgOpacityValEl.textContent = bgOpacityPct + '%';
+    // Bg rotation (hold time between slides) — 10–120 seconds, integer
+    const bgRotSec = Math.max(10, Math.min(120, Math.round(Number(state.bgRotationSec) || 45)));
+    $v('liveBgRotation', bgRotSec);
+    const bgRotValEl = $('liveBgRotationVal'); if (bgRotValEl) bgRotValEl.textContent = bgRotSec + 's';
+    // Bg transition fade — slider is in 0.1s steps (1–60), seconds = val/10
+    const bgTransSec = Math.max(0.1, Math.min(6, Number(state.bgTransitionDuration) || 3));
+    const bgTransSlider = Math.round(bgTransSec * 10);
+    $v('liveBgTransition', bgTransSlider);
+    const bgTransValEl = $('liveBgTransitionVal'); if (bgTransValEl) bgTransValEl.textContent = bgTransSec.toFixed(1) + 's';
     panel.classList.add('open');
     if (overlay) overlay.classList.add('open');
   }
@@ -18599,6 +19160,35 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     if (live) live.value = val;
     const liveVal = $('liveBgOpacityVal');
     if (liveVal) liveVal.textContent = val + '%';
+  });
+
+  // Live "duration between transitions" — sets state.bgRotationSec (seconds
+  // each slide holds before swapping). bgEngine reads state directly on its
+  // next rotation tick, so changes apply without restarting playback. We
+  // also mirror to the Step-5 slider (#bgRotationSlider) when present.
+  $('liveBgRotation')?.addEventListener('input', e => {
+    const val = parseInt(e.target.value, 10);
+    if (!Number.isFinite(val)) return;
+    state.bgRotationSec = Math.max(10, Math.min(120, val));
+    const v = $('liveBgRotationVal'); if (v) v.textContent = state.bgRotationSec + 's';
+    saveUserSettings();
+    // Mirror to Step-5 slider if it exists in the DOM
+    const setupSlider = $('bgRotationSlider'); if (setupSlider) setupSlider.value = state.bgRotationSec;
+    const setupVal    = $('bgRotationVal');    if (setupVal)    setupVal.textContent    = state.bgRotationSec;
+    const setupHint   = $('bgRotationHint');   if (setupHint)   setupHint.textContent   = state.bgRotationSec;
+  });
+
+  // Live "fade time" — sets state.bgTransitionDuration (seconds the cross-fade
+  // lasts). Slider stores value × 10 to allow 0.1s precision on a 1–60 range.
+  $('liveBgTransition')?.addEventListener('input', e => {
+    const raw = parseInt(e.target.value, 10);
+    if (!Number.isFinite(raw)) return;
+    const sec = Math.max(0.1, Math.min(6, raw / 10));
+    state.bgTransitionDuration = sec;
+    const v = $('liveBgTransitionVal'); if (v) v.textContent = sec.toFixed(1) + 's';
+    saveUserSettings();
+    const setupSlider = $('bgTransitionDurSlider'); if (setupSlider) setupSlider.value = sec;
+    const setupVal    = $('bgTransitionDurVal');    if (setupVal)    setupVal.textContent    = sec.toFixed(1);
   });
 
   // Live HUD toggles — apply immediately during session
@@ -19702,6 +20292,219 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     });
   }
 
+  // ────────────────────────────────────────────────────────────────────
+  // HIDDEN PERSONA UNLOCKS — Step 1 reward system
+  // ────────────────────────────────────────────────────────────────────
+  // Each entry maps a hidden persona's id (from BUILTIN_PERSONAS where
+  // `hidden:true`) to an unlock condition + a hint shown in the locked card.
+  // `check(metrics)` receives a `_buildUnlockMetrics()` object and returns
+  // boolean. Conditions are checked after every completed session in
+  // `checkPersonaUnlocks()`; newly-true ids get a celebratory reveal modal.
+  //
+  // Design intent: each path rewards a different play pattern — variety,
+  // duration, dedication, return-after-absence, etc. — so the surface area
+  // is wide enough that most user shapes will hit at least one unlock
+  // organically. Hints are *deliberately vague* about exact thresholds so
+  // unlocks feel earned, not punched.
+  const HIDDEN_PERSONA_UNLOCKS = {
+    'cartographer': {
+      hint: 'Visits a few different guides — variety reveals new paths',
+      check: m => m.completedSessions >= 5 && m.uniquePersonasUsed >= 3,
+    },
+    'witness': {
+      hint: 'Stays the course over many sessions',
+      check: m => m.completedSessions >= 10,
+    },
+    'conductor': {
+      hint: 'Listens to several different soundscapes',
+      check: m => m.uniqueSoundscapesUsed >= 3,
+    },
+    'riverman': {
+      hint: 'Returns for sleep, again and again',
+      check: m => m.sleepIntentionSessions >= 4,
+    },
+    'dreamer': {
+      hint: 'Spends real time in trance',
+      check: m => m.longSessions >= 2,
+    },
+    'echo': {
+      hint: 'Steps away — and comes back',
+      check: m => m.returnedAfterAbsence === true,
+    },
+    'cipher': {
+      hint: 'Explores different methods within a short window',
+      check: m => m.methodsInLastWeek >= 3,
+    },
+    'lighthouse': {
+      hint: 'Long-term steadiness — sessions completed cleanly',
+      check: m => m.completedSessions >= 15 && m.emergencyExits === 0,
+    },
+  };
+
+  /** Compute metrics for unlock checks from history + current state.
+   *  Pure — does not mutate. Reads IDB once. Returns a stable shape so
+   *  every check sees the same fields even when history is sparse. */
+  async function _buildUnlockMetrics() {
+    const history = (await idbGet('stillness_history_v1')) || [];
+    const completed = history.filter(s => s.completed);
+    const personas = new Set();
+    const soundscapes = new Set();
+    let sleepCount = 0;
+    let longSessions = 0;
+    let emergencyExits = 0;
+    // Track methods used and their timestamps so we can compute the
+    // "different methods in a 7-day window" condition.
+    const methodEvents = []; // [{methodId, ts}]
+    for (const s of history) {
+      if (s.personaId) personas.add(s.personaId);
+      if (s.soundscape && s.soundscape !== 'none') soundscapes.add(s.soundscape);
+      if (s.intentionType === 'sleep' && s.completed) sleepCount++;
+      if (s.completed && (s.metrics?.estimatedMin >= 30 || s.actualDurationMin >= 30)) longSessions++;
+      if (s.emergencyExit || s.wasEmergency) emergencyExits++;
+      const ts = Number(s.date || s.id || 0);
+      if (s.methodId && Number.isFinite(ts) && ts > 0) methodEvents.push({ methodId: s.methodId, ts });
+    }
+    // Sliding 7-day window over methodEvents — the highest count of distinct
+    // methods seen in any 7-day stretch, anchored on each event in turn.
+    let maxMethodsInWindow = 0;
+    methodEvents.sort((a, b) => a.ts - b.ts);
+    const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    for (let i = 0; i < methodEvents.length; i++) {
+      const windowEnd = methodEvents[i].ts;
+      const seen = new Set();
+      for (let j = i; j >= 0 && (windowEnd - methodEvents[j].ts) <= WEEK_MS; j--) {
+        seen.add(methodEvents[j].methodId);
+      }
+      if (seen.size > maxMethodsInWindow) maxMethodsInWindow = seen.size;
+    }
+    // "Returned after 7+ idle days" — if the user has at least one completed
+    // session AND any two consecutive completed sessions are more than 7 days
+    // apart, the more-recent one counts as a return.
+    let returnedAfterAbsence = false;
+    const completedSorted = completed
+      .map(s => Number(s.date || s.id || 0))
+      .filter(n => Number.isFinite(n) && n > 0)
+      .sort((a, b) => a - b);
+    for (let i = 1; i < completedSorted.length; i++) {
+      if ((completedSorted[i] - completedSorted[i-1]) >= WEEK_MS) {
+        returnedAfterAbsence = true;
+        break;
+      }
+    }
+    return {
+      completedSessions:    completed.length,
+      uniquePersonasUsed:   personas.size,
+      uniqueSoundscapesUsed: soundscapes.size,
+      sleepIntentionSessions: sleepCount,
+      longSessions,
+      emergencyExits,
+      methodsInLastWeek:    maxMethodsInWindow,
+      returnedAfterAbsence,
+    };
+  }
+
+  /** Check for newly-satisfied unlocks. Persists state.\_unlocks on each new
+   *  unlock and shows a celebratory modal. Safe to call any number of times —
+   *  idempotent for already-unlocked ids. */
+  async function checkPersonaUnlocks() {
+    if (!state._unlocks || typeof state._unlocks !== 'object') state._unlocks = {};
+    let metrics;
+    try { metrics = await _buildUnlockMetrics(); } catch (e) { return; }
+    const newlyUnlocked = [];
+    for (const [pid, def] of Object.entries(HIDDEN_PERSONA_UNLOCKS)) {
+      if (state._unlocks[pid]) continue; // already unlocked
+      let pass = false;
+      try { pass = !!def.check(metrics); } catch (e) { pass = false; }
+      if (!pass) continue;
+      state._unlocks[pid] = { unlockedAt: Date.now() };
+      newlyUnlocked.push(pid);
+    }
+    if (newlyUnlocked.length) {
+      try { await idbSet('stillness_unlocks_v1', state._unlocks); } catch {}
+      // Re-render so the new persona appears in the grid behind the modal
+      try { renderPersonaGrid(); } catch {}
+      // Show a celebratory reveal modal — these are the only kind of toast
+      // we WANT to interrupt with, but we run after the session has already
+      // finished, so it's a normal modal flow.
+      try { _showPersonaUnlockReveal(newlyUnlocked); } catch (e) { console.warn('unlock reveal:', e); }
+    }
+  }
+
+  /** Build and show the celebratory unlock modal. Lists each unlocked
+   *  persona's name + tagline + one-line "what they're for" pitch, with a
+   *  "view all" button that drops to Step 1 with the persona filter set
+   *  to show the new arrival. */
+  function _showPersonaUnlockReveal(personaIds) {
+    const personas = personaIds
+      .map(id => BUILTIN_PERSONAS.find(p => p.id === id))
+      .filter(Boolean);
+    if (!personas.length) return;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop visible';
+    const isMulti = personas.length > 1;
+    const cards = personas.map(p => `
+      <div style="padding:14px;border:1px solid var(--border, #2a2f3a);border-radius:8px;background:var(--bg-deep, #0e1218);margin-bottom:10px;">
+        <div style="font-size:0.66rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent-warm, #d4a772);margin-bottom:6px;">✦ new guide unlocked</div>
+        <div style="font-size:1.04rem;font-weight:500;color:var(--text, #e8edf2);margin-bottom:4px;">${escapeHtml(p.name)}</div>
+        <div style="font-size:0.78rem;color:var(--text-dim, #98a2b3);font-style:italic;margin-bottom:8px;">${escapeHtml(p.tagline)}</div>
+        <div style="font-size:0.74rem;color:var(--text-faint, #6c7689);line-height:1.45;">${escapeHtml(p.systemPrompt.split('. ').slice(0, 2).join('. ') + '.')}</div>
+      </div>
+    `).join('');
+    backdrop.innerHTML = `<div class="modal" style="max-width:520px;">
+      <h2 style="margin:0 0 8px 0;font-size:1.1rem;">${isMulti ? `${personas.length} guides revealed` : 'A new guide reveals itself'}</h2>
+      <div style="font-size:0.78rem;color:var(--text-dim, #98a2b3);margin-bottom:14px;line-height:1.5;">
+        Your practice has earned ${isMulti ? 'these voices' : 'this voice'}. ${isMulti ? 'They\'re' : 'It\'s'} now available in Step 1.
+      </div>
+      ${cards}
+      <div class="modal-actions" style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn-ghost" id="_unlockRevealLater">later</button>
+        <button class="btn-primary" id="_unlockRevealView">meet ${isMulti ? 'them' : 'them'}</button>
+      </div>
+    </div>`;
+    document.body.appendChild(backdrop);
+    const close = () => { try { backdrop.remove(); } catch {} };
+    backdrop.querySelector('#_unlockRevealLater')?.addEventListener('click', close);
+    backdrop.querySelector('#_unlockRevealView')?.addEventListener('click', () => {
+      close();
+      // Pre-select the first newly-unlocked persona and jump to Step 1
+      try {
+        state.selectedPersonaId = personas[0].id;
+        if (typeof goToStep === 'function') goToStep(1);
+        renderPersonaGrid(); renderPersonaDetail();
+      } catch {}
+    });
+    // Click outside to dismiss
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  }
+
+  /** Render a single small "🔒 N hidden" indicator at the bottom of the
+   *  persona grid. Each locked persona shows its hint (but not its name) so
+   *  the user gets directional guidance without spoilers. */
+  function renderHiddenPersonaHint() {
+    const grid = $('personaGrid');
+    if (!grid) return;
+    // Remove any prior hint card so re-renders don't stack them
+    grid.querySelectorAll('.hidden-guide-hint').forEach(el => el.remove());
+    const lockedIds = Object.keys(HIDDEN_PERSONA_UNLOCKS).filter(id => !state._unlocks?.[id]);
+    if (!lockedIds.length) return; // all unlocked → no card
+    const card = document.createElement('div');
+    card.className = 'card hidden-guide-hint';
+    card.style.cssText = 'border:1px dashed var(--border, #2a2f3a);background:transparent;cursor:help;opacity:0.72;';
+    const hints = lockedIds.map(id => `<div style="font-size:0.66rem;line-height:1.5;color:var(--text-faint, #6c7689);padding:2px 0;">· ${escapeHtml(HIDDEN_PERSONA_UNLOCKS[id].hint)}</div>`).join('');
+    card.innerHTML = `<div class="card-category-label" style="color:var(--text-faint, #6c7689);">${lockedIds.length} hidden</div>
+      <div class="card-name" style="color:var(--text-dim, #98a2b3);">🔒 not yet revealed</div>
+      <div class="card-tagline" style="font-size:0.7rem;margin-top:6px;">Each guide unlocks through a different rhythm of practice. Hover for hints.</div>
+      <div style="margin-top:8px;display:none;" class="hidden-guide-hint-detail">${hints}</div>`;
+    // Show hints on hover/tap to reduce visual noise on first load
+    let expanded = false;
+    card.addEventListener('click', () => {
+      expanded = !expanded;
+      const det = card.querySelector('.hidden-guide-hint-detail');
+      if (det) det.style.display = expanded ? '' : 'none';
+    });
+    grid.appendChild(card);
+  }
+
   // Persona modal
   $('personaCancelBtn').addEventListener('click', closePersonaEditor);
   $('personaSaveBtn').addEventListener('click', savePersonaFromForm);
@@ -19761,6 +20564,19 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
 
     // Practice-unlock method gating
     applyMethodGating();
+    // Persona unlock state — load from IDB so previously-revealed hidden
+    // guides stay revealed across reloads. checkPersonaUnlocks() also runs
+    // here in case the user just barely crossed a threshold last session
+    // (e.g. via direct IDB import); newly satisfied conditions are revealed
+    // with the celebratory modal even on init.
+    try {
+      const stored = await idbGet('stillness_unlocks_v1');
+      if (stored && typeof stored === 'object') state._unlocks = stored;
+    } catch {}
+    try { renderPersonaGrid(); } catch {}
+    // Run check after a tick so the rest of init settles first — the modal
+    // is jarring during page load if it appears before the grid paints.
+    setTimeout(() => { checkPersonaUnlocks().catch(() => {}); }, 1200);
 
     // Sync debug state from DOM (checkboxes default unchecked, but this guarantees
     // state._debug matches the visible UI in all cases). Banner re-renders from here.
