@@ -11283,6 +11283,29 @@ ${messages}
   // User can toggle any subset via the checkbox grid in Step 5.
   const BG_DEFAULT_ENABLED = ['crossfade', 'fadeBlack', 'kenburns', 'blur'];
 
+  /** Escape literal `{` and `}` to `\{` and `\}` for safe transit through
+   *  the Perchance text-to-image-plugin. The plugin's input pipeline parses
+   *  curly-brace expressions as Perchance DSL list references (perchance-api
+   *  skill §1.1) — so a user prompt like `forest, {moody}, dim` would try to
+   *  resolve a list named "moody" and throw when one doesn't exist.
+   *
+   *  We use the canonical Perchance escape (backslash-brace). Idempotent in
+   *  the sense that running it on already-escaped content produces a literal
+   *  double-backslash brace, which is fine for the plugin's parser and for
+   *  downstream SD tokenizers (most strip non-significant backslashes; the
+   *  ones that don't treat `\{` as a literal brace, which is what we want).
+   *
+   *  Tradeoff: power users who actually wanted to use Perchance list refs
+   *  in their prompt (`{landscapes}` to pull from a list) lose that
+   *  capability. That's a niche feature here — bg prompts are free-text,
+   *  not part of a list-driven workflow — and the cost of leaving braces
+   *  unescaped is "image generation breaks for anyone who types `{` for any
+   *  reason," which is the bug we're fixing. */
+  function _escapePerchanceBraces(s) {
+    if (!s) return s;
+    return String(s).replace(/[{}]/g, '\\$&');
+  }
+
   const bgEngine = {
     source: 'none',
     prompt: '',
@@ -11309,7 +11332,17 @@ ${messages}
      *  Generates a fresh client-side seed each call (not -1) so the seed can
      *  be captured into the cache manifest for sort-by-seed and future
      *  "regenerate with same seed" workflows. The plugin still randomizes if
-     *  seed is omitted, but explicit seeds make the output reproducible. */
+     *  seed is omitted, but explicit seeds make the output reproducible.
+     *
+     *  CURLY-BRACE ESCAPING: the text-to-image-plugin evaluates `{...}` in
+     *  input strings as Perchance DSL list references (same syntax as the
+     *  top-zone `{listName}` pattern — perchance-api skill §1.1). Any literal
+     *  `{` or `}` in user-typed prompts gets parsed as a list ref and throws
+     *  when no matching list exists. We escape both braces with backslash
+     *  (canonical Perchance escape) so user-typed text is treated as literal.
+     *  Applied AFTER preset composition so style-preset fragments also get
+     *  protected — a defensive belt against future preset authors slipping a
+     *  literal brace into their fragment text. */
     _currentParams() {
       const resolution = BG_RESOLUTIONS[state.bgOrientation || 'landscape'] || null;
 
@@ -11336,8 +11369,8 @@ ${messages}
       const seed = Math.floor(Math.random() * 2147483647);
 
       return {
-        prompt: finalPrompt,
-        negativePrompt: finalNegative,
+        prompt:         _escapePerchanceBraces(finalPrompt),
+        negativePrompt: _escapePerchanceBraces(finalNegative),
         resolution,
         guidanceScale: Number(state.bgGuidance) || 7,
         numInferenceSteps: Number(state.bgSteps) || 30,
@@ -11817,10 +11850,15 @@ ${messages}
     const promise = (async () => {
       try {
         const prompt = _buildPortraitPrompt(persona);
+        // Same brace-escape as the bg path — custom personas can have
+        // user-typed text in imagePromptPrefix / imagePromptSuffix that
+        // gets composed into the portrait prompt. See _escapePerchanceBraces
+        // above for the why. PORTRAIT_NEGATIVE is author-curated and brace-
+        // free, but escaping it is free and protects against future edits.
         const result = await root.textToImagePlugin({
-          prompt,
-          negativePrompt: PORTRAIT_NEGATIVE,
-          negative:       PORTRAIT_NEGATIVE,
+          prompt:         _escapePerchanceBraces(prompt),
+          negativePrompt: _escapePerchanceBraces(PORTRAIT_NEGATIVE),
+          negative:       _escapePerchanceBraces(PORTRAIT_NEGATIVE),
           guidanceScale:  7.5,
           numInferenceSteps: 25,
           steps:             25,
