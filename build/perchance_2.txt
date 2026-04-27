@@ -276,6 +276,58 @@ padding: 5px 15px; cursor: pointer;
   .toggle-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
   .toggle-row input[type="range"] { flex: 1; max-width: 140px; }
 
+  /* ============ NEW SLIDER LAYOUT ============
+     For toggle-rows in the .config-slider-grid: slider on top, label +
+     value on a wrapping line below. The .slider-meta wrapper is a flex
+     line that wraps gracefully on narrow screens. */
+  .slider-meta {
+    display: flex; align-items: baseline; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px;
+    width: 100%;
+  }
+  .slider-meta label {
+    font-size: 0.78rem; color: var(--text);
+    flex: 1 1 auto; min-width: 0;
+  }
+  .slider-meta .slider-val,
+  .slider-meta .hint {
+    font-size: 0.7rem; color: var(--text-faint);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+    text-align: right;
+  }
+  /* Color row variant — color swatch input + label + reset button. */
+  .toggle-row.color-row { gap: 6px; }
+  .toggle-row.color-row input[type="color"] {
+    width: 100%; height: 32px; padding: 0;
+    border: 1px solid var(--glass-border); background: transparent; cursor: pointer;
+  }
+
+  /* ============ CANONICAL CHECKBOX ROW ============
+     Checkbox always on the LEFT, label content on the RIGHT.
+     The whole row is clickable (it's a <label>) so click forgiveness
+     extends to the descriptor text. Label content can include an
+     inline .hint span that flows beneath the main text. */
+  .toggle-row-cb {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    cursor: pointer;
+  }
+  .toggle-row-cb > input[type="checkbox"] {
+    grid-column: 1; grid-row: 1;
+    width: 18px; height: 18px;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  .toggle-row-cb > span {
+    grid-column: 2; grid-row: 1;
+    font-size: 0.85rem; color: var(--text);
+    line-height: 1.4;
+  }
+  .toggle-row-cb > span .hint {
+    display: block; font-size: 0.7rem; color: var(--text-faint);
+    margin-top: 2px; font-weight: 400;
+  }
+
   .config-slider-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -284,20 +336,23 @@ padding: 5px 15px; cursor: pointer;
   }
   .config-slider-grid .toggle-row {
     margin-bottom: 0;
-    grid-template-columns: 1fr;
+    display: flex; flex-direction: column;
+    grid-template-columns: none;
     align-items: stretch;
-    gap: 8px;
+    gap: 6px;
+    padding: 10px 12px;
   }
   .config-slider-grid .toggle-row label {
     display: block;
+    margin: 0;
   }
   .config-slider-grid .toggle-row input[type="range"] {
     width: 100%;
     max-width: none;
+    margin: 0;
   }
   .config-slider-grid .toggle-row .hint {
     margin-top: 0;
-    text-align: right;
   }
   .config-toggle-grid {
     display: grid;
@@ -1116,21 +1171,30 @@ transition: color 0.15s, background 0.15s;
     background: var(--glass); border: 1px solid var(--glass-border);
     color: var(--text-dim); font-size: 0.72rem; font-family: var(--font-body);
     padding: 4px 9px;cursor: pointer;
-    transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, text-shadow 0.15s;
+    transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, text-shadow 0.15s, font-weight 0.15s;
     user-select: none; line-height: 1.4;
   }
   .bg-style-chip:hover { color: var(--text); border-color: rgba(0,212,230,0.35); }
-  /* Active state — outline neon-cyan with glow, mirroring how .filter-tab.active
-     and .card.selected use --neon-cyan-soft + --glow-cyan in this theme. */
+  /* Active state — clearly chosen. ✓ checkmark prefix + thicker neon
+     border + saturated background + bold text. A glance tells you which
+     chips are picked, not just the counter. */
   .bg-style-chip.active {
-    color: var(--neon-cyan); border-color: var(--neon-cyan);
-    background: var(--neon-cyan-soft);
-
+    color: var(--neon-cyan);
+    border: 2px solid var(--neon-cyan);
+    background: rgba(0,212,230,0.18);
+    padding: 3px 8px;          /* compensate for thicker border so width stays roughly consistent */
+    font-weight: 600;
     box-shadow: var(--glow-cyan);
+  }
+  .bg-style-chip.active::before {
+    content: '✓';
+    margin-right: 4px;
+    font-weight: 700;
+    color: var(--neon-cyan);
   }
   .bg-style-chip.active:hover {
     color: var(--neon-cyan); border-color: var(--neon-cyan);
-
+    background: rgba(0,212,230,0.25);
   }
 
   /* ============ GALLERY SORT BAR ============ */
@@ -3108,22 +3172,24 @@ I return to myself easily"></textarea>
              First-load is ~80MB; subsequent sessions use the cache. No word-level
              highlighting (neural TTS doesn't expose boundary events) — pulses are
              estimated. Falls back to the OS voice above if loading fails. -->
-        <div style="margin-top:10px;padding:10px;border:1px solid var(--glass-border);background:rgba(0,212,230,0.03)">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <div style="margin-top:10px;padding:14px;border:1px solid var(--glass-border);background:rgba(0,212,230,0.03)">
+          <label class="toggle-row toggle-row-cb" for="localVoiceToggle" style="margin:0;padding:0;background:none;border:none">
             <input type="checkbox" id="localVoiceToggle">
-            <span style="font-size:0.85rem;color:var(--text);font-weight:500">🎙 use local AI voice</span>
-            <span style="font-size:0.7rem;color:var(--text-faint)">(offline, neural-quality)</span>
+            <span style="font-weight:500;color:var(--text)">🎙 use local AI voice <span style="font-weight:400;color:var(--text-faint);font-size:0.74rem">(offline · neural quality)</span></span>
           </label>
-          <div id="localVoiceStatus" style="font-size:0.7rem;color:var(--text-faint);margin-top:6px;line-height:1.4">
+          <div id="localVoiceStatus" style="font-size:0.74rem;color:var(--text-faint);margin-top:8px;line-height:1.55">
             Free, runs entirely in your browser. ~80&nbsp;MB model downloads on first use, then cached. No internet needed afterward.
           </div>
-          <div id="localVoiceProgress" style="display:none;margin-top:6px">
-            <div style="height:4px;background:var(--glass);overflow:hidden">
+          <div id="localVoiceProgress" style="display:none;margin-top:10px">
+            <div style="height:5px;background:var(--glass);overflow:hidden">
               <div id="localVoiceProgressFill" style="height:100%;width:0%;background:var(--neon-cyan);transition:width 0.2s"></div>
             </div>
-            <div id="localVoiceProgressText" style="font-size:0.65rem;color:var(--text-dim);margin-top:3px"></div>
+            <div id="localVoiceProgressText" style="font-size:0.7rem;color:var(--text-dim);margin-top:5px;line-height:1.4"></div>
           </div>
-          <select id="localVoiceSpeaker" style="display:none;margin-top:8px;font-size:0.78rem">
+          <div id="localVoiceActions" style="display:none;margin-top:8px">
+            <button type="button" id="localVoiceRetryBtn" class="preview-btn" style="font-size:0.74rem;padding:5px 12px">↻ retry download</button>
+          </div>
+          <select id="localVoiceSpeaker" style="display:none;margin-top:10px;font-size:0.78rem">
             <option value="clb">Female · clear (CLB)</option>
             <option value="slt">Female · soft (SLT)</option>
             <option value="bdl">Male · grounded (BDL)</option>
@@ -3176,10 +3242,10 @@ I return to myself easily"></textarea>
           </optgroup>
         </select>
         <div class="sublabel" id="soundscapeHint">Procedurally generated — never loops. Use headphones for binaural.</div>
-        <div class="toggle-row" style="margin-top:8px">
-          <label for="duckingToggle">Duck audio during narration<span class="hint">Lower soundscape volume while the voice speaks</span></label>
+        <label class="toggle-row toggle-row-cb" for="duckingToggle" style="margin-top:8px">
           <input type="checkbox" id="duckingToggle" checked>
-        </div>
+          <span>Duck audio during narration<span class="hint">Lower soundscape volume while the voice speaks</span></span>
+        </label>
         <div class="preview-row">
           <button class="preview-btn" id="soundPreviewBtn">▶ preview</button>
           <button class="preview-btn stop" id="soundStopBtn" style="display:none">⏹ stop</button>
@@ -3191,11 +3257,11 @@ I return to myself easily"></textarea>
       <div class="field-group">
         <label class="field-label">audio levels</label>
         <div class="config-slider-grid">
-          <div class="toggle-row"><label for="droneVolume">Soundscape volume</label><input type="range" id="droneVolume" min="0" max="100" value="35"><span class="hint slider-val" id="droneVolVal">35</span></div>
-          <div class="toggle-row"><label for="speechRate">Voice speed</label><input type="range" id="speechRate" min="50" max="100" value="65"><span class="hint slider-val" id="speechRateVal">0.65×</span></div>
-          <div class="toggle-row"><label for="voicePitch">Voice pitch</label><input type="range" id="voicePitch" min="50" max="120" value="85"><span class="hint slider-val" id="voicePitchVal">0.85</span></div>
-          <div class="toggle-row"><label for="voiceVolume">Narration volume</label><input type="range" id="voiceVolume" min="0" max="100" value="100"><span class="hint slider-val" id="voiceVolVal">100</span></div>
-          <div class="toggle-row"><label for="tempoSlider">Pause tempo</label><input type="range" id="tempoSlider" min="50" max="200" value="100"><span class="hint" id="tempoVal" style="min-width:36px;text-align:right">1.0×</span></div>
+          <div class="toggle-row"><input type="range" id="droneVolume" min="0" max="100" value="35"><div class="slider-meta"><label for="droneVolume">Soundscape volume</label><span class="hint slider-val" id="droneVolVal">35</span></div></div>
+          <div class="toggle-row"><input type="range" id="speechRate" min="50" max="100" value="65"><div class="slider-meta"><label for="speechRate">Voice speed</label><span class="hint slider-val" id="speechRateVal">0.65×</span></div></div>
+          <div class="toggle-row"><input type="range" id="voicePitch" min="50" max="120" value="85"><div class="slider-meta"><label for="voicePitch">Voice pitch</label><span class="hint slider-val" id="voicePitchVal">0.85</span></div></div>
+          <div class="toggle-row"><input type="range" id="voiceVolume" min="0" max="100" value="100"><div class="slider-meta"><label for="voiceVolume">Narration volume</label><span class="hint slider-val" id="voiceVolVal">100</span></div></div>
+          <div class="toggle-row"><input type="range" id="tempoSlider" min="50" max="200" value="100"><div class="slider-meta"><label for="tempoSlider">Pause tempo</label><span class="hint" id="tempoVal">1.0×</span></div></div>
         </div>
         <div class="sublabel" id="speechRateHint">Slower is more hypnotic. Tempo scales all pause durations.</div>
       </div>
@@ -3279,19 +3345,19 @@ I return to myself easily"></textarea>
         <div class="detail-panel" id="vizSettingsPanel" style="margin-top:10px">
           <div class="detail-title" style="font-size:0.8rem">visual effect tuning</div>
           <div class="config-slider-grid">
-            <div class="toggle-row"><label for="vizSpeed">Speed</label><input type="range" id="vizSpeed" min="10" max="200" value="100"><span class="hint slider-val" id="vizSpeedVal">1.0×</span></div>
-            <div class="toggle-row"><label for="vizIntensity">Intensity</label><input type="range" id="vizIntensity" min="10" max="200" value="100"><span class="hint slider-val" id="vizIntensityVal">1.0×</span></div>
-            <div class="toggle-row"><label for="vizComplexity">Complexity</label><input type="range" id="vizComplexity" min="20" max="200" value="100"><span class="hint slider-val" id="vizComplexityVal">1.0×</span></div>
-            <div class="toggle-row"><label for="vizTrail">Trail / Fade</label><input type="range" id="vizTrail" min="1" max="50" value="12"><span class="hint slider-val" id="vizTrailVal">0.12</span></div>
+            <div class="toggle-row"><input type="range" id="vizSpeed" min="10" max="200" value="100"><div class="slider-meta"><label for="vizSpeed">Speed</label><span class="hint slider-val" id="vizSpeedVal">1.0×</span></div></div>
+            <div class="toggle-row"><input type="range" id="vizIntensity" min="10" max="200" value="100"><div class="slider-meta"><label for="vizIntensity">Intensity</label><span class="hint slider-val" id="vizIntensityVal">1.0×</span></div></div>
+            <div class="toggle-row"><input type="range" id="vizComplexity" min="20" max="200" value="100"><div class="slider-meta"><label for="vizComplexity">Complexity</label><span class="hint slider-val" id="vizComplexityVal">1.0×</span></div></div>
+            <div class="toggle-row"><input type="range" id="vizTrail" min="1" max="50" value="12"><div class="slider-meta"><label for="vizTrail">Trail / Fade</label><span class="hint slider-val" id="vizTrailVal">0.12</span></div></div>
           </div>
           <!-- Color override — null = follow the theme accent. The picker stores
                an explicit hex; the "× reset" button drops back to accent. Color
                threads through every canvas renderer (tunnel/vortex/etc.) and the
                Step-5 mini-preview the same frame it changes. -->
-          <div class="toggle-row" style="margin-top:8px;align-items:center">
-            <label for="vizColorPicker">Color</label>
-            <div style="display:flex;align-items:center;gap:6px">
-              <input type="color" id="vizColorPicker" value="#6b94b8" style="width:36px;height:28px;padding:0;border:1px solid var(--border, #2a2f3a);background:transparent;cursor:pointer">
+          <div class="toggle-row color-row" style="margin-top:8px">
+            <input type="color" id="vizColorPicker" value="#6b94b8">
+            <div class="slider-meta">
+              <label for="vizColorPicker">Color</label>
               <button type="button" id="vizColorReset" class="preview-btn" style="font-size:0.7rem;padding:3px 8px" title="Reset to theme accent">× reset</button>
               <span class="hint" id="vizColorVal" style="min-width:60px;text-align:right;font-size:0.7rem">accent</span>
             </div>
@@ -3389,16 +3455,17 @@ I return to myself easily"></textarea>
           </div>
           <div class="sublabel" style="margin-top:10px">Generates up to 4 images in parallel. Cycles through every <span id="bgRotationHint">45</span>s during sessions.</div>
           <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center">
-            <button class="preview-btn" id="bgPreviewBtn">generate image</button>
-            <button class="preview-btn" id="bgPreviewBatchBtn">generate 4 (parallel)</button>
-            <button class="preview-btn" id="bgRemoveQueuedBtn" style="display:none">remove queued image</button>
+            <button class="preview-btn" id="bgPreviewBtn" title="Queue one new image generation">+1 image</button>
+            <button class="preview-btn" id="bgPreviewBatchBtn" title="Queue five new image generations">+5 images</button>
+            <button class="preview-btn" id="bgRemoveQueuedBtn" title="Cancel one queued generation" style="display:none">−1</button>
+            <button class="preview-btn" id="bgClearQueueBtn" title="Cancel all queued generations" style="display:none">clear queue</button>
             <button class="preview-btn" id="bgManageBtn" title="show or hide the cached image gallery">show gallery (<span id="bgCacheCount">0</span>)</button>
             <span class="hint" id="bgQueueStatus" style="display:none;font-size:0.72rem;color:var(--accent-warm)"></span>
           </div>
-          <div class="toggle-row" style="margin-top:10px">
-            <label for="bgAutoGenToggle">Generate images in background during session<span class="hint">Continuously fills the image pool while the session plays</span></label>
+          <label class="toggle-row toggle-row-cb" for="bgAutoGenToggle" style="margin-top:10px">
             <input type="checkbox" id="bgAutoGenToggle" checked>
-          </div>
+            <span>Generate images in background during session<span class="hint">Continuously fills the image pool while the session plays</span></span>
+          </label>
           <div id="bgPreviewWrap" style="display:none;margin-top:8px">
             <!-- Inline gallery — replaces the old "popup-only" management UI.
                  The previous flow had two surfaces: this preview area (raw
@@ -3534,7 +3601,7 @@ I return to myself easily"></textarea>
           <button class="btn green" id="beginBtn">begin session →</button>
         </div>
         <!-- Per-session webcam opt-in (resets every session). Camera/mic-aware UI. -->
-        <label class="toggle-row" for="webcamOptInThisSession" style="margin-top:10px;align-items:flex-start;padding:8px 10px;background:rgba(120,180,240,0.04);border:0.5px solid rgba(120,180,240,0.18)">
+        <label class="toggle-row toggle-row-cb" for="webcamOptInThisSession" style="margin-top:10px;align-items:flex-start;padding:8px 10px;background:rgba(120,180,240,0.04);border:0.5px solid rgba(120,180,240,0.18)">
           <input type="checkbox" id="webcamOptInThisSession">
           <span>
             Use webcam this session <span style="color:var(--text-faint);font-size:0.7rem;font-weight:400">— opt-in, this session only</span>
@@ -21086,25 +21153,63 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     saveUserSettings();
     const status = $('localVoiceStatus');
     const speakerSel = $('localVoiceSpeaker');
+    const actions = $('localVoiceActions');
     if (!on) {
       _localTTS.enabled = false;
       _localTTS.cancel();
       if (status) status.textContent = 'Disabled. The system voice above will be used.';
       if (speakerSel) speakerSel.style.display = 'none';
+      if (actions) actions.style.display = 'none';
       return;
     }
     _localTTS.enabled = true;
     if (status) status.textContent = 'Loading… first-time download is ~80 MB. Subsequent loads are instant.';
     if (speakerSel) speakerSel.style.display = '';
+    if (actions) actions.style.display = 'none';
+    notify.info('Local AI voice — downloading model (~80 MB on first use). You can keep using the app while it loads.', 7000);
     const ok = await _localTTS.init(state.localVoiceSpeaker || 'clb');
     if (!ok) {
-      // Loading failed — uncheck and revert
+      // Loading failed — uncheck and revert; reveal retry button.
       e.target.checked = false;
       state.useLocalTTS = false;
       saveUserSettings();
       if (speakerSel) speakerSel.style.display = 'none';
+      if (actions) actions.style.display = '';
+      notify.warn('Local AI voice download failed. Tap "retry download" to try again, or keep using the system voice.', 9000);
     } else {
       if (status) status.textContent = '✓ Ready. Local AI voice will be used for the next session.';
+      if (actions) actions.style.display = 'none';
+      notify.success('Local AI voice ready — will be used for the next session.', 5000);
+    }
+  });
+
+  // Retry button — re-runs the same init flow without requiring the user
+  // to toggle the checkbox off and back on.
+  $('localVoiceRetryBtn')?.addEventListener('click', async () => {
+    const toggle = $('localVoiceToggle');
+    const status = $('localVoiceStatus');
+    const speakerSel = $('localVoiceSpeaker');
+    const actions = $('localVoiceActions');
+    if (!toggle) return;
+    toggle.checked = true;
+    state.useLocalTTS = true;
+    _localTTS.enabled = true;
+    if (status) status.textContent = 'Retrying download…';
+    if (speakerSel) speakerSel.style.display = '';
+    if (actions) actions.style.display = 'none';
+    notify.info('Retrying local voice download…', 5000);
+    const ok = await _localTTS.init(state.localVoiceSpeaker || 'clb');
+    if (!ok) {
+      toggle.checked = false;
+      state.useLocalTTS = false;
+      if (speakerSel) speakerSel.style.display = 'none';
+      if (actions) actions.style.display = '';
+      notify.warn('Local AI voice download failed again. Check your connection or keep using the system voice.', 9000);
+    } else {
+      if (status) status.textContent = '✓ Ready. Local AI voice will be used for the next session.';
+      if (actions) actions.style.display = 'none';
+      notify.success('Local AI voice ready.', 5000);
+      saveUserSettings();
     }
   });
   $('localVoiceSpeaker')?.addEventListener('change', async (e) => {
@@ -21323,6 +21428,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   function _bgUpdateQueueUI() {
     const statusEl = $('bgQueueStatus');
     const removeBtn = $('bgRemoveQueuedBtn');
+    const clearBtn = $('bgClearQueueBtn');
     const total = _bgQueuePending + bgEngine.activeGenerations;
     if (total > 0) {
       if (statusEl) {
@@ -21333,15 +21439,20 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
         statusEl.style.display = '';
       }
       if (removeBtn) removeBtn.style.display = '';
+      // Clear-queue button only shown when there's queued work to drop.
+      // (Active-generation can't be cancelled mid-flight; wait it out.)
+      if (clearBtn) clearBtn.style.display = _bgQueuePending > 0 ? '' : 'none';
     } else {
       if (statusEl) statusEl.style.display = 'none';
       if (removeBtn) removeBtn.style.display = 'none';
+      if (clearBtn) clearBtn.style.display = 'none';
     }
-    // Update button labels to reflect queue
+    // Button labels stay stable; the queue counter beside them is the
+    // signal of in-flight work.
     const btn = $('bgPreviewBtn');
     const batchBtn = $('bgPreviewBatchBtn');
-    if (btn) btn.textContent = total > 0 ? `generate image (+1)` : 'generate image';
-    if (batchBtn) batchBtn.textContent = total > 0 ? `generate 4 (+4)` : 'generate 4 (parallel)';
+    if (btn) btn.textContent = '+1 image';
+    if (batchBtn) batchBtn.textContent = '+5 images';
   }
 
   async function _bgQueueRunner() {
@@ -21434,8 +21545,17 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   }
 
   $('bgPreviewBtn')?.addEventListener('click', () => _bgQueueAdd(1));
-  $('bgPreviewBatchBtn')?.addEventListener('click', () => _bgQueueAdd(4));
+  $('bgPreviewBatchBtn')?.addEventListener('click', () => _bgQueueAdd(5));
   $('bgRemoveQueuedBtn')?.addEventListener('click', _bgQueueRemove);
+  $('bgClearQueueBtn')?.addEventListener('click', () => {
+    if (_bgQueuePending <= 0) return;
+    const dropped = _bgQueuePending;
+    _bgQueuePending = 0;
+    _bgUpdateQueueUI();
+    const status = $('bgPreviewStatus');
+    if (status) status.textContent = `Queue cleared (${dropped} dropped). Active generations will finish.`;
+    notify.info(`Queue cleared — ${dropped} pending generation${dropped === 1 ? '' : 's'} dropped.`);
+  });
   $('bgAutoGenToggle')?.addEventListener('change', e => { state.bgAutoGen = e.target.checked; saveUserSettings(); });
   $('bgSaveLastBtn')?.addEventListener('click', async () => {
     const manifest = await bgCacheGetManifest();
@@ -21452,7 +21572,11 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const wrap = $('bgPreviewWrap');
     const btn  = $('bgManageBtn');
     if (!wrap) return;
-    const opening = wrap.style.display === 'none' || !wrap.style.display;
+    // Use _galleryOpen as source of truth — checking wrap.style.display
+    // is unreliable because after first open it becomes '' (empty
+    // string), and `!''` evaluates to true, which falsely flagged
+    // every subsequent click as "opening" again.
+    const opening = !_galleryOpen;
     wrap.style.display = opening ? '' : 'none';
     _galleryOpen = opening;
     if (btn) {
