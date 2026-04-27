@@ -6880,7 +6880,10 @@ I return to myself easily"></textarea>
       const legacyHistory = (await idbGet('stillness_history_v1')) || [];
       if (Array.isArray(legacyHistory) && legacyHistory.length) {
         const normalizedHistory = legacyHistory.map(normalizeHistoryEntry).sort((a,b)=>(b.date||0)-(a.date||0));
-        await idbSet('stillness_history_v1', normalizedHistory);
+        // Round 22c: route through compact-write so default-filled fields
+        // from normalize don't get re-persisted, and script-TTL kicks in
+        // on first boot for legacy data with scripts on every record.
+        await _writeHistoryCompact(normalizedHistory);
       }
     } catch {}
     try {
@@ -9776,6 +9779,57 @@ I return to myself easily"></textarea>
     return s;
   }
 
+  // ── Round 22c (R2 + R5): history record compaction + script TTL ──
+  // Shared helpers used by every history write path so storage stays
+  // small regardless of whether the write came from a fresh session,
+  // a backup import, init-migration, replay-edit, or journal append.
+  const _HISTORY_RECORD_DEFAULTS = {
+    affirmationMode: 'woven',
+    voiceName:       '',
+    speechRate:      0.65,
+    voicePitch:      0.85,
+    voiceVolume:     1.0,
+    droneVolume:     0.35,
+    duckingEnabled:  true,
+    profileName:     'Practitioner',
+    startedUnsafe:   false,
+    preTension:      null,
+    preEnergy:       null,
+    intentionText:   '',
+    userAffirmations: '',
+  };
+  const _VIZ_SETTINGS_DEFAULT = { intensity: 1, speed: 1, complexity: 1 };
+
+  /** Strip default-valued fields from a history record. Consumers all
+   *  use `record.field || DEFAULT` fallbacks, so omission is read-side
+   *  safe. Returns a new shallow-copied object. */
+  function _compactHistoryRecord(record) {
+    if (!record) return record;
+    const r = { ...record };
+    for (const [k, v] of Object.entries(_HISTORY_RECORD_DEFAULTS)) {
+      if (r[k] === v) delete r[k];
+    }
+    const vs = r.vizSettings || {};
+    const isDefault = Object.keys(_VIZ_SETTINGS_DEFAULT).every(
+      k => vs[k] === _VIZ_SETTINGS_DEFAULT[k]
+    );
+    if (isDefault) delete r.vizSettings;
+    return r;
+  }
+
+  /** Write `history` to IDB with R2 (default-omit) and R5 (script-TTL)
+   *  applied. The newest 5 records keep their `script` field; older
+   *  records keep just the digest (which is what findRelevantDigests
+   *  consumes). Idempotent — safe to call on already-pruned data. */
+  async function _writeHistoryCompact(history) {
+    if (!Array.isArray(history)) return;
+    const compacted = history.map(_compactHistoryRecord);
+    for (let i = 5; i < compacted.length; i++) {
+      if (compacted[i] && compacted[i].script) delete compacted[i].script;
+    }
+    await idbSet('stillness_history_v1', compacted);
+  }
+
   function normalizeHistoryEntry(raw = {}) {
     const entry = { ...(raw || {}) };
     if (!entry.id) entry.id = entry.date || `legacy-${Math.random().toString(36).slice(2)}`;
@@ -10281,7 +10335,13 @@ I return to myself easily"></textarea>
         beforeLen: before.length,
         afterLen: after.length,
         changePct: +pct.toFixed(3),
-        preview: after.slice(0, 80),
+        // Structured before/after snippets — same storage cost as the
+        // legacy 80-char `preview` (40+40), but recovers diff direction.
+        // Activity timeline renders these as "X → Y" instead of just "Y".
+        // Old records with only `preview` still render via the timeline
+        // fallback. See _renderTimelineEntry.
+        before: before.slice(0, 40),
+        after:  after.slice(0, 40),
       },
     };
   }
@@ -10797,7 +10857,19 @@ I return to myself easily"></textarea>
         body = addHtml + remHtml || '<em>no entries shifted</em>';
       } else if (e.type === 'text' && e.diff) {
         const pct = Math.round((e.diff.changePct || 0) * 100);
-        body = `<span style="opacity:0.7">${pct}% changed</span> — <em>${_escDB(e.diff.preview || '')}…</em>`;
+        // New (Round 22c): structured before/after snippets show diff
+        // direction. Legacy (`preview`-only) entries fall through to the
+        // single-snippet form for backward compatibility.
+        if (e.diff.before != null || e.diff.after != null) {
+          const beforeStr = (e.diff.before || '').trim();
+          const afterStr = (e.diff.after || '').trim();
+          const arrow = beforeStr
+            ? `<em style="opacity:0.6">${_escDB(beforeStr)}…</em> → <em>${_escDB(afterStr)}…</em>`
+            : `<em>${_escDB(afterStr)}…</em>`;
+          body = `<span style="opacity:0.7">${pct}% changed</span> — ${arrow}`;
+        } else {
+          body = `<span style="opacity:0.7">${pct}% changed</span> — <em>${_escDB(e.diff.preview || '')}…</em>`;
+        }
       } else if (e.type === 'image' && e.diff) {
         const tags = (e.diff.tags || []).map(t => `<span class="cl-chip">${_escDB(t)}</span>`).join('');
         body = `<div>${_escDB(e.diff.summary || '')}</div><div style="margin-top:3px">${tags}</div>`;
@@ -21950,7 +22022,7 @@ Start immediately:`;
         if (!await confirmAsync('Are you sure you want to delete this session?\n\nThis can\'t be undone.')) return;
         const h = (await idbGet('stillness_history_v1')) || [];
         h.splice(idx, 1);
-        await idbSet('stillness_history_v1', h);
+        await _writeHistoryCompact(h);
         await rebuildAnalytics(h);
         renderSessionHistory();
         renderSidebarStats();
@@ -22790,7 +22862,10 @@ Start immediately:`;
       if (nh.length || existingHistoryRaw.length !== existingHistory.length) {
         const mergedHistory = [...nh, ...existingHistory].map(normalizeHistoryEntry).sort((a,b)=>(b.date||0)-(a.date||0));
         mergedHistory.length = Math.min(mergedHistory.length, 50);
-        await idbSet('stillness_history_v1', mergedHistory);
+        // Round 22c: route through compact-write so backup-imported records
+        // with full-default fields (typical for older backups) get the same
+        // storage treatment as fresh records.
+        await _writeHistoryCompact(mergedHistory);
         renderSessionHistory();
       }
       if (backup.program && !(await idbGet('stillness_program_v1'))) { await idbSet('stillness_program_v1', backup.program); renderPrograms(); }
@@ -24276,6 +24351,21 @@ Start immediately:`;
     const elapsed = state._sessionStartTime ? Math.max(0, Math.round((_now - state._sessionStartTime - inactiveMs) / 1000)) : 0;
     const currentProfile = getProfile();
     const scriptMetrics = getScriptMetrics(state.fullScript || '');
+
+    // ── Round 22c (R6): profile snapshot dedup via hash comparison ───
+    // Stable JSON for hashing: keys sorted so {a:1,b:2} === {b:2,a:1}.
+    // Skips internal/transient fields (none currently, but reserve _-prefix).
+    const _stableJSON = (obj) => {
+      const keys = Object.keys(obj || {}).filter(k => !k.startsWith('_')).sort();
+      return JSON.stringify(keys.map(k => [k, obj[k]]));
+    };
+    const profileHash = _hashSeed(_stableJSON(currentProfile));
+    // Previous record's hash, if any, drives whether we store the full snapshot.
+    let _prevHistory;
+    try { _prevHistory = (await idbGet('stillness_history_v1')) || []; }
+    catch { _prevHistory = []; }
+    const _prevHash = _prevHistory[0]?.profileHash;
+
     const sessionRecord = {
       id: 'sess_' + Date.now(),
       date: Date.now(),
@@ -24306,7 +24396,11 @@ Start immediately:`;
       duckingEnabled: state.duckingEnabled,
       phaseOrder: getPlaybackPhaseOrder(),
       profileName: currentProfile.name || 'Practitioner',
-      profileSnapshot: currentProfile,
+      // Round 22c (R6): full snapshot only when profile actually changed
+      // since previous session. Always carry the hash so history walks
+      // can detect "this session's profile == that session's profile."
+      profileHash,
+      ...(profileHash !== _prevHash ? { profileSnapshot: currentProfile } : {}),
       workBlockCount: scriptMetrics.workBlocks,
       metrics: scriptMetrics,
       // Why-this-session tag chips picked on Step 3. Sorted for stable
@@ -24320,10 +24414,21 @@ Start immediately:`;
       workflowVersion: 11,
       stepsTotal: 6,
     };
-    const history = (await idbGet('stillness_history_v1')) || [];
-    history.unshift(sessionRecord);
+
+    // ── Round 22c (R2): drop fields equal to default. Every consumer
+    // already does `record.field || DEFAULT` fallback (verified across
+    // recordAnalytics, replay, etc.) so omission is read-side safe.
+    // Helper handles the field set + vizSettings deep-equal check.
+    const compactRecord = _compactHistoryRecord(sessionRecord);
+
+    const history = _prevHistory; // already loaded above
+    history.unshift(compactRecord);
     if (history.length > 50) history.length = 50; // Keep last 50
-    await idbSet('stillness_history_v1', history);
+
+    // ── Round 22c (R5): script-TTL applied via shared helper. Newest 5
+    // keep the script body; older drop to digest-only. Saves ~50-150KB
+    // per 50-record window.
+    await _writeHistoryCompact(history);
     await recordAnalytics(sessionRecord, wasEmergency);
     // Daily metrics aggregate — independent of per-session log, gives Smart Director
     // time-series shape (completion rate, mood trends) over the last 180 days.
@@ -26570,7 +26675,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
           history[0].preEnergy  = state._preEnergy ?? null;
           history[0].depth      = depthVal;
           history[0].alertness  = alertVal;
-          await idbSet('stillness_history_v1', history);
+          await _writeHistoryCompact(history);
         }
         recordPostMood(moodVal);
         // Patch today's metrics-history aggregate with the post-checkin signals.
@@ -26757,7 +26862,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     const history = (await idbGet('stillness_history_v1')) || [];
     if (history.length === 0) return;
     history[0].journal = text;
-    await idbSet('stillness_history_v1', history);
+    await _writeHistoryCompact(history);
     // Sentiment pass — gated on tier + entry length. Short entries
     // ("good", "fine") don't reward the round-trip; long ones do.
     const tier = (typeof getAITier === 'function') ? getAITier() : 'perchance';
@@ -26785,7 +26890,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
         if (fresh.length && fresh[0].journal === text) {
           fresh[0].journalSentiment = sentiment;
           fresh[0].journalSentimentText = text;
-          await idbSet('stillness_history_v1', fresh);
+          await _writeHistoryCompact(fresh);
           sdLog('journal sentiment captured', sentiment);
         }
       } catch (err) { console.warn('[journal-sentiment] failed:', err); }
@@ -27198,7 +27303,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     if (!text) return;
     try {
       const history = (await idbGet('stillness_history_v1')) || [];
-      if (history.length > 0) { history[0].journal = text; await idbSet('stillness_history_v1', history); }
+      if (history.length > 0) { history[0].journal = text; await _writeHistoryCompact(history); }
     } catch (e) { console.warn('[journal] flush failed:', e); }
   }
 
