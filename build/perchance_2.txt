@@ -197,6 +197,8 @@ padding: 5px 15px; cursor: pointer;
     display: flex; flex-direction: column; gap: 4px;
   }
   .card:hover { border-color: rgba(0,212,230,0.35); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+  .card.locked { opacity: 0.45; cursor: help; }
+  .card.locked:hover { transform: none; box-shadow: none; border-color: var(--glass-border); }
   .card.selected {
     border-color: var(--neon-cyan);
     border-width: 2px;
@@ -2540,13 +2542,25 @@ padding: 6px 10px; font-size: 1.1rem;
           <div class="pf-row"><label class="pf-label">Age Range</label>
             <select id="pfAge" class="pf-select"><option value="">prefer not to say</option><option value="18-24">18–24</option><option value="25-34">25–34</option><option value="35-44">35–44</option><option value="45-54">45–54</option><option value="55-64">55–64</option><option value="65+">65+</option></select>
           </div>
+          <div class="pf-row" style="flex-direction:row;align-items:center;gap:8px;margin-top:-2px">
+            <input type="checkbox" id="pfShareAge" style="width:auto;margin:0" checked>
+            <label for="pfShareAge" class="pf-label" style="margin:0;cursor:pointer;font-size:0.7rem;color:var(--text-faint)">Share age with AI</label>
+          </div>
           <div class="pf-row"><label class="pf-label">Experience</label>
             <select id="pfExperience" class="pf-select"><option value="beginner">Beginner — first time</option><option value="some">Some experience</option><option value="experienced">Experienced practitioner</option><option value="professional">Professional / trained</option></select>
           </div>
           <div class="pf-row"><label class="pf-label">About You</label><textarea id="pfAbout" class="pf-textarea" rows="2" maxlength="300" placeholder="Anything you'd like to share..."></textarea></div>
           <div class="pf-row"><label class="pf-label">Your Appearance</label><textarea id="pfAppearance" class="pf-textarea" rows="2" maxlength="300" placeholder="Hair, eyes, build... for AI personalization"></textarea></div>
+          <div class="pf-row" style="flex-direction:row;align-items:center;gap:8px;margin-top:-2px">
+            <input type="checkbox" id="pfShareAppearance" style="width:auto;margin:0" checked>
+            <label for="pfShareAppearance" class="pf-label" style="margin:0;cursor:pointer;font-size:0.7rem;color:var(--text-faint)">Share appearance with AI</label>
+          </div>
           <div class="pf-row"><label class="pf-label">Goals</label><textarea id="pfGoals" class="pf-textarea" rows="2" maxlength="300" placeholder="What do you want from hypnosis?"></textarea></div>
-          <div class="sublabel" style="font-size:0.58rem;margin-top:4px">Profile stays on your device. Used to personalize AI scripts.</div>
+          <div class="pf-row" style="flex-direction:row;align-items:center;gap:8px;margin-top:-2px">
+            <input type="checkbox" id="pfShareGoals" style="width:auto;margin:0" checked>
+            <label for="pfShareGoals" class="pf-label" style="margin:0;cursor:pointer;font-size:0.7rem;color:var(--text-faint)">Share goals with AI</label>
+          </div>
+          <div class="sublabel" style="font-size:0.58rem;margin-top:4px">Profile stays on your device. Local recommendations always use these fields; the AI only sees fields with their share-toggle on.</div>
         </div>
         <details>
           <summary>stats</summary>
@@ -3389,6 +3403,8 @@ I return to myself easily"></textarea>
         <div class="post-card" id="postReflectionBox" style="display:none"></div>
         <!-- Program continuation hint (shown if a program just advanced a day) -->
         <div class="post-card" id="postProgramBox" style="display:none"></div>
+        <!-- Director Brief reasoning (shown only when Smart Director ran and a brief was captured) -->
+        <div class="post-card" id="postDirectorBriefBox" style="display:none"></div>
       </div>
 
       <!-- Check-in row: mood + alertness + depth -->
@@ -3909,6 +3925,9 @@ I return to myself easily"></textarea>
           If the Director holds back too much or sessions feel muted → shift forward.
           <button type="button" id="directorBiasResetBtn" style="background:none;border:none;color:var(--neon-cyan);cursor:pointer;font-size:0.66rem;padding:0;margin-left:4px;text-decoration:underline">reset to balanced</button>
         </div>
+        <!-- Concrete impact preview — updates live with the slider. Helps the
+             user see what a notch actually changes, not just "lean cautious". -->
+        <div id="directorBiasImpact" style="font-size:0.62rem;line-height:1.45;margin-top:6px;padding:6px 8px;background:var(--bg-deep);color:var(--text-dim);border-left:2px solid var(--glass-border)"></div>
       </div>
       <label class="toggle-row" for="runtimeRulesEnabled" style="align-items:flex-start;margin-top:12px">
         <input type="checkbox" id="runtimeRulesEnabled">
@@ -5000,6 +5019,24 @@ I return to myself easily"></textarea>
   function sdLog(...args) {
     if (state._debug?.verbose) console.log('[SmartDirector]', ...args);
   }
+
+  // Console-visible diagnostic shim. Read-only by design — surfaces the live
+  // AI tier and a few derived signals so users can sanity-check the pipeline
+  // from DevTools without ever exposing keys or mutation paths.
+  // Usage: HNE.tier() / HNE.profile() / HNE.adaptive() / HNE.history(5)
+  try {
+    Object.defineProperty(window, 'HNE', {
+      value: Object.freeze({
+        tier: () => (typeof getAITier === 'function' ? getAITier() : 'perchance'),
+        profile: () => (typeof getProfile === 'function' ? { ...getProfile(), changeLog: undefined } : null),
+        adaptive: async () => { try { return await getAdaptive(); } catch { return null; } },
+        history: async (n = 5) => { try { return ((await idbGet('stillness_history_v1')) || []).slice(0, n).map(r => ({ id: r.id, date: new Date(r.date).toISOString(), persona: r.guide, method: r.method, mood: `${r.preMood ?? '?'}→${r.postMood ?? '?'}`, completed: r.completed })); } catch { return []; } },
+        smartDirector: () => !!state.smartDirectorEnabled,
+        bias: () => state.directorBias ?? 0,
+      }),
+      writable: false, configurable: false,
+    });
+  } catch {} // already defined or non-extensible — fine
 
   const PHASE_DURATIONS = {
     micro:    { settling: 15,  induction: 30,  deepener: 15,  level: 10,  work: 60,   lightener: 15,  wake: 12, reintroduction: 20 },
@@ -8246,7 +8283,7 @@ I return to myself easily"></textarea>
       const data = await root.aiTextPlugin({
         instruction,
         startWith: '{',
-        stopSequences: ['\n\n\n'],
+        stopSequences: ['\n\n\n', '\n\n[[', '\n[['],
         hideStartWith: false,
       });
       const raw = String(data?.text || data || '').trim();
@@ -8300,6 +8337,13 @@ I return to myself easily"></textarea>
       about: $('pfAbout')?.value?.trim() || '',
       appearance: $('pfAppearance')?.value?.trim() || '',
       goals: $('pfGoals')?.value?.trim() || '',
+      // Per-field "share with AI" toggles. Default true so older profiles
+      // (saved before these existed) keep their previous behavior of
+      // sharing everything. The local Director never reads these — they
+      // only gate AI prompt assembly in getProfileContext.
+      shareAge:        $('pfShareAge')        ? !!$('pfShareAge').checked        : true,
+      shareAppearance: $('pfShareAppearance') ? !!$('pfShareAppearance').checked : true,
+      shareGoals:      $('pfShareGoals')      ? !!$('pfShareGoals').checked      : true,
     };
   }
 
@@ -8319,6 +8363,10 @@ I return to myself easily"></textarea>
     setVal('pfAbout', p.about, '');
     setVal('pfAppearance', p.appearance, '');
     setVal('pfGoals', p.goals, '');
+    // Share toggles — default true when missing so old profiles keep parity.
+    const shareAge = $('pfShareAge'); if (shareAge) shareAge.checked = (p.shareAge !== false);
+    const shareApp = $('pfShareAppearance'); if (shareApp) shareApp.checked = (p.shareAppearance !== false);
+    const shareGoals = $('pfShareGoals'); if (shareGoals) shareGoals.checked = (p.shareGoals !== false);
     const nameEl = $('sidebarDisplayName');
     if (nameEl) nameEl.textContent = p.name || 'Practitioner';
     if (opts.save !== false) saveProfile();
@@ -8569,11 +8617,13 @@ I return to myself easily"></textarea>
     // Only pass the subject's name to the AI when the user has opted in.
     if (p.name && p.useFirstName) parts.push(`The subject's name is ${p.name}. You may address them by name occasionally; do not overuse it.`);
     if (p.pronouns) parts.push(`Pronouns: ${p.pronouns}.`);
-    if (p.age) parts.push(`Age range: ${p.age}.`);
-    if (p.experience) parts.push(`Experience: ${p.experience}.`);
-    if (p.about) parts.push(`About the subject: ${p.about}.`);
-    if (p.appearance) parts.push(`Appearance: ${p.appearance}.`);
-    if (p.goals) parts.push(`Goals: ${p.goals}.`);
+    // Per-field share toggles — see profile form. Default true so older
+    // profiles keep their previous behavior of sharing everything.
+    if (p.age && p.shareAge !== false)               parts.push(`Age range: ${p.age}.`);
+    if (p.experience)                                parts.push(`Experience: ${p.experience}.`);
+    if (p.about)                                     parts.push(`About the subject: ${p.about}.`);
+    if (p.appearance && p.shareAppearance !== false) parts.push(`Appearance: ${p.appearance}.`);
+    if (p.goals && p.shareGoals !== false)           parts.push(`Goals: ${p.goals}.`);
 
     // Phase 4: inferred sensory modality. Only surfaced when inference is
     // confident (see inferModality). Wrong guidance is worse than silence.
@@ -9483,6 +9533,17 @@ I return to myself easily"></textarea>
   // ====================================================================
   // EXTERNAL AI ROUTER — wraps Perchance AI, Anthropic, OpenAI
   // ====================================================================
+
+  /** Resolve the active AI tier. Returns 'anthropic' | 'openai' | 'perchance'.
+   *  Mirrors the gate aiGenerate uses to actually route — so a feature that
+   *  asks "what can I rely on" gets the same answer the next AI call will
+   *  make. Foundation for tier-aware enrichment (per ROADMAP §4.2). */
+  function getAITier() {
+    if (state.extAiProvider === 'anthropic' && state._extAiKey) return 'anthropic';
+    if (state.extAiProvider === 'openai'    && state._extAiKey) return 'openai';
+    return 'perchance';
+  }
+
   async function aiGenerate(instruction, opts = {}) {
     const provider = state.extAiProvider || 'perchance';
     // Helper — ensure a returned object always has a usable shape and
@@ -10085,8 +10146,19 @@ Practitioner profile (full, natural sentences):`;
       const unlockedRibbon = isUnlocked
         ? '<div class="card-unlock-ribbon" style="position:absolute;top:6px;right:6px;font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-warm, #d4a772);background:rgba(212,167,114,0.08);padding:2px 6px;border:1px solid rgba(212,167,114,0.3)">✦ unlocked</div>'
         : '';
+      // Usage badge — only surfaces with enough signal (≥2 uses) so empty
+      // personas stay clean. Shows count + completion% + (optional) avg mood Δ.
+      const ps = state._pickerStats?.persona?.[p.id];
+      let usageBadge = '';
+      if (ps && ps.total >= 2) {
+        const compPct = Math.round((ps.completed / ps.total) * 100);
+        const moodPart = ps.deltaN >= 2
+          ? ` · Δ${ps.deltaSum / ps.deltaN >= 0 ? '+' : ''}${(ps.deltaSum / ps.deltaN).toFixed(1)}`
+          : '';
+        usageBadge = `<div class="card-usage-badge" style="position:absolute;bottom:6px;right:8px;font-size:0.58rem;letter-spacing:0.04em;color:var(--text-faint);font-variant-numeric:tabular-nums" title="Your history with ${escapeHtml(p.name)}: ${ps.total} session${ps.total === 1 ? '' : 's'}, ${compPct}% completion${ps.deltaN >= 2 ? `, average mood Δ ${ps.deltaSum / ps.deltaN >= 0 ? '+' : ''}${(ps.deltaSum / ps.deltaN).toFixed(1)}` : ''}">${ps.total}× · ${compPct}%${moodPart}</div>`;
+      }
       card.style.position = 'relative';
-      card.innerHTML = `${unlockedRibbon}<div class="card-category-label">${escapeHtml(categoryLabel)}</div><div class="card-name">${escapeHtml(p.name)}${p.isSelf ? ' <span class="self-badge" title="Built from your profile + Smart Director memory">YOU</span>' : ''}</div><div class="card-tagline">${escapeHtml(p.tagline)}</div>${p.isCustom ? `<div class="card-actions"><button class="card-action-btn" data-action="edit">edit</button><button class="card-action-btn" data-action="delete">×</button></div>` : ''}`;
+      card.innerHTML = `${unlockedRibbon}${usageBadge}<div class="card-category-label">${escapeHtml(categoryLabel)}</div><div class="card-name">${escapeHtml(p.name)}${p.isSelf ? ' <span class="self-badge" title="Built from your profile + Smart Director memory">YOU</span>' : ''}</div><div class="card-tagline">${escapeHtml(p.tagline)}</div>${p.isCustom ? `<div class="card-actions"><button class="card-action-btn" data-action="edit">edit</button><button class="card-action-btn" data-action="delete">×</button></div>` : ''}`;
       card.addEventListener('click', e => {
         if (e.target.dataset.action === 'edit') { e.stopPropagation(); openPersonaEditor(p.id); return; }
         if (e.target.dataset.action === 'delete') { e.stopPropagation(); deletePersona(p.id); return; }
@@ -10650,12 +10722,33 @@ ${messages}
     const grid = $('methodGrid');
     grid.innerHTML = '';
     const filtered = state.methodFilter === 'all' ? METHODS : METHODS.filter(m => m.category === state.methodFilter);
+    const lockState = state._methodLockState; // populated by applyMethodGating
     filtered.forEach(m => {
       const card = document.createElement('div');
-      card.className = `card category-${m.category}` + (m.id === state.selectedMethodId ? ' selected' : '');
+      const lockReason = lockState?.reasonFor?.(m.category) || '';
+      const isLocked = !!lockReason;
+      card.className = `card category-${m.category}` + (m.id === state.selectedMethodId ? ' selected' : '') + (isLocked ? ' locked' : '');
       card.dataset.methodId = m.id;
-      card.innerHTML = `<div class="card-category-label">${escapeHtml(m.category)}</div><div class="card-name">${escapeHtml(m.name)}${m.recommended ? `<span class="card-badge">recommended</span>` : ''}</div><div class="card-tagline">${escapeHtml(m.tagline)}</div><div class="card-tags">${m.tags.map(t => `<span class="card-tag">${escapeHtml(t)}</span>`).join('')}</div>`;
+      if (isLocked) card.title = lockReason;
+      const lockBadge = isLocked ? `<span class="card-badge" style="background:transparent;border:1px solid var(--text-faint);color:var(--text-faint)">🔒 locked</span>` : '';
+      // Usage badge — same pattern as persona cards. Skipped if locked (lock
+      // badge already occupies the inline slot).
+      const ms = state._pickerStats?.method?.[m.id];
+      let usageBadge = '';
+      if (!isLocked && ms && ms.total >= 2) {
+        const compPct = Math.round((ms.completed / ms.total) * 100);
+        const moodPart = ms.deltaN >= 2
+          ? ` · Δ${ms.deltaSum / ms.deltaN >= 0 ? '+' : ''}${(ms.deltaSum / ms.deltaN).toFixed(1)}`
+          : '';
+        usageBadge = `<div class="card-usage-badge" style="position:absolute;bottom:6px;right:8px;font-size:0.58rem;letter-spacing:0.04em;color:var(--text-faint);font-variant-numeric:tabular-nums" title="Your history with ${escapeHtml(m.name)}: ${ms.total} session${ms.total === 1 ? '' : 's'}, ${compPct}% completion${ms.deltaN >= 2 ? `, average mood Δ ${ms.deltaSum / ms.deltaN >= 0 ? '+' : ''}${(ms.deltaSum / ms.deltaN).toFixed(1)}` : ''}">${ms.total}× · ${compPct}%${moodPart}</div>`;
+      }
+      card.style.position = 'relative';
+      card.innerHTML = `${usageBadge}<div class="card-category-label">${escapeHtml(m.category)}</div><div class="card-name">${escapeHtml(m.name)}${m.recommended ? `<span class="card-badge">recommended</span>` : ''}${lockBadge}</div><div class="card-tagline">${escapeHtml(m.tagline)}</div><div class="card-tags">${m.tags.map(t => `<span class="card-tag">${escapeHtml(t)}</span>`).join('')}</div>`;
       card.addEventListener('click', () => {
+        if (isLocked) {
+          notify.info(lockReason);
+          return;
+        }
         state.selectedMethodId = m.id;
         saveUserSettings();
         // Update soundscape default when method changes — but only if the user
@@ -14687,7 +14780,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
     ], 600);
 
     try {
-      const data = await root.aiTextPlugin({ instruction, startWith: '{', stopSequences: ['\n\n\n'], hideStartWith: true });
+      const data = await root.aiTextPlugin({ instruction, startWith: '{', stopSequences: ['\n\n\n', '\n\n[[', '\n[['], hideStartWith: true });
       // guard against error status AND empty output
       if (!data || data.stopReason === 'error') throw new Error('AI generation encountered an error.');
       let text = (data.generatedText || '').trim();
@@ -17068,11 +17161,42 @@ Start immediately:`;
   }
 
   /** Populate sidebar stats and streak from session history */
+  /** Compute per-persona and per-method aggregate stats from history.
+   *  Cached in state._pickerStats so renderPersonaGrid / renderMethodGrid
+   *  (sync) can read it without a re-fetch. Re-runs when sidebar stats
+   *  refresh (post-session, on init). Cheap — history is capped at 50. */
+  function computePickerStats(history) {
+    const persona = {};
+    const method = {};
+    const bumpInto = (map, id, rec) => {
+      if (!id) return;
+      const slot = map[id] || (map[id] = { total: 0, completed: 0, deltaSum: 0, deltaN: 0 });
+      slot.total++;
+      if (rec.completed) slot.completed++;
+      if (rec.preMood != null && rec.postMood != null) {
+        slot.deltaSum += (rec.postMood - rec.preMood);
+        slot.deltaN++;
+      }
+    };
+    for (const rec of (history || [])) {
+      bumpInto(persona, rec.personaId, rec);
+      bumpInto(method, rec.methodId, rec);
+    }
+    return { persona, method };
+  }
+
   async function renderSidebarStats() {
     const statsEl = $('sidebarStats');
     const streakEl = $('sidebarStreak');
     const history = (await idbGet('stillness_history_v1')) || [];
     const analytics = await getAnalytics();
+
+    // Cache per-picker stats so grid renderers can read sync. Trigger
+    // a re-render of the grids if they exist, so newly-completed sessions
+    // surface in their badges.
+    state._pickerStats = computePickerStats(history);
+    if ($('personaGrid')?.children.length && typeof renderPersonaGrid === 'function') renderPersonaGrid();
+    if ($('methodGrid')?.children.length && typeof renderMethodGrid === 'function') renderMethodGrid();
 
     // Use analytics for all-time aggregates (never decremented by deletions)
     const totalSessions = Math.max(analytics.comp.total, history.length);
@@ -18994,6 +19118,48 @@ Start immediately:`;
       } else {
         programBox.style.display = 'none';
         programBox.innerHTML = '';
+      }
+    }
+
+    // Director Brief reasoning — quiet read-only "why this session was
+    // shaped this way" card. Only renders for non-emergency completions
+    // where Smart Director actually ran and produced a substantive brief
+    // (i.e. not cold-start, where the brief just says "follow defaults").
+    // Builds trust by showing the user what the Director reasoned over;
+    // pairs with the live impact preview on the calibration slider.
+    const briefBox = $('postDirectorBriefBox');
+    if (briefBox) {
+      const brief = state._lastDirectorBrief;
+      const showBrief = !wasEmergency
+        && brief
+        && !brief.coldStart
+        && (brief.reasoning?.length > 0 || brief.warnings?.length > 0 || Object.keys(brief.recommendations || {}).length > 0);
+      if (showBrief) {
+        const recList = Object.entries(brief.recommendations || {})
+          .map(([k, v]) => `<li style="margin:2px 0">${escapeHtml(k)}: <strong>${escapeHtml(String(v))}</strong></li>`)
+          .join('');
+        const reasoningList = (brief.reasoning || [])
+          .map(r => `<li style="margin:3px 0">${escapeHtml(r)}</li>`)
+          .join('');
+        const warnList = (brief.warnings || [])
+          .map(w => `<li style="margin:2px 0;color:var(--neon-amber)">${escapeHtml(w)}</li>`)
+          .join('');
+        const biasNote = (brief.bias != null && brief.bias !== 0)
+          ? `<div style="font-size:0.66rem;color:var(--text-faint);margin-top:6px">calibration: bias ${brief.bias > 0 ? '+' : ''}${brief.bias}</div>`
+          : '';
+        briefBox.style.display = '';
+        briefBox.innerHTML = `
+          <div class="post-card-title">why this session was shaped this way</div>
+          <div style="font-size:0.78rem;line-height:1.5;color:var(--text-dim)">
+            ${brief.recoveryMode ? '<div style="margin-bottom:6px;color:var(--neon-amber);font-weight:500">recovery mode</div>' : ''}
+            ${warnList ? `<ul style="margin:4px 0 6px 18px;padding:0">${warnList}</ul>` : ''}
+            ${reasoningList ? `<ul style="margin:4px 0 6px 18px;padding:0">${reasoningList}</ul>` : ''}
+            ${recList ? `<div style="font-size:0.7rem;color:var(--text-faint);margin-top:8px;text-transform:uppercase;letter-spacing:0.06em">recommendations applied</div><ul style="margin:4px 0 0 18px;padding:0;font-size:0.74rem">${recList}</ul>` : ''}
+            ${biasNote}
+          </div>`;
+      } else {
+        briefBox.style.display = 'none';
+        briefBox.innerHTML = '';
       }
     }
 
@@ -21533,7 +21699,24 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const label  = $('directorBiasLabel');
     const row    = $('directorBiasRow');
     if (!slider || !label || !row) return;
-    label.textContent = DIRECTOR_BIAS_LABELS[String(slider.value)] || 'balanced';
+    const bias = Math.max(-3, Math.min(3, Math.round(Number(slider.value) || 0)));
+    label.textContent = DIRECTOR_BIAS_LABELS[String(bias)] || 'balanced';
+    // Render concrete impact for the current notch — same math as
+    // computeDirectorBrief so the user sees the actual thresholds in play.
+    const impact = $('directorBiasImpact');
+    if (impact) {
+      const coldStart   = Math.max(0, 3 - bias);
+      const compFloorPct = Math.round((0.5 - bias * 0.05) * 100);
+      const reentryDays  = 14 + bias * 3;
+      const tone =
+        bias <= -2 ? 'careful, gently reassuring'
+        : bias === -1 ? 'slightly cautious, unhurried'
+        : bias === 0 ? 'balanced (no extra tone directive)'
+        : bias === 1 ? 'slightly forward, warm momentum'
+        : 'forward-momentum, energizing';
+      const beginnerNote = bias >= 3 ? 'beginner cap may be skipped at this notch' : 'beginner cap still in effect';
+      impact.innerHTML = `<strong>at this notch:</strong> cold-start ends after ${coldStart} session${coldStart === 1 ? '' : 's'} · completion floor ${compFloorPct}% · re-entry treated after ${reentryDays} days · ${beginnerNote} · tone: ${tone}`;
+    }
     // Grey out when Smart Director is off — bias has no effect if nothing runs.
     const enabled = state.smartDirectorEnabled !== false;
     row.style.opacity = enabled ? '' : '0.4';
@@ -21577,7 +21760,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   ['pfName', 'pfAbout', 'pfAppearance', 'pfGoals'].forEach(id => {
     $(id)?.addEventListener('input', saveProfile);
   });
-  ['pfPronouns', 'pfAge', 'pfExperience', 'pfUseFirstName'].forEach(id => {
+  ['pfPronouns', 'pfAge', 'pfExperience', 'pfUseFirstName', 'pfShareAge', 'pfShareAppearance', 'pfShareGoals'].forEach(id => {
     $(id)?.addEventListener('change', saveProfile);
   });
   // Session daily cap — max 3 sessions per day to prevent compulsive use
@@ -21607,6 +21790,22 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const count = await getSessionCount();
     const skip = state._debug?.skipMethodGating;
     if (skip) sdLog('method gating bypassed — debug mode on');
+    // Cache the lock state so synchronous renderMethodGrid can apply the same
+    // gating per-card without an async re-fetch. Updated in place each call.
+    state._methodLockState = {
+      sessionCount: count,
+      skip: !!skip,
+      lockedCats: skip ? new Set() : new Set([
+        ...(count < 3 ? ['rapid'] : []),
+        ...(count < 7 ? ['advanced'] : []),
+      ]),
+      reasonFor: (cat) => {
+        if (skip) return '';
+        if (cat === 'rapid' && count < 3) return `Unlocks after 3 completed sessions (${count} so far)`;
+        if (cat === 'advanced' && count < 7) return `Unlocks after 7 completed sessions (${count} so far)`;
+        return '';
+      },
+    };
     // Thresholds: rapid unlocks at 3 sessions, advanced at 7
     document.querySelectorAll('#methodFilterTabs .filter-tab').forEach(tab => {
       const cat = tab.dataset.filter;
@@ -21621,6 +21820,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
         tab.title = skip && (cat === 'rapid' || cat === 'advanced') ? 'Debug: unlocked' : '';
       }
     });
+    // Re-render the method grid so per-card lock state stays in sync.
+    if (typeof renderMethodGrid === 'function') renderMethodGrid();
   }
 
   // ────────────────────────────────────────────────────────────────────
@@ -21927,11 +22128,35 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const INTENSE_VIZUALS = new Set(['flowfield', 'plasma', 'kaleidoscope-flow', 'kaleidoscope-plasma', 'starfield', 'tunnel', 'vortex']);
     if (state.caps.reducedMotion) {
       // Tag intense viz options visually so any future selection signals the risk
-      document.querySelectorAll('#vizSelect option').forEach(opt => {
-        if (INTENSE_VIZUALS.has(opt.value)) {
-          opt.textContent = '⚠ ' + opt.textContent + ' (motion-heavy)';
-        }
-      });
+      const vizSel = $('vizSelect');
+      if (vizSel) {
+        // Build a flat list of (option, isIntense, parentGroup) so we can
+        // reorder while preserving optgroup labels. Intense options sink to
+        // the bottom of their respective groups; if a group becomes all-
+        // intense, the whole group sinks to the end of the select.
+        const groups = Array.from(vizSel.querySelectorAll('optgroup'));
+        const looseOptions = Array.from(vizSel.children).filter(c => c.tagName === 'OPTION');
+        // Re-tag intense option labels first
+        document.querySelectorAll('#vizSelect option').forEach(opt => {
+          if (INTENSE_VIZUALS.has(opt.value)) {
+            opt.textContent = '⚠ ' + opt.textContent + ' (motion-heavy)';
+          }
+        });
+        // Within each optgroup, move intense options to the end
+        groups.forEach(g => {
+          const opts = Array.from(g.children);
+          opts.forEach(o => { if (INTENSE_VIZUALS.has(o.value)) g.appendChild(o); });
+        });
+        // Among optgroups themselves, move groups that contain only intense
+        // options (or are largely intense) to the end of the select
+        groups.forEach(g => {
+          const opts = Array.from(g.children);
+          const intenseRatio = opts.filter(o => INTENSE_VIZUALS.has(o.value)).length / Math.max(opts.length, 1);
+          if (intenseRatio >= 0.5) vizSel.appendChild(g); // moves to end
+        });
+        // Move any loose intense options to the very end
+        looseOptions.forEach(o => { if (INTENSE_VIZUALS.has(o.value)) vizSel.appendChild(o); });
+      }
       if (!hadSavedSettings) {
         // Defaults: gentle visual + halved viz dynamics + subtle (not dramatic) audio-reactive
         state.vizOverride = 'candle';

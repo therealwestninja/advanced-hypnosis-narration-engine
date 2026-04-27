@@ -20,6 +20,15 @@ This file tracks improvements not yet shipped, ordered roughly by least to most 
 | **Safety: phase-navigation removed** | Reverted skip-phase button + `N` shortcut. Per the safety review, advancing through phases mid-session could let users skip past Lightener/Wake/Reintroduction, leaving them deep with no return path. Only allowed in-session actions: pause/resume, end & re-alert (full rescue), back to script (with confirm — ends session). `goToStep` also has a defensive guard that blocks while `_sessionStartTime && !_finishing` |
 | Background-generation toasts | Existing `notify.success/warn` for script generation completion are auto-suppressed during session playback (via `_isInSessionPlayback`). The bg-image queue now also fires a one-shot completion toast once the active drain finishes |
 | "Regenerate fresh" with explicit SD mode picker | New `regenFreshBtn` next to the existing regenerate buttons. When a user has pasted or manually edited a script and wants a fresh AI generation, this lets them choose Smart Director (profile + adaptive + memory) or Defaults (no personalization). Per-call override; persistent SD setting unchanged |
+| Soft-pause overlay always-visible bug | Removed five orphan `-webkit-` CSS fragments left from prior cleanup. Critical one ate the `display: none` for `.soft-pause-overlay`; another ate `min-height: 0` for fullscreen nav buttons |
+| `stopSequences` defensive `\n\n[[` on the two direct `aiTextPlugin` calls | Image-tagger + craftSuggestion now match the merge done in `aiGenerate`'s Perchance branch |
+| `getAITier()` helper + `window.HNE` console diagnostic | Read-only shim: `HNE.tier()`, `HNE.profile()`, `HNE.adaptive()`, `HNE.history(n)`, `HNE.smartDirector()`, `HNE.bias()` — foundation for §4.2 |
+| Director-calibration "what changes at this notch" hint | Live concrete-impact line under the slider: cold-start sessions, completion floor %, re-entry days, beginner cap state, tone — same math as `computeDirectorBrief` |
+| Hide intense viz options for reduced-motion users | Sinks intense options to bottom of optgroups; sinks mostly-intense optgroups to end of select. Preserves choice without disabling |
+| "Why this is greyed out" tooltip on advanced methods | Per-card lock state cached on `state._methodLockState` by `applyMethodGating`; locked cards get 🔒 badge, dimmed via `.card.locked`, click → `notify.info(reason)` instead of selecting |
+| Director-brief reasoning shown post-session | New `#postDirectorBriefBox` card; renders `brief.reasoning[]`, `brief.warnings[]`, `brief.recommendations`, and bias note. Hidden on emergency exit, cold-start, or when SD was off |
+| Per-persona/method completion-rate badges | New `computePickerStats(history)` populates `state._pickerStats`; persona + method cards get a bottom-right `N× · %compl · Δavg` badge with full-detail tooltip. Threshold 2+ uses |
+| Privacy checkboxes per-field on profile | `pfShareAge` / `pfShareAppearance` / `pfShareGoals` — default-true so older profiles keep parity. `getProfileContext` gates AI exposure. Local Director still uses fields regardless |
 
 ---
 
@@ -278,17 +287,19 @@ Effort scale: 1 (trivial, < 30min), 2 (small, < 2h), 3 (medium, half-day), 4 (la
 
 ### Effort 1
 
-| Item | Notes |
+(All Effort 1 items shipped this round. See §0 above.)
+
+| Originally listed | Status |
 |---|---|
-| Streak counter with grace day | Pure JS over history. Sidebar pill. |
-| `stopSequences` defensive `"\n\n[["` addition | Already on the perchance-skill checklist. |
-| Hide intense viz options for reduced-motion users | We already tag with ⚠; could move below in dropdown. |
-| Show "why this is greyed out" tooltip on advanced methods | Reason text already computed by `applyMethodGating`. |
-| Director-brief reasoning shown post-session (read-only card) | All data already produced by `computeDirectorBrief`; render on post-screen. |
-| `getAITier()` helper + console-visible diagnostic | Foundation for §4.2. |
-| Per-persona/method completion-rate badges in pickers | Data already in analytics. |
-| Privacy checkboxes per-field on profile | name already gated; replicate for age/appearance/goals. |
-| Director-calibration "what changes at this notch" hint | Updates with slider; surfaces concrete impact. |
+| Streak counter with grace day | Already implemented before this round (lines ~17128 — 2 single-day grace gaps, sidebar pill via `sidebarStreak`) |
+| `stopSequences` defensive `\n\n[[` addition | ✅ shipped |
+| Hide intense viz options for reduced-motion users | ✅ shipped |
+| Show "why this is greyed out" tooltip on advanced methods | ✅ shipped |
+| Director-brief reasoning shown post-session (read-only card) | ✅ shipped |
+| `getAITier()` helper + console-visible diagnostic | ✅ shipped |
+| Per-persona/method completion-rate badges in pickers | ✅ shipped |
+| Privacy checkboxes per-field on profile | ✅ shipped |
+| Director-calibration "what changes at this notch" hint | ✅ shipped |
 
 ### Effort 2
 
