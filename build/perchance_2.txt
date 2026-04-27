@@ -3804,7 +3804,7 @@ padding: 6px 10px; font-size: 1.1rem;
 
       <div class="field-group" id="affirmationGroup">
         <label class="field-label">your own affirmations <span class="optional-mark">optional</span></label>
-        <textarea id="userAffirmations" rows="5" placeholder="One affirmation per line. e.g.&#10;I am calm and in control
+        <textarea id="userAffirmations" rows="9" placeholder="One affirmation per line. e.g.&#10;I am calm and in control
 My body knows how to heal
 I return to myself easily"></textarea>
         <div class="sublabel">Tip: Write in the present tense, one thought per line. Your exact words may appear in affirmation interludes, deepening, or work blocks.</div>
@@ -4106,6 +4106,7 @@ I return to myself easily"></textarea>
           <option value="ai">AI-generated images</option>
           <option value="local-image">Upload image</option>
           <option value="local-video">Upload video</option>
+          <option value="local-folder">Local folder · slideshow (Chrome/Edge/Brave)</option>
           <option value="youtube">YouTube video</option>
           <option value="url">Image URL</option>
         </select>
@@ -4244,6 +4245,46 @@ I return to myself easily"></textarea>
             choose file <input type="file" id="bgFileInput" accept="image/*,video/*" style="display:none">
           </label>
           <span class="hint" id="bgFileName">no file chosen</span>
+        </div>
+        <!-- Local-folder slideshow options. Uses File System Access API to
+             read a directory of images and play them sequentially or randomly
+             with per-image duration. Chrome/Edge/Brave/Arc only — Safari
+             and Firefox don't support showDirectoryPicker; we fall back to
+             multi-file <input type=file webkitdirectory> on those browsers
+             with a smaller (single-session) read window.
+             Folder handle isn't persisted across reloads — user re-grants
+             access after reopening the page (browser security model). -->
+        <div id="bgFolderOptions" class="bg-options" style="display:none;margin-top:8px">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button type="button" class="btn secondary" id="bgFolderPickBtn" style="font-size:0.78rem;padding:6px 12px">
+              📁 choose folder
+            </button>
+            <input type="file" id="bgFolderFallbackInput" webkitdirectory directory multiple accept="image/*" style="display:none">
+            <span class="hint" id="bgFolderStatus">no folder chosen</span>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+            <label style="font-size:0.74rem;color:var(--text-dim);display:flex;align-items:center;gap:6px">
+              order:
+              <select id="bgFolderOrder" class="pf-select" style="font-size:0.72rem;padding:3px 8px;width:auto">
+                <option value="sequential">sequential</option>
+                <option value="random">random (no repeat)</option>
+                <option value="random-with-repeat">random (with repeats)</option>
+              </select>
+            </label>
+            <label style="font-size:0.74rem;color:var(--text-dim);display:flex;align-items:center;gap:6px">
+              per image:
+              <select id="bgFolderDuration" class="pf-select" style="font-size:0.72rem;padding:3px 8px;width:auto">
+                <option value="5">5s</option>
+                <option value="10">10s</option>
+                <option value="15" selected>15s</option>
+                <option value="30">30s</option>
+                <option value="60">60s</option>
+              </select>
+            </label>
+          </div>
+          <div class="sublabel" style="margin-top:6px;font-size:0.66rem">
+            Slideshow plays during the session, transitioning with the same effect picked above. Folder access requires re-granting after page reload (browser security). Only image files (jpg, png, webp, gif) are loaded; subfolders ignored.
+          </div>
         </div>
         <div id="bgYoutubeOptions" class="bg-options" style="display:none;margin-top:8px">
           <input type="text" id="bgYoutubeUrl" class="pf-input" placeholder="https://youtube.com/watch?v=..." style="width:100%">
@@ -14156,6 +14197,94 @@ ${messages}
       if (this.interval) { clearInterval(this.interval); this.interval = null; }
     },
 
+    /** Pick the next file index for the folder slideshow based on the
+     *  current order mode. Sequential walks linearly. Random skips
+     *  recently-shown indices via a ring buffer. Random-with-repeat
+     *  is pure random — no memory. */
+    _nextFolderIdx() {
+      const f = this.folder;
+      if (!f || !f.files.length) return -1;
+      const n = f.files.length;
+      if (n === 1) return 0;
+      if (f.order === 'sequential') {
+        const next = (f.idx + 1) % n;
+        f.idx = next;
+        return next;
+      }
+      if (f.order === 'random-with-repeat') {
+        const next = Math.floor(Math.random() * n);
+        f.idx = next;
+        return next;
+      }
+      // 'random' (no immediate repeat) — keep a ring of recent indices
+      const ringSize = Math.min(8, Math.floor(n / 2));
+      let next, attempts = 0;
+      do {
+        next = Math.floor(Math.random() * n);
+        attempts++;
+      } while (f.recentIdx.includes(next) && attempts < 12);
+      f.recentIdx.push(next);
+      while (f.recentIdx.length > ringSize) f.recentIdx.shift();
+      f.idx = next;
+      return next;
+    },
+
+    /** Display the file at folder.files[idx] via swap(). Creates an
+     *  object URL for the File, revokes the previous one. */
+    _displayFolderFrame(idx) {
+      const f = this.folder;
+      if (!f || idx < 0 || idx >= f.files.length) return;
+      const file = f.files[idx];
+      if (!file) return;
+      // Revoke the previous URL after a short delay — the transition
+      // needs both old and new images to coexist briefly. 2s is enough
+      // for any of our transition styles.
+      const prevUrl = f._activeObjectUrl;
+      const newUrl = URL.createObjectURL(file);
+      f._activeObjectUrl = newUrl;
+      this.swap(newUrl);
+      if (prevUrl) setTimeout(() => { try { URL.revokeObjectURL(prevUrl); } catch {} }, 2000);
+    },
+
+    /** Start the folder slideshow. Mirrors startRotation but uses the
+     *  user-picked durationSec and the folder's File[] queue. */
+    startFolderSlideshow() {
+      if (this.source !== 'local-folder' || !this.folder?.files?.length) return;
+      if (this._folderInterval) return; // already running
+      // Display the first frame immediately
+      this.folder.idx = 0;
+      this.folder.recentIdx = [];
+      this._displayFolderFrame(0);
+      const secs = Math.max(2, Number(this.folder.durationSec) || 15);
+      let lastTickAt = Date.now();
+      let activeSinceSwap = 0;
+      this._folderInterval = setInterval(() => {
+        const now = Date.now();
+        const dt = Math.min(1500, now - lastTickAt);
+        lastTickAt = now;
+        if (state.paused || document.hidden) return;
+        activeSinceSwap += dt;
+        // Re-read durationSec each tick so live changes via the
+        // settings panel apply on the next swap (no restart needed).
+        const curSecs = Math.max(2, Number(this.folder.durationSec) || 15);
+        if (activeSinceSwap < curSecs * 1000) return;
+        activeSinceSwap = 0;
+        const nextIdx = this._nextFolderIdx();
+        if (nextIdx >= 0) this._displayFolderFrame(nextIdx);
+      }, 1000);
+    },
+
+    stopFolderSlideshow() {
+      if (this._folderInterval) {
+        clearInterval(this._folderInterval);
+        this._folderInterval = null;
+      }
+      if (this.folder?._activeObjectUrl) {
+        try { URL.revokeObjectURL(this.folder._activeObjectUrl); } catch {}
+        this.folder._activeObjectUrl = null;
+      }
+    },
+
     /** Swap to a new image using a random enabled transition.
      *  Replaces the old single-style crossfade(). Falls back to crossfade if
      *  the randomly-picked one throws or no transitions are enabled. */
@@ -14231,6 +14360,7 @@ ${messages}
 
     clear() {
       this.stopRotation();
+      this.stopFolderSlideshow();
       // Revoke object URLs from queue to free memory
       this.queue.forEach(u => { try { URL.revokeObjectURL(u); } catch {} });
       this.queue = [];
@@ -17373,7 +17503,7 @@ OUTPUT FORMAT — exactly these section markers:
     // Token-budgeted prompt assembly. The JSON-output schema and
     // universal rules are priority-5 (never trimmed); profile context trims
     // first if we're near the context limit.
-    const headerBlock = `You are a master hypnotherapist converting a user's rough intention into a technically-precise hypnotic suggestion.
+    const headerBlock = `You are a master hypnotherapist converting a user's rough intention into a technically-precise, RICH hypnotic suggestion package.
 
 TYPE: ${type.label}
 USER'S ROUGH DESCRIPTION: "${rough}"
@@ -17386,7 +17516,9 @@ UNIVERSAL RULES:
 • Progressive intensification
 • Future-pacing ("from now on")
 • Positive construction only
-• Specificity
+• Specificity — concrete, sensory, embodied
+
+DEPTH MANDATE: Do NOT be parsimonious. Produce SUBSTANTIVE output. Each field is used downstream to generate a multi-phase session script — sparse output produces sparse, repetitive sessions.
 
 TYPE-SPECIFIC GUIDANCE:
 ${type.guidance}`;
@@ -17394,17 +17526,19 @@ ${type.guidance}`;
     const schemaBlock = `
 Output EXACTLY this JSON, no other text, no markdown fences:
 {
-  "craftedSuggestion": "Complete hypnotic suggestion, 3-5 sentences, ready to deliver verbatim. Second person.",
+  "craftedSuggestion": "Complete hypnotic suggestion, 6-9 sentences, ready to deliver verbatim. Second person. Build progressively — opening, deepening, embedding, reinforcing.",
   "trigger": "Specific trigger phrase, or 'ongoing state'",
   "coreResponse": "Specific response/effect, 3-7 words",
-  "reinforcementPhrases": ["Three or four short variants (5-10 words)"],
+  "reinforcementPhrases": ["6 to 8 short variants — 5 to 12 words each. Different angles on the same suggestion: somatic, cognitive, behavioral, future-paced, embedded-command, dissociative."],
+  "somaticAnchors": ["4 to 6 specific body sensations + locations the suggestion ties to. e.g. 'warmth in the solar plexus', 'lightness across the brow', 'release at the jaw hinge'. Used by work-phase generation for embodiment."],
+  "counterIntuitive": ["2 to 3 OPTIONAL paradoxical reframes (Ericksonian hooks). Empty array if not appropriate to the intention."],
   "explanation": "ONE sentence on the technique used"
 }`;
     const instruction = trimToTokenBudget([
       { name: 'header',   text: headerBlock,  priority: 5 },
       { name: 'profile',  text: profileBlock, priority: 2 },
       { name: 'schema',   text: schemaBlock,  priority: 5 },
-    ], 600);
+    ], 900);
 
     try {
       try { logAICall('perchance', 'craft-suggestion', instruction); } catch {}
@@ -17492,7 +17626,7 @@ Output EXACTLY this JSON, no other text, no markdown fences:
 
       const headerBlock = `You are ${persona.name}, drafting personal affirmations for the listener's hypnosis session.
 
-The listener did not write their own affirmations and asked you to draft some. Generate 3-5 affirmations they will hear during the session, in your voice.
+The listener did not write their own affirmations and asked you to draft some. Generate 8 to 12 affirmations they will hear during the session, in your voice. More affirmations = less repetition during long sessions, so don't be parsimonious.
 
 INTENTION TYPE: ${intentionType.label}
 USER'S INTENTION: "${intention || '(none specified — use the profile and intention type as guidance)'}"
@@ -17507,17 +17641,18 @@ AFFIRMATION RULES:
 • Each line should stand alone as a complete suggestion
 • Use the user's pronouns and any specific details from their profile
 • Avoid clichés like "I am enough" — be specific to what the user is working on
+• VARIETY: Different angles — somatic, cognitive, behavioral, emotional, future-paced, identity-statement, dissociated-from-judgment. Don't repeat the same angle twice.
 • CRITICAL: Match the persona voice above. A Commander's affirmations sound like commands. The Inner Voice's affirmations sound like a thought just below words. The Old Master's are short and elemental. Don't write generic affirmations.
 
 OUTPUT FORMAT:
-One affirmation per line. No numbering, no bullets, no quotes around lines, no preamble, no commentary. Just the affirmations themselves, separated by newlines. 3-5 lines total.`;
+One affirmation per line. No numbering, no bullets, no quotes around lines, no preamble, no commentary. Just the affirmations themselves, separated by newlines. 8 to 12 lines total.`;
 
       const instruction = trimToTokenBudget([
         { name: 'header',   text: headerBlock,  priority: 5 },
         { name: 'voice',    text: voiceBlock,   priority: 5 }, // voice is non-negotiable
         { name: 'profile',  text: profileBlock, priority: 3 },
         { name: 'rules',    text: rulesBlock,   priority: 5 },
-      ], 600); // bumped from 400 to make room for the voice block
+      ], 900); // bumped from 600 to fit 8-12 affirmations + voice block
 
       const result = await aiGenerate(instruction, { stopSequences: ['\n\n', '\n---'] });
       // aiGenerate returns { generatedText, stopReason } — was checking result.text (always undefined)
@@ -17531,7 +17666,7 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
         // Strip leading bullets, numbers, dashes, quotes that the model may add
         .map(l => l.replace(/^[-•*\d.)\s]+/, '').replace(/^["'""'']\s*/, '').replace(/\s*["'""'']\s*$/, '').trim())
         .filter(l => l.length >= 3 && l.length <= 200) // sanity bounds
-        .slice(0, 5);
+        .slice(0, 12);  // cap at 12 — was 5, raised for richer rotation
 
       if (lines.length === 0) throw new Error('AI output had no usable affirmations');
 
@@ -17590,7 +17725,23 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
     $('craftedText').style.display = 'block';
     $('craftedEditable').style.display = 'none';
     $('saveEditBtn').style.display = 'none';
-    $('craftedMeta').innerHTML = `<strong>trigger:</strong> ${escapeHtml(c.trigger||'—')}  ·  <strong>effect:</strong> ${escapeHtml(c.coreResponse||'—')}<br><strong>technique:</strong> ${escapeHtml(c.explanation||'—')}`;
+    // Build rich preview blocks for the new fields. Each is optional —
+    // older crafted objects (pre-Round-19) won't have them so they
+    // render nothing.
+    const richBits = [`<strong>trigger:</strong> ${escapeHtml(c.trigger || '—')}  ·  <strong>effect:</strong> ${escapeHtml(c.coreResponse || '—')}<br><strong>technique:</strong> ${escapeHtml(c.explanation || '—')}`];
+    if (Array.isArray(c.reinforcementPhrases) && c.reinforcementPhrases.length) {
+      const items = c.reinforcementPhrases.map(p => `<li style="margin:2px 0">${escapeHtml(p)}</li>`).join('');
+      richBits.push(`<div style="margin-top:8px"><strong>reinforcement phrases:</strong><ul style="margin:4px 0 0 18px;padding:0;font-size:0.78rem;color:var(--text-dim)">${items}</ul></div>`);
+    }
+    if (Array.isArray(c.somaticAnchors) && c.somaticAnchors.length) {
+      const items = c.somaticAnchors.map(a => escapeHtml(a)).join(' · ');
+      richBits.push(`<div style="margin-top:6px;font-size:0.78rem"><strong>somatic anchors:</strong> <span style="color:var(--text-dim)">${items}</span></div>`);
+    }
+    if (Array.isArray(c.counterIntuitive) && c.counterIntuitive.length) {
+      const items = c.counterIntuitive.map(p => `<li style="margin:2px 0">${escapeHtml(p)}</li>`).join('');
+      richBits.push(`<details style="margin-top:6px;font-size:0.78rem"><summary style="cursor:pointer;color:var(--text-faint)">paradoxical / Ericksonian hooks (${c.counterIntuitive.length})</summary><ul style="margin:4px 0 0 18px;padding:0;color:var(--text-dim)">${items}</ul></details>`);
+    }
+    $('craftedMeta').innerHTML = richBits.join('');
     $('craftedPreview').classList.add('visible');
   }
   function hideCrafted() { state.craftedSuggestion = null; $('craftedPreview').classList.remove('visible'); hideScript(); }
@@ -18462,7 +18613,31 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
     const phaseTimes = [];
     const phaseResults = {};
 
-    const craftedBlock = state.craftedSuggestion ? `\nCRAFTED SUGGESTION: "${state.craftedSuggestion.craftedSuggestion}"\nTRIGGER: ${state.craftedSuggestion.trigger}\nEFFECT: ${state.craftedSuggestion.coreResponse}` : '';
+    // craftedBlock — pulls the full crafted-suggestion package into the
+    // shared context. Includes the rich fields (reinforcementPhrases,
+    // somaticAnchors, counterIntuitive) when present so script generation
+    // can weave them through the work/deepener phases. Old craftedSuggestion
+    // shapes (pre-Round-19) without the rich fields still work — the
+    // optional sections are conditionally appended.
+    let craftedBlock = '';
+    if (state.craftedSuggestion) {
+      const cs = state.craftedSuggestion;
+      const sections = [
+        `\nCRAFTED SUGGESTION: "${cs.craftedSuggestion}"`,
+        `TRIGGER: ${cs.trigger}`,
+        `EFFECT: ${cs.coreResponse}`,
+      ];
+      if (Array.isArray(cs.reinforcementPhrases) && cs.reinforcementPhrases.length) {
+        sections.push(`REINFORCEMENT PHRASES (rotate through these across work blocks — do NOT repeat the same one):\n${cs.reinforcementPhrases.map(p => `  · "${p}"`).join('\n')}`);
+      }
+      if (Array.isArray(cs.somaticAnchors) && cs.somaticAnchors.length) {
+        sections.push(`SOMATIC ANCHORS (tie sensations to these specific body locations during work + deepener phases):\n${cs.somaticAnchors.map(a => `  · ${a}`).join('\n')}`);
+      }
+      if (Array.isArray(cs.counterIntuitive) && cs.counterIntuitive.length) {
+        sections.push(`PARADOXICAL HOOKS (Ericksonian — use sparingly, no more than once per phase, only if the persona supports indirect language):\n${cs.counterIntuitive.map(p => `  · "${p}"`).join('\n')}`);
+      }
+      craftedBlock = sections.join('\n');
+    }
     const userAffRaw = $('userAffirmations')?.value?.trim();
     // Resolve tokens in user affirmations line-by-line so \{\{user\}\} etc. in
     // affirmations become concrete text before being injected into prompts.
@@ -20186,7 +20361,123 @@ Start immediately:`;
     card.style.display = '';
     card.innerHTML = `<div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint);margin-bottom:6px">why this session is shaped this way</div>${lines.join('')}`;
   }
-  function hideScript() { state.fullScript = null; state.parsedScript = null; state.generatedPhaseOrder = []; state.scriptSections = []; $('scriptPreview').classList.remove('visible'); renderPhaseEditor(); updateStepUI(); history.clear(); }
+  function hideScript() {
+    state.fullScript = null;
+    state.parsedScript = null;
+    state.generatedPhaseOrder = [];
+    state.scriptSections = [];
+    $('scriptPreview').classList.remove('visible');
+    renderPhaseEditor();
+    updateStepUI();
+    history.clear();
+    // Notify the session bus — script gone, derived UI should refresh.
+    try { sessionBus.notifyChange('hideScript'); } catch {}
+  }
+
+  // ====================================================================
+  // SESSION BUS — universal session-shape change notifier
+  // ====================================================================
+  // Single source of truth for "the session shape changed, derived UI
+  // needs to re-render". Replaces a pile of ad-hoc renderX() calls
+  // sprinkled through every mutator. User suggestion: "Maybe a universal
+  // backend that all of our various chain-prompt generators can call to."
+  //
+  // Mutators call sessionBus.notifyChange(reason). The bus computes the
+  // current "signature" (shape-hash of length + persona + method +
+  // intention + script presence + phase order), compares to last-seen,
+  // and fires subscribers ONLY when different. This means:
+  //   - A no-op mutation (typing then deleting same text) fires nothing
+  //   - Multiple mutators in sequence coalesce naturally
+  //   - Subscribers don't need their own change-detection
+  //
+  // Subscribers register via sessionBus.on(handler). Each handler gets
+  // { reason, signature, prevSignature } — they decide what to refresh
+  // based on what the reason was. Registered handlers below the bus
+  // definition handle the known stale-state sites: genProgress dots,
+  // phase editor, scriptStats, timeline.
+  //
+  // Future plugin extension: third-party generators can call
+  //   sessionBus.notifyChange('plugin:X')
+  // and register their own subscribers via sessionBus.on(...). The
+  // signature() function reads only built-in state so plugin-added
+  // state doesn't accidentally invalidate the cache.
+  // ====================================================================
+  const sessionBus = (() => {
+    const subs = [];
+    let lastSignature = '';
+    function signature() {
+      try {
+        const phaseOrder = (state.scriptSections || []).map(s => s.phaseId || '?').join('|')
+          || (state.generatedPhaseOrder || []).join('|')
+          || (state.parsedScript?.ordered || []).join('|');
+        const scriptHash = state.fullScript
+          ? `${state.fullScript.length}:${state.fullScript.charCodeAt(0) || 0}:${state.fullScript.charCodeAt(state.fullScript.length - 1) || 0}`
+          : 'none';
+        return [
+          state.length || '?',
+          state.selectedPersonaId || '?',
+          state.selectedMethodId || '?',
+          state.intentionType || '?',
+          phaseOrder,
+          scriptHash,
+          (state._phaseExtras || []).join(','),
+        ].join('::');
+      } catch { return String(Date.now()); }
+    }
+    return {
+      signature,
+      on(handler) {
+        if (typeof handler === 'function') subs.push(handler);
+        return () => {
+          const i = subs.indexOf(handler);
+          if (i >= 0) subs.splice(i, 1);
+        };
+      },
+      notifyChange(reason) {
+        const sig = signature();
+        if (sig === lastSignature) return; // no-op — nothing changed
+        const prev = lastSignature;
+        lastSignature = sig;
+        for (const h of subs) {
+          try { h({ reason: reason || 'unknown', signature: sig, prevSignature: prev }); }
+          catch (e) { console.warn('[sessionBus] subscriber error:', e); }
+        }
+      },
+      // For renderers that want to peek without subscribing
+      get current() { return lastSignature; },
+    };
+  })();
+
+  // Built-in subscribers — keep the known stale-state sites in sync.
+  // Each does the minimum work for the change reason; expensive renders
+  // gated on whether the affected slice actually shifted.
+  sessionBus.on(({ reason, signature, prevSignature }) => {
+    // Phase order changed (length, preset, paste, manual edit) →
+    // genProgress dots become meaningless. Hide them; the next generation
+    // will re-show with the correct phase list.
+    const prevPhaseOrder = prevSignature.split('::')[4] || '';
+    const newPhaseOrder = signature.split('::')[4] || '';
+    if (prevPhaseOrder !== newPhaseOrder) {
+      const gp = $('genProgress');
+      if (gp && gp.style.display !== 'none') {
+        // Only auto-hide if there's no live generation in flight.
+        // _genState is set during generation and cleared after.
+        if (!state._genState?.inProgress) {
+          gp.style.display = 'none';
+        }
+      }
+      // Phase editor reflects the current sections — always refresh
+      try { if (typeof renderPhaseEditor === 'function') renderPhaseEditor(); } catch {}
+    }
+    // Script content changed → scriptStats may be stale. The
+    // scriptText input handler already updates these, but presets +
+    // length changes don't, and the timeline view shows session totals.
+    const prevScript = prevSignature.split('::')[5] || '';
+    const newScript = signature.split('::')[5] || '';
+    if (prevScript !== newScript || prevPhaseOrder !== newPhaseOrder) {
+      try { if (typeof renderTimeline === 'function') renderTimeline(); } catch {}
+    }
+  });
 
   // ====================================================================
   // SCRIPT TIMING FIXER — recalculates \x5BPAUSE N\x5D markers heuristically
@@ -21870,6 +22161,14 @@ Start immediately:`;
       bgEngine.setLocalFile(state._bgFile);
     } else if (bgEngine.source === 'local-video' && state._bgFile) {
       bgEngine.setLocalFile(state._bgFile);
+    } else if (bgEngine.source === 'local-folder') {
+      // Local folder slideshow — files held in bgEngine.folder.files,
+      // playback config in bgEngine.folder.{order, durationSec}.
+      if (!bgEngine.folder?.files?.length) {
+        notify.warn('No folder selected — pick one in Step 5 or change source.');
+      } else {
+        bgEngine.startFolderSlideshow();
+      }
     } else if (bgEngine.source === 'youtube' && state.bgYoutubeUrl) {
       bgEngine.setYouTube(state.bgYoutubeUrl);
     } else if (bgEngine.source === 'url' && state.bgStaticUrl) {
@@ -23435,6 +23734,9 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
       renderPhaseEditor();
     }
     updateStepUI();
+    // Notify the bus — script content changed. Bus computes its own
+    // signature so a no-op edit (paste-replace-with-identical) won't fire.
+    try { sessionBus.notifyChange('script-input'); } catch {}
   });
 
   // Fix Timings button
@@ -23451,6 +23753,8 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     const stripCount = (state.autoTempoOptions?.stripChars || '').length;
     const stripNote = stripCount ? ` (${stripCount} character${stripCount === 1 ? '' : 's'} stripped per options)` : '';
     notify.success(`Pause timings recalculated based on content${stripNote}.`);
+    // Bus notify — script content reshaped, subscribers refresh.
+    try { sessionBus.notifyChange('autotempo'); } catch {}
   });
 
   // ── Auto-tempo cleanup options modal ──────────────────────────────────────
@@ -23709,7 +24013,13 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('saveEditBtn').addEventListener('click', saveEditCrafted);
 
   // Step 5 — audio controls
-  $('lengthSelect').addEventListener('change', () => { state.length = $('lengthSelect').value; hideScript(); saveUserSettings(); });
+  $('lengthSelect').addEventListener('change', () => {
+    state.length = $('lengthSelect').value;
+    hideScript();
+    saveUserSettings();
+    // Length change reshapes phases — bus notifies subscribers.
+    try { sessionBus.notifyChange('length-change'); } catch {}
+  });
 
   // Local AI voice toggle (Phase 6 — Hugging Face SpeechT5 in browser)
   $('localVoiceToggle')?.addEventListener('change', async (e) => {
@@ -23896,12 +24206,107 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     state.bgSource = e.target.value;
     bgEngine.source = e.target.value;
     document.querySelectorAll('.bg-options').forEach(el => el.style.display = 'none');
-    const optMap = { ai: 'bgAiOptions', 'local-image': 'bgLocalOptions', 'local-video': 'bgLocalOptions', youtube: 'bgYoutubeOptions', url: 'bgUrlOptions' };
+    const optMap = { ai: 'bgAiOptions', 'local-image': 'bgLocalOptions', 'local-video': 'bgLocalOptions', 'local-folder': 'bgFolderOptions', youtube: 'bgYoutubeOptions', url: 'bgUrlOptions' };
     const target = optMap[e.target.value];
     if (target) $(target).style.display = '';
     // Visibility row applies to every source EXCEPT 'none' (no bg = no opacity to set)
     const visRow = $('bgVisibilityRow');
     if (visRow) visRow.style.display = (e.target.value && e.target.value !== 'none') ? '' : 'none';
+    saveUserSettings();
+  });
+
+  // ── Local folder slideshow ─────────────────────────────────────────
+  // Plays a folder of images during the session as a slideshow with
+  // configurable order (sequential / random / random-with-repeats) and
+  // per-image duration. File handles live in memory only — re-pick
+  // after reload.
+  if (!bgEngine.folder) {
+    bgEngine.folder = {
+      files: [],          // File[] — just the image files from the directory
+      order: 'sequential',
+      durationSec: 15,
+      idx: 0,             // current playback index
+      recentIdx: [],      // ring buffer for "random no-repeat" mode
+    };
+  }
+  function _isFolderImageFile(file) {
+    if (!file) return false;
+    const t = (file.type || '').toLowerCase();
+    if (t.startsWith('image/')) return true;
+    // Some browsers don't set type for FileSystemHandle-derived files;
+    // fall back to extension check.
+    const name = (file.name || '').toLowerCase();
+    return /\.(jpe?g|png|gif|webp|avif|bmp)$/.test(name);
+  }
+  function _renderBgFolderStatus() {
+    const el = $('bgFolderStatus');
+    if (!el) return;
+    const n = bgEngine.folder.files.length;
+    el.textContent = n
+      ? `${n} image${n === 1 ? '' : 's'} loaded — slideshow ready`
+      : 'no folder chosen';
+    el.style.color = n ? 'var(--accent-green)' : 'var(--text-faint)';
+  }
+  async function _loadBgFolderFromFiles(fileList) {
+    const all = Array.from(fileList || []);
+    const images = all.filter(_isFolderImageFile);
+    // Sort alphabetically by name so sequential order is predictable
+    // (matches what users see in their file manager). webkitRelativePath
+    // includes the folder name + filename when picked via webkitdirectory.
+    images.sort((a, b) => {
+      const an = (a.webkitRelativePath || a.name || '').toLowerCase();
+      const bn = (b.webkitRelativePath || b.name || '').toLowerCase();
+      return an < bn ? -1 : an > bn ? 1 : 0;
+    });
+    bgEngine.folder.files = images;
+    bgEngine.folder.idx = 0;
+    bgEngine.folder.recentIdx = [];
+    _renderBgFolderStatus();
+    if (!images.length) {
+      notify.warn(`No image files found in that folder. (Found ${all.length} total file${all.length === 1 ? '' : 's'}.)`);
+    } else {
+      notify.success(`Loaded ${images.length} image${images.length === 1 ? '' : 's'} for slideshow.`);
+    }
+  }
+  $('bgFolderPickBtn')?.addEventListener('click', async () => {
+    // Chromium: showDirectoryPicker exists. Falls back to <input type=file
+    // webkitdirectory> on Firefox/Safari which lets the user pick a folder
+    // and surfaces all files (with subfolder paths) in one shot.
+    if (typeof window.showDirectoryPicker === 'function') {
+      try {
+        const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+        const files = [];
+        for await (const [name, handle] of dirHandle.entries()) {
+          if (handle.kind === 'file') {
+            try {
+              const f = await handle.getFile();
+              files.push(f);
+            } catch (e) { /* skip unreadable */ }
+          }
+          // Subfolders intentionally skipped — flat folder semantics.
+        }
+        await _loadBgFolderFromFiles(files);
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          console.error('[bgFolderPick]', e);
+          notify.error('Could not read folder: ' + (e.message || 'unknown'));
+        }
+      }
+    } else {
+      // Fallback: trigger the hidden <input type=file webkitdirectory>
+      $('bgFolderFallbackInput')?.click();
+    }
+  });
+  $('bgFolderFallbackInput')?.addEventListener('change', e => {
+    _loadBgFolderFromFiles(e.target.files);
+  });
+  $('bgFolderOrder')?.addEventListener('change', e => {
+    bgEngine.folder.order = e.target.value;
+    bgEngine.folder.recentIdx = [];
+    saveUserSettings();
+  });
+  $('bgFolderDuration')?.addEventListener('change', e => {
+    bgEngine.folder.durationSec = Number(e.target.value) || 15;
     saveUserSettings();
   });
   $('bgPromptInput')?.addEventListener('input', e => {
@@ -26329,7 +26734,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   // ====================================================================
   const PRESETS = [
     { id: 'sleep', icon: '🌙', name: 'Sleep', desc: 'Drift off naturally',
-      persona: 'therapist', method: 'progressive', intention: 'sleep', length: 'long', soundscape: 'ocean', vizOverride: 'aurora' },
+      persona: 'therapist', method: 'progressive', intention: 'sleep', length: 'extended', soundscape: 'ocean', vizOverride: 'aurora' },
     { id: 'calm', icon: '🍃', name: 'Quick Calm', desc: '5-min anxiety reset',
       persona: 'inner-voice', method: 'breath-478', intention: 'emotional', length: 'quick', soundscape: 'rain', vizOverride: 'breathing' },
     { id: 'focus', icon: '🎯', name: 'Deep Focus', desc: 'Lock in for hours',
@@ -26354,14 +26759,14 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       persona: 'mystic', method: 'ericksonian', intention: 'creativity', length: 'medium', soundscape: 'fire', vizOverride: 'sacred-geo' },
     { id: 'energy', icon: '☀️', name: 'Energy Boost', desc: 'Wake up & activate',
       persona: 'drill-instructor', method: 'dave-elman', intention: 'energy', length: 'quick', soundscape: 'white' },
-    { id: 'deep-dive', icon: '🌀', name: 'Deep Dive', desc: 'Maximum depth trance',
-      persona: 'old-master', method: 'staircase', intention: 'trance', length: 'long', soundscape: 'cave', vizOverride: 'tunnel' },
+    { id: 'deep-dive', icon: '🌀', name: 'Deep Dive', desc: 'Maximum depth — multi-layered descent',
+      persona: 'old-master', method: 'staircase', intention: 'trance', length: 'marathon', soundscape: 'cave', vizOverride: 'tunnel' },
     { id: 'nightcap', icon: '🥃', name: 'Nightcap', desc: 'Late-night wind down',
       persona: 'bartender', method: 'ericksonian', intention: 'sleep', length: 'medium', soundscape: 'city', vizOverride: 'smoke' },
     { id: 'journey', icon: '🚂', name: 'Train Journey', desc: 'Rhythmic drift into trance',
       persona: 'driver', method: 'highway', intention: 'trance', length: 'medium', soundscape: 'train', vizOverride: 'rain' },
     { id: 'temple', icon: '🕉️', name: 'Temple Sit', desc: 'Deep stillness meditation',
-      persona: 'mystic', method: 'breath-478', intention: 'trance', length: 'long', soundscape: 'temple', vizOverride: 'sacred-geo' },
+      persona: 'mystic', method: 'breath-478', intention: 'trance', length: 'extended', soundscape: 'temple', vizOverride: 'sacred-geo' },
     /* New opt-in presets demonstrating the new phase types. Each has a single
        defining extra phase that distinguishes it from a vanilla preset. */
     { id: 'method-intro', icon: '📖', name: 'Method Intro', desc: 'First-time? Start here',
@@ -26408,6 +26813,8 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     state.stepsCompleted = { 1: true, 2: true, 3: true, 4: false, 5: false, 6: false };
     goToStep(4);
     notify.success(`Preset "${p.name}" loaded — configure and generate.`);
+    // Notify bus — preset changed everything, derived UI must refresh.
+    try { sessionBus.notifyChange('preset:' + (p.id || 'unknown')); } catch {}
   }
 
   // ====================================================================
@@ -29560,15 +29967,21 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     const count = await getSessionCount();
     const skip = state._debug?.skipMethodGating;
     if (skip) sdLog('method gating bypassed — debug mode on');
+    // Capture the previous locked-category set BEFORE we recompute it so
+    // we can detect categories that just transitioned from locked → unlocked.
+    // First run (no prior state) → no toast; only subsequent transitions
+    // fire celebratory feedback.
+    const prevLockedCats = state._methodLockState?.lockedCats;
+    const newLockedCats = skip ? new Set() : new Set([
+      ...(count < 3 ? ['rapid'] : []),
+      ...(count < 7 ? ['advanced'] : []),
+    ]);
     // Cache the lock state so synchronous renderMethodGrid can apply the same
     // gating per-card without an async re-fetch. Updated in place each call.
     state._methodLockState = {
       sessionCount: count,
       skip: !!skip,
-      lockedCats: skip ? new Set() : new Set([
-        ...(count < 3 ? ['rapid'] : []),
-        ...(count < 7 ? ['advanced'] : []),
-      ]),
+      lockedCats: newLockedCats,
       reasonFor: (cat) => {
         if (skip) return '';
         if (cat === 'rapid' && count < 3) return `Unlocks after 3 completed sessions (${count} so far)`;
@@ -29576,6 +29989,32 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
         return '';
       },
     };
+    // Detect newly-unlocked categories — present in prevLockedCats but
+    // NOT in newLockedCats. Skip when prevLockedCats is undefined (first run).
+    if (prevLockedCats) {
+      const newlyUnlocked = [];
+      for (const cat of prevLockedCats) {
+        if (!newLockedCats.has(cat)) newlyUnlocked.push(cat);
+      }
+      if (newlyUnlocked.length) {
+        // Show celebratory unlock toast using notify.success. Same
+        // celebratory-event pattern as the persona unlock modal — but a
+        // toast rather than a modal because methods are less narratively
+        // significant than guides (no character/voice association). User
+        // can find the unlocked method in the Step 2 grid via the
+        // category filter that's now revealed.
+        const labels = { rapid: 'Rapid induction', advanced: 'Advanced' };
+        const desc = newlyUnlocked.map(c => labels[c] || c).join(' & ');
+        const msg = newlyUnlocked.length === 1
+          ? `✦ ${desc} methods unlocked! Find them in Step 2 → category filter.`
+          : `✦ New method categories unlocked: ${desc}. Step 2 → category filter.`;
+        try {
+          notify.success(msg, 8000); // longer duration so user can read
+        } catch {
+          notify.success(msg);
+        }
+      }
+    }
     // Thresholds: rapid unlocks at 3 sessions, advanced at 7
     document.querySelectorAll('#methodFilterTabs .filter-tab').forEach(tab => {
       const cat = tab.dataset.filter;
