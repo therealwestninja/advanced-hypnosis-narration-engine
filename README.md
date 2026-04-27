@@ -12,6 +12,18 @@ No account required. No downloads.
 
 ## What's New
 
+* **Phase-locked entrainment** — binaural beats and isochronic tones now ramp their frequency per session phase across the α/θ/δ brain-wave map (settling alpha, induction theta, deepener theta-delta, work theta, wake alpha, reintroduction beta), with smooth 6-second crossfades at each phase boundary
+* **40 Hz gamma flicker visualizer** — alpha-grade entrainment surface with conservative implementation (5–15% alpha modulation, narrow centered pulse, blue palette, voice-coupled) and OS-aware reduced-motion fallback
+* **Drag-and-drop phase reordering** — grab the ≡ handle on any phase row to drag it anywhere, with live drop indicators
+* **Per-phase duration estimate + timeline view** — every phase shows its estimated duration inline; a proportional timeline above the list visualizes the full session shape, click any block to jump to that phase
+* **2D Director calibration pad** — combined intensity × pace control on a drag-snap grid alongside the existing sliders
+* **A/B experiment mode** — pick two presets, run a blinded session with one of them randomly chosen, rate it 1–5 after the session, see per-preset rolling averages
+* **Conversational free-text check-in** — type how you feel ("tired but mind is racing") instead of moving sliders; lexicon-based parser maps to mood / tension / energy values
+* **Phase audition** — 🔊 button on every phase row plays it aloud using current voice settings before you commit to a full session
+* **Annual review screen** — opens after 30+ days of practice; sessions, minutes, completion %, longest streak, mood arc, top guides / methods / contexts. Pure local aggregation, no AI
+* **API key call counter** — visible per-session count in Options for engaged users who bring their own Anthropic/OpenAI key, plus a one-click "clear & revert to Perchance" button
+* **Persona portrait grid hydration** — generated portraits appear as soft thumbnails on every persona card
+* **Audio/viz safety relaxation gate** — set your profile age range and the overcautious gates step back: gamma flicker confirmation modal skips, prefers-reduced-motion auto-degrade skips, speech rate caps widen, soundscape volume caps lift, soundscape labels soften. Casual users keep all original safeguards
 * **Shareable links** — post a persona or a full session config as a real URL, with tailored link previews in Discord / Slack / iMessage
 * **Streaming script generation** — watch each phase appear live as the AI writes it, instead of staring at a spinner
 * **Semantic memory** — the AI recalls past sessions that are *relevant* to your current intention, not just the most recent ones
@@ -19,7 +31,6 @@ No account required. No downloads.
 * **Community persona packs** — third-party persona collections load on demand without bloating the app
 * **Token-aware prompt assembly** — long profiles, memory, and affirmations never silently exceed the context window
 * **Multi-provider AI** — use the free built-in Perchance model, or bring your own Anthropic / OpenAI key
-* **Hardened error handling** — consistent behavior across all AI calls (HTTP failures, rate limits, empty responses)
 
 ---
 
@@ -92,11 +103,14 @@ This creates a full arc:
 
 You can:
 
-* reorder phases
-* remove or add phases
-* adjust structure
+* drag-and-drop phases via the ≡ grab handle (or ↑/↓ buttons)
+* see a proportional **timeline visualization** above the list — click any block to jump to that phase
+* see **estimated duration** (⏱ Xm Ys) on every phase row, plus session total
+* **audition** any phase aloud (🔊 button) before committing to a full session
+* remove or add phases (induction, deepener, level, work, affirmation, lightener, wake, reintroduction, sounding, custom)
 * edit full script text
-* regenerate individual phases and compare outputs
+* regenerate individual phases and compare outputs side-by-side
+* author custom blocks, then ✨ Reimagine them in your guide's voice
 * control session flow directly
 
 This is a core feature, not just a preview step.
@@ -106,6 +120,7 @@ This is a core feature, not just a preview step.
 ## Audio
 
 * Procedural soundscapes (no audio files shipped — everything synthesized)
+* phase-locked binaural beats and isochronic tones — entrainment frequency ramps per session phase across the α/θ/δ map
 * narration ducking during speech
 * voice selection with quality sorting
 * live adjustment during session (volume, pitch, rate, tempo)
@@ -116,6 +131,7 @@ This is a core feature, not just a preview step.
 ## Visuals
 
 * multiple animated focus effects (spiral, tunnel, vortex, pendulum, mandala, candle, flow-field, aurora, and more)
+* 40 Hz gamma flicker (alpha-grade, conservative implementation, voice-coupled)
 * real-time tuning (speed, intensity, complexity)
 * phase-reactive pacing
 * reduced-motion support

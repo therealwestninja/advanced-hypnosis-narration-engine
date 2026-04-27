@@ -46,6 +46,68 @@ This file tracks improvements not yet shipped, ordered roughly by least to most 
 | AI-data audit log | `AI_AUDIT_KEY` IDB ring buffer, cap 100. `logAICall(provider, source, instruction)` records ts/provider/source/bytes (never content). Hooked at `aiGenerate` dispatch + the two direct `aiTextPlugin` sites. Read-only modal via `#viewAIAuditBtn`; also `window.HNE.audit(n)` |
 | Stereo-pan plumbing for double-induction (local TTS) | `_playBuffer(audioData, sampleRate, myGen, opts)` accepts `opts.pan`. When `state._doubleInduction` active on local-TTS path, builds two parallel `StereoPannerNode` chains at ±0.4 with 1.5% rate offset on the second voice. Graceful skip on browsers lacking `createStereoPanner`. System-TTS path can't pan (Web Speech is OS-routed) — that's a known limitation |
 
+### Round 3 — Effort 3 + adaptive layer
+
+| Item | Note |
+|------|------|
+| Custom habit tags on Step 3 | User-defined tags extending the why-this-session chips. `CUSTOM_TAGS_KEY='stillness_custom_tags_v1'`, cap 20. Add field + dynamic chips with × delete |
+| Confidence-bounded adaptive recommendations | `getRecommendation` returns per-field confidence (top-vs-second separation, normalized). Suppresses picks below 0.10–0.15 separation or <3 samples. Stashed at `state._lastAdaptiveRec` |
+| Director-shows-its-work card on script preview | `#directorWorkCard` above script textarea. Adaptive picks with strong/moderate/tentative labels, recovery flag, calibration bias notch, active session tags |
+| 24-hour passive recall probe | Stashed at `state._pendingRecallProbe`, surfaces on post-session trigger card next time user reaches it organically. One-shot |
+| Posthypnotic intrusion-test prompt | 30s timer in `finishSession` surfaces "If you'd like to test X — now's a natural moment" notify. Skipped on emergency exit and ongoing-state |
+| Per-domain Director calibration | `state.directorBiasByDomain` map (intentionType → -3..+3). Layered on global bias inside `computeDirectorBrief`, clamped after combining. Compact details disclosure under global slider |
+| Two-axis Director calibration (intensity + pace) | `state.directorPace` -3..+3 slider. Multiplies into `tickPlaybackDynamics` as `paceMult = 1 + paceBias × 0.04`. Each notch ≈4% rate change |
+| AI-aware Director Brief rationale | `formatDirectorBriefForPrompt` branches on `getAITier()`. Anthropic/OpenAI emits structured Rationale + Warnings sections; Perchance keeps compact form for prefix-cache protection |
+| AI-tier-aware journal sentiment classification | Paid-tier-only on journal blur. Calls `aiGenerate` with valence/intensity/integration classification on entries ≥25 chars. Stashed on `history[0].journalSentiment`. Idempotent |
+| Annual review screen | `#openAnnualReviewBtn` in sidebar stats. Hidden until ≥30 days × ≥5 sessions. Pure-aggregation modal: trailing 365 days, sessions/minutes/completion %, longest streak (2-day grace), mood arc, top guides/methods/contexts. No AI calls |
+
+### Round 3b — UX softening (returning users seamless)
+
+| Item | Note |
+|------|------|
+| Weekly digest popup → silent compute | No notify on init. Stashed at `state._weeklyDigest`, surfaced as quiet amber-bordered tile in sidebar stats |
+| 24-hour recall probe popup → passive surface | Moved to post-session trigger card |
+| Returning-user "welcome back" callouts removed | Day-count language gone; only 60+ day re-orientation hint kept |
+| Posthypnotic intrusion-test wording softened | "If you'd like to test" instead of "Posthypnotic test: try X right now". 9s instead of 11s |
+
+### Round 3c — Audio + Viz priorities
+
+| Item | Note |
+|------|------|
+| Phase-locked binaural beats | Existing fixed 6Hz θ replaced with per-phase brain-wave map. `setPhaseFreq` ramps L/R oscillators ±0.4 with 6s linearRamp. Map: settling 8Hz α, induction 6Hz θ, deepener 3.5Hz θ-δ, level 4Hz, work 5Hz, affirm 5Hz, lightener 7Hz, wake 12Hz α, reintroduction 14Hz β. Refs at `this._binauralRefs`. Label "phase-locked α/θ/δ" |
+| Isochronic tones soundscape | NEW recipe. Single 220Hz carrier with amplitude-modulating LFO at entrainment frequency. Bias source (ConstantSourceNode) keeps gain swing 0..0.4. `setPhaseFreq` ramps LFO over 6s. Refs at `this._isochronicRefs`. Works on any speaker, no headphones needed |
+| Soundscape continuity on mid-session change | `drone.setPhaseFreq(state._currentPhase)` called immediately after `drone.start` in `liveSoundscapeSelect` handler — phase-locked behavior catches up without waiting for next phase boundary |
+| 40Hz gamma flicker visualizer (alpha-grade) | `renderGammaFlicker` registered in `VIZ_RENDERERS`. 5–15% alpha modulation only, 45% radius radial pulse, cyan/blue palette, fixation dot center, voice envelope adds max +5%. Engaged users get full 40Hz; anonymous fall back to 0.2Hz under prefers-reduced-motion. Added to `INTENSE_VIZUALS` |
+
+### Round 3d — Audio/viz safety relaxation gate
+
+| Item | Note |
+|------|------|
+| `_audioVizSafetiesRelaxed()` gate | Returns true when profile age is set. When relaxed: gamma flicker confirmation modal skipped; reduced-motion auto-degrade on boot (dropdown reordering, ⚠ tagging, "gentler defaults applied" notify) skipped; mid-session reduced-motion swap doesn't force-swap user's choice; speech rate caps widen 0.4×–2.0× (silent clamp); soundscape volume cap opens to 0..1 (silent clamp); soundscape labels soften ("⚠ Binaural beats require..." → "Binaural beats — best with stereo headphones"); optgroup label "Experimental ⚠" → "Experimental". Casual users (no age set) keep all original safeties |
+
+### Round 4 — Effort 4 quick wins
+
+| Item | Note |
+|------|------|
+| Drag-drop phase reorder | Rows `draggable=true` with ≡ grab handle. Native HTML5 dragstart/dragover/drop. Source dims to 0.4 opacity, drop target gets cyan inset shadow on top/bottom edge per cursor half. Mousedown on non-handle elements cancels drag (preserves text selection). New `movePhaseSectionTo(srcIdx, dstIdx)`. Existing ↑/↓ buttons stay as fallback. Goes through `setScriptFromSections` + `history.beginChange` |
+| Per-phase duration estimate | ⏱ Xs / Xm Ys tag inline on every phase row. Same words/50 wpm + pauseSecs formula as global metrics. Tooltip exposes word count + pause seconds |
+| Persona portrait grid hydration | Cached portraits hydrate as 18% opacity thumbnails behind text on persona grid cards. Async lookup per card with isConnected bail. Card text lifted to z-index 1. Skipped on isSelf. Generation flow unchanged — gates on `remoteProcessingOptIn` (legitimate external network call) |
+| Browser API key mitigations | Per-session call counter in Options modal next to API key field, reads from `_aiAuditLog` filtering anthropic/openai. Color-shifts faint→dim→amber at 50/100. Auto-refreshes every 4s while row visible. Soft notify at 100 calls (one-time per session via sessionStorage). One-click "clear & revert to Perchance" button — wipes active key + per-provider cache + dropdown. Preserves audit log |
+
+### Round 5 — UI cleanup + Effort 5 starters
+
+| Item | Note |
+|------|------|
+| Universal "use profile details in script" toggle | Replaced three separate Share Age / Appearance / Goals checkboxes with one toggle below "Use first name in scripts?". Hidden mirrors preserve existing per-field read paths. `pfShareAll` change fans out to all three; load-time sync respects legacy per-field opt-outs (rolls into off if any was explicitly false) |
+| Profile internals relocated | "Recent edits the AI is aware of" + "AI activity log" moved from Profile area into Session History details (with border-top dividers between blocks). Empty parent details collapses removed. IDs preserved so existing handlers (`profileDiffsList`, `viewAIAuditBtn`) work unchanged |
+| Quick-Start Presets / Structured Programs as boxed expandable interfaces | `details.presets-collapsible` boxed containers. ▸/▾ chevron, bordered card, hover lift, "tap to expand" hint that hides on open. Both default-collapsed for new users; per-section state persists to `stillness_presets_open_v1` and `stillness_programs_open_v1` on toggle |
+| 2D Director calibration pad | Combined intensity × pace control. Snap-to-integer grid on both axes. Single drag captures both values; sliders remain canonical inputs. Click + drag, with pointer capture for smooth tracking. Center cross marks balanced (0,0) origin. Persists once on pointerup |
+| A/B experiment mode | Compare bar below presets (toggleable). Two preset dropdowns + "run blinded" button picks one at random, applies it, marks the session. Post-session: 1–5 rating widget reveals which side after submit. Per-preset rolling tally in `stillness_ab_results_v1`; "stats" button shows averages. `state.abModeRevealed` persists across sessions |
+| Timeline view alongside phase list | `#phaseTimelineWrap` above `#phaseEditorList`. Each section a proportional flex block with width = duration / total. Category-colored backgrounds (tl-settling/induction/deepener/level/work/affirm/lightener/wake/reintroduction/emergence/sounding/custom). Inline label on blocks ≥7% of width. Click → smooth-scroll to + flash matching list row. Phase-meta footer: total time + phase count |
+| Conversational free-text check-in | "type it instead" toggle below "how are you right now?" reveals textarea. Apply parses text via weighted lexicon (40+ phrases per axis, signed weights -4..+4) and pushes inferred values onto sliders + emoji selector. Per-category strongest-absolute-weight wins. Categories with no matches left untouched. Hint surfaces parsed values or warns if no signal |
+| Phase audition | 🔊 audition button on every phase row. Speaks the phase aloud using current voice settings (system or local TTS). Single global slot — clicking another phase cancels the previous; clicking same button stops. Strips PAUSE markers + leading phase header. Disabled during live sessions. Active button gets cyan border + tinted background |
+| Adaptive playback dynamics default-on for engaged users | When profile age is set AND no saved settings exist, `playbackDynamics.enabled` defaults to true. Anonymous users keep conservative off-default. One-time flip; persisted value wins on subsequent loads |
+
 ---
 
 ## 1 · Analysis: AI steering controls (Profile Options + Debug)
@@ -357,12 +419,12 @@ Effort scale: 1 (trivial, < 30min), 2 (small, < 2h), 3 (medium, half-day), 4 (la
 | Custom habit tags (user-defined labels per session) | Personal taxonomy beyond persona/method/intention. |
 | AI-tier-aware journal sentiment tagging | Per the matrix in §4.2. |
 | AI-aware Director Brief rationale line (Anthropic/OpenAI tiers) | Per matrix §4.2. |
-| Phase-locked binaural frequency (delta/theta/alpha by phase) | Existing `binaural` soundscape; expand to phase-locked. |
-| 40 Hz gamma flicker (alpha-grade, gated by reduced-motion) | Iaccarino-style. |
-| Conversational check-in via free-text (parse to sliders via AI) | Reduces friction; uses existing AI. |
-| Director-shows-its-work post-session card | Reasoning already in `brief.reasoning[]`. |
-| Cross-device sync via `root.kv` (existing #10), AI-tier-aware | See §4.5. |
-| Per-domain Director calibration (sleep/focus/etc.) | Solves "global bias mixes everything" problem. |
+| Phase-locked binaural frequency (delta/theta/alpha by phase) | ✅ shipped — `setPhaseFreq` ramps L/R oscillators per phase across α/θ/δ map |
+| 40 Hz gamma flicker (alpha-grade, gated by reduced-motion) | ✅ shipped — `renderGammaFlicker` with 5-15% alpha modulation, blue/cyan palette, voice-coupled, prefers-reduced-motion fallback |
+| Conversational check-in via free-text (parse to sliders via AI) | ✅ shipped — lexicon-based parser (no AI call), pushes inferred mood/tension/energy onto existing sliders |
+| Director-shows-its-work post-session card | ✅ shipped — `#directorWorkCard` on script preview surface |
+| Cross-device sync via `root.kv` (existing #10), AI-tier-aware | Pushed to back-of-roadmap (external sync) |
+| Per-domain Director calibration (sleep/focus/etc.) | ✅ shipped — `directorBiasByDomain` map, layered onto global bias inside `computeDirectorBrief` |
 
 ### Effort 4
 
@@ -370,34 +432,37 @@ Effort scale: 1 (trivial, < 30min), 2 (small, < 2h), 3 (medium, half-day), 4 (la
 |---|---|
 | Drag-and-drop phase reordering with constraints | ✅ shipped (HTML5 native drag with grab handle, drop indicators, falls back to existing ↑/↓ buttons) |
 | Per-phase duration estimate (live) | ✅ shipped (⏱ tag on every phase row, words/50 wpm + pauseSecs formula) |
-| `textToImagePlugin` persona portraits | ✅ shipped — already core. Extended this round: cached portraits hydrate as soft thumbnails on persona grid cards |
+| `textToImagePlugin` persona portraits | ✅ shipped — already core. Extended: cached portraits hydrate as soft thumbnails on persona grid cards |
 | Browser API key exposure mitigations | ✅ shipped (per-session call counter visible in Options, "clear & revert to Perchance" one-click button, soft notify at 100 calls per session) |
-
-### Deferred — back of roadmap
-
-(Per direction, prioritization is around audio, viz, drag-drop reorder, per-phase duration, persona portraits, and API key mitigations. Items below are deferred until those land or new direction comes.)
-
-| Item | Notes |
-|---|---|
-| Two-axis Director calibration UI revamp | Already partially shipped (intensity + pace sliders); 2D pad UI still pending |
-| Conversational free-text check-in | Replaces structured pre-checkin with text. |
-| Eye-state modality switching | Webcam-driven, switches script content. Large. |
-| Pre-generate tomorrow program session | Full state-clone harness needed. |
-| Mic-driven exhale detection | Critical for breath-paced methods. |
-| HRV via webcam rPPG | Real-time biofeedback signal. |
-| Timeline view alongside phase list | Phase list already has duration estimates; timeline is the visual counterpart. |
-| Multi-language narration | Locale detection + voice match + AI prompt translation. |
-| Voice cloning via ElevenLabs/OpenAI TTS user-key | Same architecture as text-AI provider; different endpoint. |
-| Offline session package | TTS pre-synth + zip + minimal player. |
+| Timeline view alongside phase list | ✅ shipped — proportional category-colored blocks, click-to-jump |
+| Two-axis Director calibration UI revamp (2D pad) | ✅ shipped — combined intensity × pace control with snap-to-integer |
+| Phase audition (preview each phase aloud) | ✅ shipped — 🔊 button per phase row with single-slot enforcement |
+| Adaptive playback pacing default-on for engaged users | ✅ shipped — auto-enabled when profile age set on fresh slate |
 
 ### Effort 5
 
 | Item | Notes |
 |---|---|
-| Fractionation (multi-induction cycles) | Round 2 deferred — needs first-class trance-cycle modeling. |
-| A/B experiment mode | Random within shortlist + outcome reporting. |
-| Community pack registry | Discovery UI for packs. |
-| Live adaptive pacing across all methods | Generalization of mic-driven exhale. |
+| A/B experiment mode | ✅ shipped — preset compare bar, blinded run, post-session 1-5 rating, per-preset rolling tally |
+| Fractionation (multi-induction cycles) | Open — needs first-class trance-cycle modeling. Big architectural lift |
+| Pre-generate tomorrow program session | Open — needs full state-clone harness |
+| Live adaptive pacing across all methods | Partially shipped via adaptive playback dynamics default-on. Generalization to per-method profile still open |
+
+### Deferred — back of roadmap
+
+(Per direction, items dealing with external API calls / packages, webcam, multi-language, offline support, classes / training, and any non-app-feature integrations are deferred to here.)
+
+| Item | Notes |
+|---|---|
+| Eye-state modality switching | Webcam-driven |
+| HRV via webcam rPPG | Webcam-driven biofeedback |
+| Mic-driven exhale detection | Local mic input — borderline; deferred until a clear method needs it |
+| Multi-language narration | Locale detection + voice match + AI prompt translation |
+| Voice cloning via ElevenLabs/OpenAI TTS user-key | External API |
+| Offline session package | TTS pre-synth + zip + minimal player |
+| Cross-device sync via `root.kv` | External sync infra |
+| Community pack registry | Discovery UI for external content packs |
+| Training / classes integration | Out of scope per direction |
 
 ---
 
@@ -415,7 +480,8 @@ Effort scale: 1 (trivial, < 30min), 2 (small, < 2h), 3 (medium, half-day), 4 (la
 | 12 | Regeneration diff | `showPhaseDiffModal` + `retryPhase` selection |
 | — | Script Block Editor Round 2 | Unlimited Work/Affirm; pair-aware add/remove; nested deepeners with depth levels; new default structure; role-tagged Work blocks; pre-session safety gate; visual pair coding |
 | — | All §0 items above | This round |
+| — | Round 3 / 3b / 3c / 3d / 4 / 5 batches | See §0 sub-sections |
 
 ---
 
-Last updated: 2026-04-26
+Last updated: 2026-04-27

@@ -1038,6 +1038,11 @@ padding: 24px;
     box-shadow: var(--glow-cyan);
   }
   .phase-reimagine:disabled { opacity: 0.4; cursor: not-allowed; }
+  .preview-btn.phase-audition-active {
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    background: rgba(90,171,191,0.08);
+  }
   /* Active mode in the global toggle */
   .reimagine-mode-btn.active {
     background: rgba(0,212,230,0.12) !important;
@@ -3589,7 +3594,21 @@ I return to myself easily"></textarea>
       </div>
 
       <div class="pre-checkin" id="preMoodSection">
-        <div class="mood-label">how are you right now?</div>
+        <div class="mood-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span>how are you right now?</span>
+          <button type="button" id="preCheckinTextToggle" style="background:none;border:none;color:var(--neon-cyan);cursor:pointer;font-size:0.66rem;letter-spacing:0.04em;text-transform:lowercase;padding:0">type it instead</button>
+        </div>
+        <!-- Free-text alternative input. Parses a short sentence into
+             approximate mood/tension/energy values via a keyword lexicon
+             (no AI call needed) and applies to the sliders. Hidden by
+             default — toggled via the link above. -->
+        <div id="preCheckinTextWrap" style="display:none;margin:8px 0">
+          <textarea id="preCheckinText" rows="2" maxlength="200" placeholder="e.g. tired but mind is racing, feeling tense after a long day" style="width:100%;font-size:0.84rem;padding:8px 10px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text-bright);font-family:inherit;resize:vertical"></textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;gap:8px">
+            <span id="preCheckinTextHint" style="font-size:0.62rem;color:var(--text-faint);flex:1">type a few words about how you feel — we'll set the sliders for you</span>
+            <button type="button" id="preCheckinTextApply" class="preview-btn" style="font-size:0.7rem;padding:4px 10px">apply</button>
+          </div>
+        </div>
         <div class="pre-checkin-grid">
           <div class="pre-checkin-item">
             <div class="pre-checkin-label">mood</div>
@@ -17313,7 +17332,12 @@ ${s.text.trim()}`).join('\n\n').trim();
       const reimagineBtn = isCustom
         ? `<button class="preview-btn phase-reimagine" data-idx="${i}" title="Rewrite this block in your guide's voice">✨ reimagine</button>`
         : '';
-      const colCount = isCustom ? 4 : 3;
+      // Audition button — speaks the phase aloud using the current voice
+      // settings. Single global slot; clicking another phase's button
+      // cancels the previous and starts the new one. The icon flips to
+      // a stop square when this row is the active speaker.
+      const auditionBtn = `<button class="preview-btn phase-audition" data-idx="${i}" title="Hear this phase aloud — uses current voice settings">🔊 audition</button>`;
+      const colCount = isCustom ? 5 : 4;
       // The grab handle sits to the left and is the actual drag-trigger
       // surface — making the whole row draggable would conflict with
       // text-selection in the preview line. draggable=true on the row
@@ -17328,6 +17352,7 @@ ${s.text.trim()}`).join('\n\n').trim();
         <div style="display:grid; grid-template-columns:repeat(${colCount}, minmax(72px, auto)); gap:6px; margin-left:8px">
           <button class="preview-btn phase-up" data-idx="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
           <button class="preview-btn phase-down" data-idx="${i}" ${i === sections.length - 1 ? 'disabled' : ''}>↓</button>
+          ${auditionBtn}
           <button class="preview-btn phase-remove" data-idx="${i}">remove</button>
           ${reimagineBtn}
         </div>
@@ -17384,6 +17409,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     list.querySelectorAll('.phase-down').forEach(btn => btn.addEventListener('click', () => movePhaseSection(parseInt(btn.dataset.idx, 10), 1)));
     list.querySelectorAll('.phase-remove').forEach(btn => btn.addEventListener('click', () => removePhaseSection(parseInt(btn.dataset.idx, 10))));
     list.querySelectorAll('.phase-reimagine').forEach(btn => btn.addEventListener('click', () => reimagineCustomPhase(parseInt(btn.dataset.idx, 10))));
+    list.querySelectorAll('.phase-audition').forEach(btn => btn.addEventListener('click', () => auditionPhase(parseInt(btn.dataset.idx, 10), btn)));
     // Drag-drop reorder. Uses HTML5 native drag events. Drag is cancelled
     // if the mousedown didn't originate on the grab handle — keeps text-
     // selection in the preview lines working. Drop indicator is a colored
@@ -17498,6 +17524,77 @@ ${s.text.trim()}`).join('\n\n').trim();
     sections.splice(dstIdx, 0, moved);
     setScriptFromSections(sections);
     commit();
+  }
+
+  /** Single-slot audition state. The active button reference lets us
+   *  reset its label when speech ends or another button is clicked.
+   *  Phase auditions short-circuit if a session is in-progress (the
+   *  voice channel is busy with the actual session narration). */
+  let _auditionActiveBtn = null;
+  function _resetAuditionBtn() {
+    if (_auditionActiveBtn) {
+      _auditionActiveBtn.textContent = '🔊 audition';
+      _auditionActiveBtn.classList.remove('phase-audition-active');
+      _auditionActiveBtn = null;
+    }
+  }
+  async function auditionPhase(idx, btn) {
+    if (document.body.classList.contains('in-session')) {
+      notify.info('Phase audition is unavailable during a live session.');
+      return;
+    }
+    // If the same button was clicked again — stop and exit.
+    if (_auditionActiveBtn === btn) {
+      try { speechSynthesis.cancel(); } catch {}
+      if (state.useLocalTTS && _localTTS?.cancel) try { _localTTS.cancel(); } catch {}
+      _resetAuditionBtn();
+      return;
+    }
+    // Cancel any other in-flight audition first
+    try { speechSynthesis.cancel(); } catch {}
+    if (state.useLocalTTS && _localTTS?.cancel) try { _localTTS.cancel(); } catch {}
+    _resetAuditionBtn();
+
+    const sections = getScriptSectionsFromState();
+    if (idx < 0 || idx >= sections.length) return;
+    const s = sections[idx];
+    // Strip PAUSE markers and the leading phase header so audition only
+    // hears the spoken content (matches the actual session playback).
+    let text = stripLeadingPhaseHeader(s.text || '', s.phaseId);
+    text = text.replace(/\x5BPAUSE\s+\d+\]/gi, ' ').replace(/\s+/g, ' ').trim();
+    if (!text) { notify.info('Nothing to audition — this phase is empty.'); return; }
+
+    _auditionActiveBtn = btn;
+    btn.textContent = '⏸ stop';
+    btn.classList.add('phase-audition-active');
+
+    // Prefer local TTS when enabled and ready; otherwise system speech.
+    if (state.useLocalTTS && _localTTS?.ready) {
+      try {
+        await _localTTS.speak(text);
+      } catch (e) {
+        console.warn('[audition] local TTS failed:', e);
+      }
+      _resetAuditionBtn();
+      return;
+    }
+    if (!('speechSynthesis' in window)) {
+      notify.info('Text-to-speech is not available in this browser.');
+      _resetAuditionBtn();
+      return;
+    }
+    const u = new SpeechSynthesisUtterance(text);
+    const voices = speechSynthesis.getVoices();
+    const voiceName = $('voiceSelect')?.value;
+    if (voiceName) {
+      const v = voices.find(vv => vv.name === voiceName);
+      if (v) u.voice = v;
+    }
+    u.rate   = state.speechRate || 1.0;
+    u.pitch  = state.voicePitch || 0.85;
+    u.volume = state.voiceVolume ?? 1.0;
+    u.onend = u.onerror = () => _resetAuditionBtn();
+    speechSynthesis.speak(u);
   }
 
   /**
@@ -21567,6 +21664,121 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     _updateReadinessScore();
   });
 
+  // ── Conversational check-in ─────────────────────────────────────────
+  // Free-text alternative to the structured emoji + sliders. Parses
+  // a short sentence into mood/tension/energy via a keyword lexicon,
+  // applies to the existing controls. Each category uses signed weights:
+  // negative pulls the value down (toward "low"), positive pulls up.
+  // The strongest absolute weight wins per category; categories with no
+  // matches are left at their current value so partial sentences work.
+  const CHECKIN_LEXICON = {
+    mood: [
+      // Negative weights pull mood down
+      { re: /\b(awful|terrible|miserable|wretched|hopeless|despair|broken)\b/i, w: -4 },
+      { re: /\b(sad|down|low|blue|depressed|defeated|despondent|gloomy)\b/i, w: -3 },
+      { re: /\b(frustrated|angry|irritated|upset|annoyed|fed up|pissed)\b/i, w: -3 },
+      { re: /\b(anxious|worried|scared|nervous|afraid|stressed|panicked)\b/i, w: -2 },
+      { re: /\b(meh|so-so|okay-ish|alright-ish|fine i guess)\b/i, w: -1 },
+      { re: /\b(neutral|fine|okay|ok|alright)\b/i, w: 0 },
+      // Positive weights pull mood up
+      { re: /\b(content|peaceful|grounded|settled|steady)\b/i, w: 2 },
+      { re: /\b(happy|good|positive|optimistic|hopeful|cheerful)\b/i, w: 3 },
+      { re: /\b(great|wonderful|fantastic|amazing|elated|joyful|ecstatic)\b/i, w: 4 },
+    ],
+    tension: [
+      // Negative weights → relaxed end
+      { re: /\b(very relaxed|completely relaxed|deeply relaxed|loose)\b/i, w: -4 },
+      { re: /\b(relaxed|easy|soft|chill|mellow|loose)\b/i, w: -3 },
+      { re: /\b(calm|settled|at ease|peaceful)\b/i, w: -2 },
+      { re: /\b(neutral|fine|okay|normal)\b/i, w: 0 },
+      // Positive weights → tense end
+      { re: /\b(a bit tense|a little tense|somewhat tense|slightly tense)\b/i, w: 1 },
+      { re: /\b(tense|tight|wound up|stressed|on edge|stiff)\b/i, w: 3 },
+      { re: /\b(very tense|extremely tense|frazzled|wound tight|knotted up|clenched)\b/i, w: 4 },
+    ],
+    energy: [
+      // Negative weights → exhausted end
+      { re: /\b(exhausted|drained|depleted|spent|wiped out|fried)\b/i, w: -4 },
+      { re: /\b(tired|fatigued|sleepy|drowsy|sluggish|lethargic)\b/i, w: -3 },
+      { re: /\b(low energy|kind of tired|a bit tired)\b/i, w: -2 },
+      { re: /\b(neutral|fine|okay|normal)\b/i, w: 0 },
+      // Positive weights → energized end
+      { re: /\b(awake|alert|active|engaged)\b/i, w: 2 },
+      { re: /\b(energized|energetic|buzzing|charged)\b/i, w: 3 },
+      { re: /\b(wired|racing|amped up|hyped|jacked|jittery|restless mind|mind is racing|racing mind)\b/i, w: 3 },
+      { re: /\b(very energized|extremely awake|fully charged)\b/i, w: 4 },
+    ],
+  };
+
+  function parseCheckinText(text) {
+    const out = { mood: null, tension: null, energy: null };
+    if (!text || !text.trim()) return out;
+    for (const [field, rules] of Object.entries(CHECKIN_LEXICON)) {
+      let bestWeight = 0;
+      let bestAbs = 0;
+      let matched = false;
+      for (const { re, w } of rules) {
+        if (re.test(text)) {
+          matched = true;
+          if (Math.abs(w) > bestAbs) { bestAbs = Math.abs(w); bestWeight = w; }
+        }
+      }
+      if (!matched) continue;
+      // Map weight (-4..+4) → 1..9 scale.
+      // -4 → 1, -3 → 2, -2 → 3, -1 → 4, 0 → 5, 1 → 6, 2 → 7, 3 → 8, 4 → 9
+      out[field] = Math.max(1, Math.min(9, 5 + bestWeight));
+    }
+    return out;
+  }
+
+  $('preCheckinTextToggle')?.addEventListener('click', () => {
+    const wrap = $('preCheckinTextWrap');
+    const tog  = $('preCheckinTextToggle');
+    if (!wrap || !tog) return;
+    const showing = wrap.style.display !== 'none';
+    wrap.style.display = showing ? 'none' : '';
+    tog.textContent = showing ? 'type it instead' : 'use sliders instead';
+    if (!showing) $('preCheckinText')?.focus();
+  });
+
+  $('preCheckinTextApply')?.addEventListener('click', () => {
+    const text = $('preCheckinText')?.value || '';
+    const parsed = parseCheckinText(text);
+    const applied = [];
+    if (parsed.mood != null) {
+      state._preMood = parsed.mood;
+      // Light up matching emoji button by approximating to nearest pip
+      document.querySelectorAll('#preMoodEmojis .mood-emoji').forEach(b => {
+        const v = parseInt(b.dataset.val, 10);
+        b.classList.toggle('selected', Math.abs(v - parsed.mood) <= 1);
+      });
+      applied.push(`mood ${parsed.mood}/9`);
+    }
+    if (parsed.tension != null) {
+      state._preTension = parsed.tension;
+      const el = $('preTensionSlider'); if (el) el.value = String(parsed.tension);
+      const ev = $('preTensionVal'); if (ev) ev.textContent = String(parsed.tension);
+      applied.push(`tension ${parsed.tension}/9`);
+    }
+    if (parsed.energy != null) {
+      state._preEnergy = parsed.energy;
+      const el = $('preEnergySlider'); if (el) el.value = String(parsed.energy);
+      const ev = $('preEnergyVal'); if (ev) ev.textContent = String(parsed.energy);
+      applied.push(`energy ${parsed.energy}/9`);
+    }
+    const hint = $('preCheckinTextHint');
+    if (hint) {
+      if (applied.length) {
+        hint.textContent = `parsed → ${applied.join(' · ')}. Adjust the sliders below if anything feels off.`;
+        hint.style.color = 'var(--text-dim)';
+      } else {
+        hint.textContent = 'no clear mood/tension/energy signals found — try mentioning how you feel, how relaxed/tense you are, and your energy level.';
+        hint.style.color = 'var(--neon-amber)';
+      }
+    }
+    _updateReadinessScore();
+  });
+
   /** Compute & render the pre-session readiness score from the three pre-checkin
    *  signals. Mood + energy contribute positively; tension inverts (high tension
    *  is depleting). Output is clamped 0-10. Hint text shifts by score band so
@@ -24105,6 +24317,15 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
     refreshPersonas();
     const hadSavedSettings = await loadUserSettings();
     await loadProfile();
+    // Default-enable adaptive playback dynamics for engaged users (profile
+    // age set). Skipped when the user already had explicit saved settings —
+    // their persisted choice wins in that case. Anonymous users keep the
+    // conservative off-default. The flip is one-time: once enabled and
+    // saved, subsequent loads honor whatever the user toggled it to.
+    if (!hadSavedSettings && typeof _audioVizSafetiesRelaxed === 'function' && _audioVizSafetiesRelaxed()) {
+      if (!state.playbackDynamics) state.playbackDynamics = { ...PLAYBACK_DYNAMICS_DEFAULTS };
+      state.playbackDynamics.enabled = true;
+    }
     initDiffBouncers(); // wire DiffBouncer coverage to tracked fields
     if (typeof loadVoices === 'function') { loadVoices(); applySavedVoiceSelection(); updateVoiceInfo(); }
     renderPersonaGrid();
