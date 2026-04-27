@@ -1197,6 +1197,58 @@ transition: color 0.15s, background 0.15s;
     background: rgba(0,212,230,0.25);
   }
 
+  /* ============ GUIDE BUILDER STEPS ============ */
+  /* Each .gb-step is one focused AI call mirroring character-sfx +
+     script-generator pipeline pattern. Status flips drive the icon
+     color via the parent row class — child styles never need rewriting. */
+  .gb-step {
+    border-bottom: 1px solid var(--glass-border);
+    padding: 12px 14px;
+  }
+  .gb-step:last-child { border-bottom: none; }
+  .gb-step-head {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 6px;
+  }
+  .gb-step-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; flex-shrink: 0;
+    font-size: 0.86rem; line-height: 1;
+  }
+  .gb-step-label {
+    font-size: 0.74rem; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    font-weight: 500; flex: 1; min-width: 0;
+  }
+  .gb-step-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .gb-step-regen {
+    background: none; border: 1px solid var(--glass-border);
+    color: var(--text-faint); font-size: 0.66rem;
+    padding: 2px 8px; cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .gb-step-regen:hover {
+    color: var(--neon-cyan); border-color: rgba(0,212,230,0.5);
+  }
+  .gb-step-regen:disabled { opacity: 0.4; cursor: default; }
+  .gb-step-content {
+    font-size: 0.78rem; color: var(--text); line-height: 1.55;
+    padding-left: 26px; min-height: 0;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .gb-step-content:empty::before {
+    content: 'waiting…'; color: var(--text-faint); font-style: italic; font-size: 0.74rem;
+  }
+  /* Status variants — drive icon + label color through row class */
+  .gb-step.is-pending  .gb-step-icon { color: var(--text-faint); }
+  .gb-step.is-running  .gb-step-icon { color: var(--neon-cyan); animation: gbPulse 1.4s ease-in-out infinite; }
+  .gb-step.is-done     .gb-step-icon { color: var(--accent-green, #5cb874); }
+  .gb-step.is-failed   .gb-step-icon { color: var(--neon-amber); }
+  .gb-step.is-failed   .gb-step-content { color: var(--neon-amber); font-style: italic; }
+  @keyframes gbPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+  /* Streaming text — quietly colored so the eye treats it as in-flight */
+  .gb-step.is-running .gb-step-content { color: var(--text-dim); }
+
   /* ============ GALLERY SORT BAR ============ */
   .bg-gallery-toolbar {
     display: flex; align-items: center; gap: 8px;
@@ -2946,6 +2998,18 @@ padding: 6px 10px; font-size: 1.1rem;
       <div class="card-grid" id="personaGrid"></div>
       <div class="detail-panel" id="personaDetail"></div>
 
+      <!-- Guide Builder — generates a fully-formed custom persona from a
+           short prompt. AI fills name/tagline/category/voice instructions
+           and the v2 advanced fields, then saves into the same custom
+           persona pool as create-custom and import-lore. -->
+      <div style="margin-top:18px;padding:14px 16px;border:1px solid var(--glass-border);background:rgba(0,212,230,0.04);text-align:center">
+        <div style="font-size:0.86rem;color:var(--text);margin-bottom:4px;font-weight:500">✨ Guide Builder</div>
+        <div style="font-size:0.72rem;color:var(--text-faint);line-height:1.5;margin-bottom:10px;max-width:480px;margin-left:auto;margin-right:auto">
+          Describe the kind of guide you want — a few keywords or a sentence is enough. AI will design a complete persona for you (name, tagline, category, voice). Saves into your custom guides as if you wrote it yourself.
+        </div>
+        <button type="button" class="btn" id="openGuideBuilderBtn" style="font-size:0.84rem;padding:8px 18px">Open Guide Builder</button>
+      </div>
+
     </div>
     <div class="step-content" data-step="2">
       <div class="step-header">
@@ -4237,6 +4301,71 @@ I return to myself easily"></textarea>
     <div class="modal-actions">
       <button class="btn secondary" id="importLoreCancelBtn">cancel</button>
       <button class="btn" id="importLoreSaveBtn">save as custom persona</button>
+    </div>
+  </div>
+</div>
+
+<!-- GUIDE BUILDER MODAL — AI-driven custom persona generator -->
+<div class="modal-backdrop" id="guideBuilderModal">
+  <div class="modal" style="max-width:640px">
+    <h2>✨ Guide Builder</h2>
+    <div style="font-size:0.76rem;color:var(--text-dim);line-height:1.55;margin-bottom:14px">
+      Describe what kind of guide you want — vibe, voice, vocabulary, or just a few keywords. AI will design a full persona: name, tagline, category, voice instructions, image-prompt accents. Saves into your custom guides.
+    </div>
+
+    <!-- Stage 1: Input -->
+    <div id="gbStageInput">
+      <div class="field" style="margin-bottom:12px">
+        <label class="field-label-sm">your idea <span style="color:var(--text-faint);font-weight:400">(keywords or a short description)</span></label>
+        <textarea id="gbIdeaInput" class="pf-textarea" rows="3" placeholder="e.g. a cartographer who speaks like found-footage film, slow and quiet&#10;e.g. blue-collar mechanic, no-bullshit, working-class, no fancy words&#10;e.g. astronaut on a long mission talking to themselves, vast and lonely"></textarea>
+      </div>
+
+      <div class="field" style="margin-bottom:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label class="field-label-sm">category preference</label>
+          <select id="gbCategorySelect" class="pf-select" style="width:100%">
+            <option value="auto">auto — let AI decide</option>
+            <option value="contemplative">contemplative — quiet, mystical</option>
+            <option value="authoritarian">authoritarian — direct, commanding</option>
+            <option value="showman">showman — theatrical, performative</option>
+            <option value="somatic">somatic — body-focused, sensory</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label-sm">depth</label>
+          <select id="gbDepthSelect" class="pf-select" style="width:100%">
+            <option value="standard" selected>standard</option>
+            <option value="rich">rich (more detail, longer voice instructions)</option>
+            <option value="minimal">minimal (just essentials)</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="gbInputStatus" style="font-size:0.72rem;color:var(--text-faint);min-height:1.2em;margin-bottom:8px"></div>
+
+      <div class="modal-actions">
+        <button class="btn secondary" id="gbCancelBtn1">cancel</button>
+        <button class="btn" id="gbGenerateBtn">✨ generate</button>
+      </div>
+    </div>
+
+    <!-- Stage 2: Preview -->
+    <div id="gbStagePreview" style="display:none">
+      <!-- Step-list — each row is one focused AI call, mirroring the
+           character-sfx + script-generator pattern of decomposed prompts.
+           See gbStepIdentity / gbStepVoice / gbStepReminder /
+           gbStepImageAccents for the actual call sites. -->
+      <div id="gbStepList" style="background:var(--bg-deep);border:1px solid var(--glass-border);max-height:55vh;overflow-y:auto">
+        <!-- 4 .gb-step rows, populated by gbRenderStepRows() -->
+      </div>
+      <div id="gbPreviewStatus" style="font-size:0.7rem;color:var(--text-faint);min-height:1.2em;margin:8px 0"></div>
+
+      <div class="modal-actions">
+        <button class="btn secondary" id="gbCancelBtn2">cancel</button>
+        <button class="btn secondary" id="gbBackBtn">← edit idea</button>
+        <button class="btn secondary" id="gbRegenBtn" title="Regenerate all four steps from your idea">↻ regenerate all</button>
+        <button class="btn" id="gbSaveBtn" disabled>save as custom guide</button>
+      </div>
     </div>
   </div>
 </div>
@@ -15551,6 +15680,609 @@ ${messages}
   $('importLoreUrl')?.addEventListener('keydown', (e) => {
     // Enter in the URL field triggers fetch (a common ergonomic expectation)
     if (e.key === 'Enter') { e.preventDefault(); fetchLoreUrl(); }
+  });
+
+  // ====================================================================
+  // GUIDE BUILDER — Multi-step AI pipeline
+  // ====================================================================
+  // Each field gets a focused AI call rather than one mega-prompt that
+  // tries to fill everything at once. Mirrors the character-sfx pattern
+  // (rich character description → distilled image keywords → image gen)
+  // and our own per-phase script generator. Benefits over single-call:
+  //   - Tighter system prompts → much better template adherence per step
+  //   - Visible incremental progress (user watches each piece arrive)
+  //   - Per-field regenerate (love the name, want a different voice?
+  //     re-roll just voice without losing the rest)
+  //   - Robustness — image accents fail? Identity + Voice still produce
+  //     a usable guide
+  //
+  // Pipeline:
+  //   Step 1 — Identity (name + category + tagline)
+  //   Step 2 — Voice instruction (the rich field — what tells the
+  //     future narrator AI HOW to speak as this guide)
+  //   Step 3 — Reminder anchor (distilled from Voice, re-runs if Voice
+  //     is regenerated)
+  //   Step 4 — Image accents (prefix + suffix, independent)
+  //
+  // Save gate: Identity AND Voice complete = enabled. Reminder +
+  // Image accents are bonus fields and can fail/be skipped.
+  // ====================================================================
+
+  let _gbCurrentSpec = {};     // accumulating result {name, category, tagline, voice, reminder, imagePrefix, imageSuffix}
+  let _gbStepStatus  = {};     // per-step status { identity:'pending'|'running'|'done'|'failed', ... }
+  let _gbStepError   = {};     // per-step error message for display
+  let _gbToken       = 0;      // shared cancel token — incremented to abort all in-flight calls
+  let _gbInputContext = null;  // last {idea, categoryPref, depth} so per-step regen can re-call
+
+  const GB_STEPS = ['identity', 'voice', 'reminder', 'imageAccents'];
+  const GB_STEP_LABELS = {
+    identity:     'Identity',
+    voice:        'Voice instruction',
+    reminder:     'Reminder anchor',
+    imageAccents: 'Image accents',
+  };
+  const GB_STEP_ICONS = {
+    pending: '○', running: '◐', done: '●', failed: '⚠',
+  };
+
+  const GUIDE_BUILDER_DEPTH_HINTS = {
+    minimal:  '2-3 sentences. No vocabulary palette listing — just the core voice.',
+    standard: '4-6 sentences with concrete vocabulary cues and 1-2 things to avoid.',
+    rich:     '7-10 sentences — vocabulary palette, signature phrases, cadence notes, things to avoid, mood anchor.',
+  };
+
+  /** Generic template-section parser. Robust to whitespace, partial
+   *  output, missing optional sections. Pass an array of expected
+   *  section names; returns a plain object keyed by name. */
+  function gbParseSections(text) {
+    const out = {};
+    if (!text) return out;
+    const re = /\[([A-Z_]+)\]\s*([\s\S]*?)(?=\n\s*\[[A-Z_]+\]|\s*$)/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      out[m[1]] = (m[2] || '').trim();
+    }
+    return out;
+  }
+
+  function gbValidateCategory(s) {
+    const valid = new Set(['contemplative', 'authoritarian', 'showman', 'somatic']);
+    const c = (s || '').toLowerCase().replace(/[^a-z]/g, '');
+    return valid.has(c) ? c : null;
+  }
+
+  // ── Step instruction builders ─────────────────────────────────────
+  // Each is narrow, single-purpose. Output formats are template-based
+  // (delimiter-bounded sections) for parseable streamed responses.
+
+  function buildIdentityInstruction(idea, categoryPref) {
+    const catDirective = categoryPref === 'auto'
+      ? `Choose the CATEGORY that best fits the idea. Options:
+  - contemplative: quiet, mystical, archetypal, slow cadence
+  - authoritarian: direct, commanding, declarative, no questions
+  - showman: theatrical, performative, dramatic, varied cadence
+  - somatic: body-focused, sensory, references weight/breath/texture`
+      : `The user has chosen CATEGORY: ${categoryPref}. Use this exact value.`;
+    return `ROLE: hypnosis-guide persona designer.
+ACTION: Given the user's idea, decide on the guide's NAME, CATEGORY, and TAGLINE.
+RULES:
+- NAME: a single distinctive name. First name only is fine, or first + role title (e.g. "Mara", "Teacher Yoshi", "The Cartographer"). Max 60 chars.
+- ${catDirective}
+- TAGLINE: a short evocative phrase that captures the vibe — fits as a sub-card label. Max 80 chars. No quotes around it.
+OUTPUT FORMAT — exactly these section markers, nothing else:
+[NAME]
+<single line, just the name>
+[CATEGORY]
+<one word: contemplative | authoritarian | showman | somatic>
+[TAGLINE]
+<single line>
+[END]
+USER IDEA:
+${idea}`;
+  }
+
+  function buildVoiceInstruction(idea, name, category, tagline, depth) {
+    const depthHint = GUIDE_BUILDER_DEPTH_HINTS[depth] || GUIDE_BUILDER_DEPTH_HINTS.standard;
+    return `ROLE: hypnosis-guide voice designer.
+ACTION: Write the VOICE INSTRUCTION for this guide — the prompt that tells the future AI narrator HOW to speak as this persona.
+
+PERSONA CONTEXT:
+  Name: ${name}
+  Category: ${category}
+  Tagline: ${tagline}
+
+VOICE INSTRUCTION REQUIREMENTS:
+- Write in second person ("You ARE X. You speak in Y."). It's an instruction TO the future AI narrator.
+- Include: vocabulary palette, cadence/rhythm, signature phrases or move types, what TO reference, what to AVOID.
+- Flowing prose, no markdown, no numbered lists, no bullet points.
+- Length target: ${depthHint}
+- Vivid, specific, distinctive. Generic guides are forgettable.
+- Match the category archetype:
+  - contemplative: quiet, slow, archetypal, references presence/breath/silence
+  - authoritarian: declarative, commanding, brief sentences, no questions
+  - showman: theatrical, dramatic, varied cadence, deliberate flourishes
+  - somatic: body-focused, weight/breath/temperature/texture references
+
+OUTPUT: ONLY the voice instruction text. No section markers. No preamble. No labels. No quotes around it.
+
+USER IDEA (for context):
+${idea}`;
+  }
+
+  function buildReminderInstruction(voice) {
+    return `ROLE: hypnosis-guide voice editor.
+ACTION: Distill this VOICE INSTRUCTION into a short REMINDER (1-2 sentences) that captures its single most distinctive constraint. The reminder will be appended to phase prompts mid-script to anchor the AI's voice across long generations.
+RULES:
+- 1-2 sentences max
+- Pick the constraint most likely to drift if not reminded (a vocabulary rule, a cadence rule, an avoid rule)
+- Phrase as an instruction (e.g. "Remember: never use questions. Speak only in declaratives.")
+OUTPUT: ONLY the reminder text. No preamble. No quotes.
+
+VOICE INSTRUCTION:
+${voice}`;
+  }
+
+  function buildImageAccentsInstruction(name, category, voice) {
+    // Truncate voice to avoid bloating the prompt — first ~600 chars give plenty of mood
+    const voiceShort = (voice || '').slice(0, 600);
+    return `ROLE: image prompt designer for a hypnosis app.
+ACTION: Design IMAGE_PREFIX (2-6 keywords prepended to portrait/background image prompts — lighting, palette, mood) and IMAGE_SUFFIX (2-6 keywords appended — style anchor) that visually match this guide.
+
+PERSONA CONTEXT:
+  Name: ${name}
+  Category: ${category}
+  Voice excerpt: ${voiceShort}
+
+GUIDELINES:
+- PREFIX: atmospheric — lighting type, color palette, time of day, mood word. Examples: "soft watercolor, dawn light", "candlelit interior, warm amber", "blue hour mist, hushed".
+- SUFFIX: stylistic anchor — medium and rendering quality. Examples: "fine art illustration, no text", "cinematic film still, 35mm grain", "loose ink wash, painterly".
+- Keep each line under 100 chars. No quotes.
+
+OUTPUT FORMAT — exactly these section markers:
+[IMAGE_PREFIX]
+<keywords>
+[IMAGE_SUFFIX]
+<keywords>
+[END]`;
+  }
+
+  // ── DOM helpers ───────────────────────────────────────────────────
+
+  function gbRenderStepRows() {
+    const list = $('gbStepList');
+    if (!list) return;
+    list.innerHTML = GB_STEPS.map(step => {
+      const status = _gbStepStatus[step] || 'pending';
+      const icon = GB_STEP_ICONS[status] || '○';
+      const label = GB_STEP_LABELS[step] || step;
+      // Regen button visible only after a step has been attempted at
+      // least once (i.e., not pending). Disabled while running.
+      const regenVisible = status !== 'pending';
+      const regenDisabled = status === 'running';
+      return `
+        <div class="gb-step is-${status}" data-step="${step}">
+          <div class="gb-step-head">
+            <span class="gb-step-icon">${icon}</span>
+            <span class="gb-step-label">${label}</span>
+            <div class="gb-step-actions">
+              <button type="button" class="gb-step-regen" data-regen="${step}"
+                      ${regenVisible ? '' : 'style="display:none"'}
+                      ${regenDisabled ? 'disabled' : ''}
+                      title="Regenerate just this step">↻</button>
+            </div>
+          </div>
+          <div class="gb-step-content" data-content="${step}"></div>
+        </div>
+      `;
+    }).join('');
+    // Wire regen buttons (event delegation)
+    list.querySelectorAll('[data-regen]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const step = btn.getAttribute('data-regen');
+        gbRunStep(step, /* isRegen */ true);
+      });
+    });
+    // Repaint each step's existing content
+    GB_STEPS.forEach(step => gbRenderStepContent(step));
+  }
+
+  function gbSetStepStatus(step, status, errMsg) {
+    _gbStepStatus[step] = status;
+    if (errMsg) _gbStepError[step] = errMsg;
+    else delete _gbStepError[step];
+    const row = document.querySelector(`#gbStepList .gb-step[data-step="${step}"]`);
+    if (row) {
+      row.className = `gb-step is-${status}`;
+      const iconEl = row.querySelector('.gb-step-icon');
+      if (iconEl) iconEl.textContent = GB_STEP_ICONS[status] || '○';
+      const regen = row.querySelector('.gb-step-regen');
+      if (regen) {
+        regen.style.display = status === 'pending' ? 'none' : '';
+        regen.disabled = status === 'running';
+      }
+    }
+    gbUpdateSaveButton();
+  }
+
+  function gbRenderStepContent(step, liveText) {
+    const el = document.querySelector(`#gbStepList [data-content="${step}"]`);
+    if (!el) return;
+    // If actively streaming, show the live text. Otherwise render
+    // from the stored spec value.
+    if (liveText != null) {
+      el.textContent = liveText;
+      return;
+    }
+    if (_gbStepStatus[step] === 'failed') {
+      el.textContent = _gbStepError[step] || 'failed — tap ↻ to retry';
+      return;
+    }
+    if (step === 'identity') {
+      const parts = [];
+      if (_gbCurrentSpec.name) parts.push(_gbCurrentSpec.name);
+      if (_gbCurrentSpec.category) parts.push(`(${_gbCurrentSpec.category})`);
+      const t = _gbCurrentSpec.tagline ? `\n"${_gbCurrentSpec.tagline}"` : '';
+      el.textContent = parts.length ? parts.join(' · ') + t : '';
+    } else if (step === 'voice') {
+      el.textContent = _gbCurrentSpec.voice || '';
+    } else if (step === 'reminder') {
+      el.textContent = _gbCurrentSpec.reminder || '';
+    } else if (step === 'imageAccents') {
+      const lines = [];
+      if (_gbCurrentSpec.imagePrefix) lines.push(`prefix · ${_gbCurrentSpec.imagePrefix}`);
+      if (_gbCurrentSpec.imageSuffix) lines.push(`suffix · ${_gbCurrentSpec.imageSuffix}`);
+      el.textContent = lines.join('\n');
+    }
+  }
+
+  function gbUpdateSaveButton() {
+    const btn = $('gbSaveBtn');
+    if (!btn) return;
+    // Save requires Identity + Voice complete (the minimum viable guide).
+    // Reminder + Image accents are bonus and can be skipped.
+    const ready = _gbStepStatus.identity === 'done' && _gbStepStatus.voice === 'done';
+    btn.disabled = !ready;
+    btn.title = ready ? 'Save this guide and select it' : 'Identity and Voice must complete before saving';
+  }
+
+  // ── Step runners — each is one focused aiGenerate call ────────────
+
+  async function gbStepIdentity(idea, categoryPref) {
+    gbSetStepStatus('identity', 'running');
+    const tokenAtStart = _gbToken;
+    let acc = '';
+    try {
+      const result = await aiGenerate(buildIdentityInstruction(idea, categoryPref), {
+        source: 'guide-builder-identity',
+        maxTokens: 200,
+        onChunk: (data) => {
+          if (tokenAtStart !== _gbToken) throw new Error('cancelled');
+          acc += data.textChunk || '';
+          gbRenderStepContent('identity', acc);
+        },
+      });
+      if (tokenAtStart !== _gbToken) return false;
+      const text = (acc || result?.generatedText || '').trim();
+      const parsed = gbParseSections(text);
+      if (!parsed.NAME) {
+        gbSetStepStatus('identity', 'failed', 'no NAME in response');
+        return false;
+      }
+      _gbCurrentSpec.name = parsed.NAME.replace(/^["']|["']$/g, '').slice(0, 60);
+      _gbCurrentSpec.category = gbValidateCategory(parsed.CATEGORY)
+        || (categoryPref !== 'auto' ? categoryPref : 'contemplative');
+      _gbCurrentSpec.tagline = (parsed.TAGLINE || '').replace(/^["']|["']$/g, '').slice(0, 100);
+      gbSetStepStatus('identity', 'done');
+      gbRenderStepContent('identity');
+      return true;
+    } catch (e) {
+      if (e?.message === 'cancelled' || tokenAtStart !== _gbToken) return false;
+      gbSetStepStatus('identity', 'failed', e?.message || 'failed');
+      return false;
+    }
+  }
+
+  async function gbStepVoice(idea, depth) {
+    if (!_gbCurrentSpec.name) {
+      gbSetStepStatus('voice', 'failed', 'identity step must complete first');
+      return false;
+    }
+    gbSetStepStatus('voice', 'running');
+    const tokenAtStart = _gbToken;
+    let acc = '';
+    try {
+      const result = await aiGenerate(buildVoiceInstruction(idea, _gbCurrentSpec.name, _gbCurrentSpec.category, _gbCurrentSpec.tagline, depth), {
+        source: 'guide-builder-voice',
+        maxTokens: depth === 'rich' ? 800 : depth === 'minimal' ? 250 : 500,
+        onChunk: (data) => {
+          if (tokenAtStart !== _gbToken) throw new Error('cancelled');
+          acc += data.textChunk || '';
+          gbRenderStepContent('voice', acc);
+        },
+      });
+      if (tokenAtStart !== _gbToken) return false;
+      const text = (acc || result?.generatedText || '').trim();
+      if (!text || text.length < 30) {
+        gbSetStepStatus('voice', 'failed', 'response too short — retry');
+        return false;
+      }
+      // Strip stray surrounding quotes; voice instruction is plain prose
+      const cleaned = text.replace(/^["']|["']$/g, '');
+      _gbCurrentSpec.voice = cleaned;
+      gbSetStepStatus('voice', 'done');
+      gbRenderStepContent('voice');
+      return true;
+    } catch (e) {
+      if (e?.message === 'cancelled' || tokenAtStart !== _gbToken) return false;
+      gbSetStepStatus('voice', 'failed', e?.message || 'failed');
+      return false;
+    }
+  }
+
+  async function gbStepReminder() {
+    if (!_gbCurrentSpec.voice) {
+      gbSetStepStatus('reminder', 'failed', 'voice step must complete first');
+      return false;
+    }
+    gbSetStepStatus('reminder', 'running');
+    const tokenAtStart = _gbToken;
+    let acc = '';
+    try {
+      const result = await aiGenerate(buildReminderInstruction(_gbCurrentSpec.voice), {
+        source: 'guide-builder-reminder',
+        maxTokens: 200,
+        onChunk: (data) => {
+          if (tokenAtStart !== _gbToken) throw new Error('cancelled');
+          acc += data.textChunk || '';
+          gbRenderStepContent('reminder', acc);
+        },
+      });
+      if (tokenAtStart !== _gbToken) return false;
+      const text = (acc || result?.generatedText || '').trim().replace(/^["']|["']$/g, '');
+      _gbCurrentSpec.reminder = text.slice(0, 500);
+      gbSetStepStatus('reminder', 'done');
+      gbRenderStepContent('reminder');
+      return true;
+    } catch (e) {
+      if (e?.message === 'cancelled' || tokenAtStart !== _gbToken) return false;
+      gbSetStepStatus('reminder', 'failed', e?.message || 'failed');
+      return false;
+    }
+  }
+
+  async function gbStepImageAccents() {
+    if (!_gbCurrentSpec.name || !_gbCurrentSpec.voice) {
+      gbSetStepStatus('imageAccents', 'failed', 'identity + voice must complete first');
+      return false;
+    }
+    gbSetStepStatus('imageAccents', 'running');
+    const tokenAtStart = _gbToken;
+    let acc = '';
+    try {
+      const result = await aiGenerate(buildImageAccentsInstruction(_gbCurrentSpec.name, _gbCurrentSpec.category, _gbCurrentSpec.voice), {
+        source: 'guide-builder-image-accents',
+        maxTokens: 250,
+        onChunk: (data) => {
+          if (tokenAtStart !== _gbToken) throw new Error('cancelled');
+          acc += data.textChunk || '';
+          gbRenderStepContent('imageAccents', acc);
+        },
+      });
+      if (tokenAtStart !== _gbToken) return false;
+      const text = (acc || result?.generatedText || '').trim();
+      const parsed = gbParseSections(text);
+      _gbCurrentSpec.imagePrefix = (parsed.IMAGE_PREFIX || '').slice(0, 200);
+      _gbCurrentSpec.imageSuffix = (parsed.IMAGE_SUFFIX || '').slice(0, 200);
+      if (!_gbCurrentSpec.imagePrefix && !_gbCurrentSpec.imageSuffix) {
+        gbSetStepStatus('imageAccents', 'failed', 'no parseable accents in response');
+        return false;
+      }
+      gbSetStepStatus('imageAccents', 'done');
+      gbRenderStepContent('imageAccents');
+      return true;
+    } catch (e) {
+      if (e?.message === 'cancelled' || tokenAtStart !== _gbToken) return false;
+      gbSetStepStatus('imageAccents', 'failed', e?.message || 'failed');
+      return false;
+    }
+  }
+
+  /** Run a single step. Used both by the full pipeline and per-step
+   *  regen buttons. When invoked as a regen, the upstream spec stays
+   *  intact but the called step's own field is cleared first.
+   *  Reminder regen-after-voice happens via the runAll path: when
+   *  Voice is regenerated, Reminder is auto-rerun because it's derived. */
+  async function gbRunStep(step, isRegen) {
+    if (!_gbInputContext) return;
+    const { idea, categoryPref, depth } = _gbInputContext;
+    if (isRegen) {
+      // Clear just this step's data so stale content doesn't show during regen
+      if (step === 'identity') {
+        _gbCurrentSpec.name = ''; _gbCurrentSpec.category = ''; _gbCurrentSpec.tagline = '';
+      } else if (step === 'voice') {
+        _gbCurrentSpec.voice = '';
+      } else if (step === 'reminder') {
+        _gbCurrentSpec.reminder = '';
+      } else if (step === 'imageAccents') {
+        _gbCurrentSpec.imagePrefix = ''; _gbCurrentSpec.imageSuffix = '';
+      }
+      gbRenderStepContent(step, '');
+    }
+    if (step === 'identity') {
+      const ok = await gbStepIdentity(idea, categoryPref);
+      // Regenerating identity invalidates downstream steps that referenced it
+      if (ok && isRegen) {
+        // Voice depends on identity context → re-run it
+        await gbStepVoice(idea, depth);
+        await gbStepReminder();
+        await gbStepImageAccents();
+      }
+    } else if (step === 'voice') {
+      const ok = await gbStepVoice(idea, depth);
+      if (ok && isRegen) {
+        // Reminder is derived from voice → rerun
+        await gbStepReminder();
+        // Image accents reference voice → rerun
+        await gbStepImageAccents();
+      }
+    } else if (step === 'reminder') {
+      await gbStepReminder();
+    } else if (step === 'imageAccents') {
+      await gbStepImageAccents();
+    }
+  }
+
+  /** Full pipeline — run all four steps in sequence. */
+  async function gbRunAll() {
+    if (!_gbInputContext) return;
+    const { idea, categoryPref, depth } = _gbInputContext;
+    const status = $('gbPreviewStatus');
+    if (status) {
+      status.textContent = 'Building your guide — 4 focused calls. You can save once Identity + Voice complete.';
+      status.style.color = 'var(--text-faint)';
+    }
+    // Reset state but keep the modal visible
+    _gbCurrentSpec = {};
+    _gbStepStatus  = { identity: 'pending', voice: 'pending', reminder: 'pending', imageAccents: 'pending' };
+    _gbStepError   = {};
+    gbRenderStepRows();
+    gbUpdateSaveButton();
+
+    // Sequential — each step shows live progress, dependencies fall in line
+    const tokenAtStart = _gbToken;
+    if (!await gbStepIdentity(idea, categoryPref)) {
+      if (tokenAtStart !== _gbToken) return;
+      if (status) {
+        status.textContent = 'Identity step failed. Tap ↻ on that row to retry, or edit your idea.';
+        status.style.color = 'var(--neon-amber)';
+      }
+      return;
+    }
+    if (tokenAtStart !== _gbToken) return;
+    if (!await gbStepVoice(idea, depth)) {
+      if (tokenAtStart !== _gbToken) return;
+      if (status) {
+        status.textContent = 'Voice step failed. Tap ↻ to retry. (Identity is saved — you can also save without voice if you want a placeholder.)';
+        status.style.color = 'var(--neon-amber)';
+      }
+      return;
+    }
+    if (tokenAtStart !== _gbToken) return;
+    // Reminder + Image accents are bonus — failures don't block save
+    await gbStepReminder();
+    if (tokenAtStart !== _gbToken) return;
+    await gbStepImageAccents();
+    if (tokenAtStart !== _gbToken) return;
+    if (status) {
+      const failedCount = Object.values(_gbStepStatus).filter(s => s === 'failed').length;
+      if (failedCount === 0) {
+        status.textContent = '✓ Ready — review each step and save. Use ↻ on any row to regenerate just that piece.';
+        status.style.color = 'var(--text-faint)';
+      } else {
+        status.textContent = `✓ Core guide ready (${failedCount} optional step${failedCount === 1 ? '' : 's'} failed — you can save anyway or retry).`;
+        status.style.color = 'var(--text-faint)';
+      }
+    }
+  }
+
+  // ── Modal control + save ──────────────────────────────────────────
+
+  function openGuideBuilder() {
+    const modal = $('guideBuilderModal');
+    if (!modal) return;
+    modal.classList.add('visible');
+    $('gbStageInput').style.display = '';
+    $('gbStagePreview').style.display = 'none';
+    $('gbInputStatus').textContent = '';
+    _gbCurrentSpec = {};
+    _gbStepStatus = {};
+    _gbStepError = {};
+    _gbInputContext = null;
+    setTimeout(() => $('gbIdeaInput')?.focus(), 50);
+  }
+
+  function closeGuideBuilder() {
+    _gbToken++;  // cancel any in-flight calls
+    $('guideBuilderModal')?.classList.remove('visible');
+  }
+
+  function gbStartFromInput() {
+    const idea = ($('gbIdeaInput')?.value || '').trim();
+    const categoryPref = $('gbCategorySelect')?.value || 'auto';
+    const depth = $('gbDepthSelect')?.value || 'standard';
+    const status = $('gbInputStatus');
+    if (!idea) {
+      if (status) {
+        status.textContent = 'Type a few words about the kind of guide you want.';
+        status.style.color = 'var(--neon-amber)';
+      }
+      $('gbIdeaInput')?.focus();
+      return;
+    }
+    // Clear any prior token-based cancel flag, capture context, swap stages
+    _gbToken++;
+    _gbInputContext = { idea, categoryPref, depth };
+    $('gbStageInput').style.display = 'none';
+    $('gbStagePreview').style.display = '';
+    gbRunAll();
+  }
+
+  function gbSaveSpec() {
+    const spec = _gbCurrentSpec;
+    if (!spec?.name || !spec?.voice) {
+      notify.warn('Need at least Identity and Voice complete before saving.');
+      return;
+    }
+    const id = 'custom_gb_' + Date.now();
+    const persona = normalizePersona({
+      id,
+      name: spec.name,
+      tagline: spec.tagline || '(custom — built)',
+      roleInstruction: spec.voice,
+      category: spec.category || 'contemplative',
+      reminderMessage: spec.reminder || '',
+      imagePromptPrefix: spec.imagePrefix || '',
+      imagePromptSuffix: spec.imageSuffix || '',
+    });
+    const custom = loadCustomPersonas();
+    custom.push(persona);
+    if (!saveCustomPersonas(custom)) {
+      notify.error('Could not save: browser storage may be full.');
+      return;
+    }
+    state.selectedPersonaId = id;
+    markFeatureUsed?.(FEAT.CUSTOM_PERSONA);
+    refreshPersonas();
+    renderPersonaGrid();
+    renderPersonaDetail();
+    closeGuideBuilder();
+    notify.success(`Saved "${spec.name}" — selected as your guide for this session.`);
+  }
+
+  // Wire the Guide Builder
+  $('openGuideBuilderBtn')?.addEventListener('click', openGuideBuilder);
+  $('gbGenerateBtn')?.addEventListener('click', gbStartFromInput);
+  $('gbCancelBtn1')?.addEventListener('click', closeGuideBuilder);
+  $('gbCancelBtn2')?.addEventListener('click', closeGuideBuilder);
+  $('gbBackBtn')?.addEventListener('click', () => {
+    _gbToken++;  // cancel any in-flight
+    $('gbStageInput').style.display = '';
+    $('gbStagePreview').style.display = 'none';
+  });
+  $('gbRegenBtn')?.addEventListener('click', () => {
+    _gbToken++;
+    gbRunAll();
+  });
+  $('gbSaveBtn')?.addEventListener('click', gbSaveSpec);
+  $('guideBuilderModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'guideBuilderModal') closeGuideBuilder();
+  });
+  $('gbIdeaInput')?.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      gbStartFromInput();
+    }
   });
 
   // ====================================================================
