@@ -81,13 +81,95 @@ dynamicImport = {import:dynamic-import-plugin}
 // so it's lazy until the user clicks "💬 community comments" in the sidebar.
 commentsPlugin = {import:comments-plugin}
 
+// ══════════════════════════════════════════════════════════════════════════
+// IMPORTING HNE AS A PERCHANCE PLUGIN
+// ══════════════════════════════════════════════════════════════════════════
+//
+// This generator exposes pure functions that other Perchance generators can
+// call. Useful for any tool that needs evocative sensory imagery — meditation
+// apps, tarot readers, dream journals, sleep aids, poetry generators, etc.
+//
+// ─── HOW TO IMPORT ─────────────────────────────────────────────────────────
+//
+// In your own generator's top editor, add:
+//
+//   hne = {import:advanced-hypnosis-narration-engine}
+//
+// (Replace the slug with this generator's actual URL slug. To find it: open
+// this generator's edit page and look at the URL — perchance.org/<slug>?edit.
+// Pick a short alias name on your side; `hne` is just a suggestion.)
+//
+// Once imported, exposed functions are reachable as `root.hne.<name>(...)`.
+//
+// ─── EXPOSED FUNCTIONS ─────────────────────────────────────────────────────
+//
+// • root.hne.freshSeeds(opts) → string[]
+//
+//   Draw evocative sensory anchor phrases from a curated 60+ phrase corpus
+//   tagged across 12 categories: sleep, anxiety, focus, performance,
+//   creativity, pain, trance, confidence, behavior, grounding, release,
+//   emotional. Use these to break AI-prompt mode-collapse — feed the
+//   returned phrases into your own AI prompt as optional imagery.
+//
+//   opts: {
+//     profileTags: string[]   // category filter (any-match); empty = all tags
+//     n:           number     // how many phrases to return (default 5)
+//     excludeSet:  string[]   // phrases to skip (e.g. recently used in
+//                             //   prior sessions — pass to avoid repetition)
+//   }
+//   returns: string[]         // up to n phrases, randomized, no duplicates
+//
+//   Example — pull 3 sleep/release phrases, avoiding one recently used:
+//
+//     let anchors = root.hne.freshSeeds({
+//       profileTags: ["sleep", "release"],
+//       n: 3,
+//       excludeSet: ["the slow pull of evening tide"],
+//     });
+//     // → ["a held shoulder finally dropping",
+//     //    "ice giving way to slow steady water",
+//     //    "breath leaving longer than it came in"]
+//
+//   The function falls back to ANY non-excluded entry when the tag-filtered
+//   set is too thin, so callers always get something useful — no need to
+//   handle empty results in the cold-start case.
+//
+// ─── EMBEDDING THE FULL TOOL ───────────────────────────────────────────────
+//
+// HNE is also a complete HTML app — script generator, narrated playback,
+// soundscapes, visualizers, custom personas, etc. To embed the WHOLE tool
+// in your own page or generator (not just call its functions), use a
+// standard iframe:
+//
+//   <iframe src="https://perchance.org/<slug>"
+//           style="width:100%;height:90vh;border:0;display:block">
+//   </iframe>
+//
+// Session links and shared configurations also work via URL hash params —
+// see the $meta.dynamic block above for the share-URL format.
+//
+// ─── CONTRIBUTING NEW EXPORTS ──────────────────────────────────────────────
+//
+// To expose another pure function: define it at the top level of THIS file
+// (perchance_1.txt). Anything declared here becomes part of `root.*` for
+// importing generators. Top-level definitions inside the HTML pane (script)
+// are NOT importable from other generators — only what's in this file is.
+//
+// Keep exports pure (no DOM, no state) so they work in headless contexts.
+//
+// ══════════════════════════════════════════════════════════════════════════
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Fresh metaphor anchors for Smart Director (item #4)
 // ──────────────────────────────────────────────────────────────────────────────
-// The HTML panel's buildFreshnessBlock() calls root.freshSeeds(opts) to draw
-// session-specific anchor phrases that get fed to the AI as optional imagery.
-// Without this, the AI tends to converge on the same metaphors (staircase, warm
-// light, deep ocean, etc.) for similar requests across different sessions.
+// PUBLIC PLUGIN EXPORT — see the "IMPORTING HNE AS A PERCHANCE PLUGIN" block
+// above for usage from other generators. This function is also called by
+// the in-app HTML panel's buildFreshnessBlock() to inject session-specific
+// anchor phrases into AI prompts.
+//
+// Without this, the AI tends to converge on the same metaphors (staircase,
+// warm light, deep ocean, etc.) for similar requests across different
+// sessions.
 //
 // freshSeeds is a sync top-level function with signature:
 //   freshSeeds({ profileTags: string[], n: number, excludeSet: string[] }) → string[]
@@ -199,6 +281,12 @@ freshSeeds(opts) =>
 // ──────────────────────────────────────────────────────────────────────────────
 // Community content packs (item #3 — dynamicImport lane)
 // ──────────────────────────────────────────────────────────────────────────────
+// NOTE — direction of dataflow: the section above ("IMPORTING HNE AS A
+// PERCHANCE PLUGIN") covers the case where YOU import HNE's functions into
+// your own generator. THIS section is the inverse — HNE pulls personas /
+// methods / presets / programs from third-party Perchance generators
+// (community-authored content packs) into the HNE app at runtime.
+//
 // Each pack is another Perchance generator that exposes a `personas` list
 // (optionally `methods`, `presets`, `programs`). Packs are fetched LAZILY on
 // first use, so they don't add to page-load cost.
