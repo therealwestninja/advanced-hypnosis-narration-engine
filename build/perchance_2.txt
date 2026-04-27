@@ -9939,11 +9939,16 @@ I return to myself easily"></textarea>
 
   function buildFreshnessBlock() {
     if (state.smartDirectorEnabled === false) return '';
-    if (typeof root === 'undefined' || !root.freshSeeds || typeof root.freshSeeds.pick !== 'function') return '';
+    // Perchance statically analyzes chained list-path patterns and chokes
+    // on chained access into a top-level list. Use a local alias so only
+    // `root.freshSeeds` appears literally in source — the .pick call lands
+    // on the local.
+    const seedsList = (typeof root !== 'undefined') ? root.freshSeeds : null;
+    if (!seedsList || typeof seedsList.pick !== 'function') return '';
     try {
       const tags = deriveProfileTags();
       if (tags.length < FRESHNESS_MIN_TAGS) return '';
-      const phrases = root.freshSeeds.pick({
+      const phrases = seedsList.pick({
         profileTags: tags,
         n: FRESHNESS_COUNT,
         excludeSet: _recentAnchors,
