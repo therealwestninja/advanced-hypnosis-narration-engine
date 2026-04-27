@@ -1098,6 +1098,24 @@ padding: 24px;
     color: var(--neon-cyan);
     background: rgba(90,171,191,0.08);
   }
+  /* In-row "✨ generate" button. Two states:
+     - Idle (existing content, post-generation): subtle, like reimagine.
+     - Pending (text is just the scaffold): cyan-highlighted with a soft
+       pulse so freshly-added phases visually invite generation. */
+  .preview-btn.phase-generate-pending {
+    border-color: rgba(0,212,230,0.5);
+    color: var(--neon-cyan);
+    background: rgba(0,212,230,0.06);
+    animation: phaseGenPendingPulse 2.4s ease-in-out infinite;
+  }
+  .preview-btn.phase-generate-pending:hover {
+    background: rgba(0,212,230,0.14);
+    border-color: var(--neon-cyan);
+  }
+  @keyframes phaseGenPendingPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,212,230,0); }
+    50%      { box-shadow: 0 0 0 2px rgba(0,212,230,0.18); }
+  }
   /* Active mode in the global toggle */
   .reimagine-mode-btn.active {
     background: rgba(0,212,230,0.12) !important;
@@ -17486,14 +17504,37 @@ End with a brief acknowledgment that you're now continuing — bridging back to 
     // Cheap identity check — same order, same ids → nothing to do
     if (newPhases.length === gs.phases.length && newPhases.every((p, i) => p === gs.phases[i])) return;
 
+    // Build a content-aware state mask. For each new phase:
+    //   1. If old gs.phases had this exact id, carry over its state.
+    //   2. Otherwise (newly added OR renamed via work→work-1 promotion):
+    //      - If the section's text is just the scaffold for its phase → 'pending'
+    //      - If the text is meaningful (manual edit OR carried from a renamed
+    //        phase) → 'done', so the dots panel doesn't lie about progress.
+    const sectionsByPhase = {};
+    (state.scriptSections || []).forEach(s => { sectionsByPhase[s.phaseId] = s; });
+
     const newStateMask = newPhases.map(p => {
       const oldIdx = gs.phases.indexOf(p);
-      if (oldIdx === -1) return 'pending';
-      return gs.stateMask[oldIdx] || 'pending';
+      if (oldIdx !== -1) return gs.stateMask[oldIdx] || 'pending';
+      // Phase wasn't in old list — could be brand new OR renamed.
+      // Compare content against scaffoldForPhase output to decide.
+      const sec = sectionsByPhase[p];
+      if (!sec || !sec.text) return 'pending';
+      const scaffoldText = (typeof scaffoldForPhase === 'function') ? scaffoldForPhase(p) : '';
+      const isScaffold = scaffoldText && sec.text.trim() === scaffoldText.trim();
+      return isScaffold ? 'pending' : 'done';
     });
-    // Keep only phaseResults for phases that still exist
+    // Carry phaseResults forward, including for renamed phases. For a phase
+    // marked 'done' that has no entry in gs.phaseResults, use the section's
+    // current text — that's the canonical content the user has on screen.
     const newPhaseResults = {};
-    newPhases.forEach(p => { if (gs.phaseResults[p] != null) newPhaseResults[p] = gs.phaseResults[p]; });
+    newPhases.forEach((p, i) => {
+      if (gs.phaseResults[p] != null) {
+        newPhaseResults[p] = gs.phaseResults[p];
+      } else if (newStateMask[i] === 'done' && sectionsByPhase[p]?.text) {
+        newPhaseResults[p] = sectionsByPhase[p].text;
+      }
+    });
 
     // Rebuild phaseInstructions — word budgets rebalance across new work/deepener counts.
     // Recompute targetWords since state.length might also have changed via a different path.
@@ -18583,7 +18624,18 @@ ${s.text.trim()}`).join('\n\n').trim();
       // cancels the previous and starts the new one. The icon flips to
       // a stop square when this row is the active speaker.
       const auditionBtn = `<button class="preview-btn phase-audition" data-idx="${i}" title="Hear this phase aloud — uses current voice settings">🔊 audition</button>`;
-      const colCount = isCustom ? 5 : 4;
+      // ✨ generate button on non-custom rows. Custom blocks have their own
+      // reimagine flow (treats existing text as a draft). Non-custom blocks
+      // need this so users adding a new Work / Deepener / etc. via the
+      // editor can fill it with AI content directly from the row, rather
+      // than hunting for the small status dot up in #genPhases.
+      // The button looks more prominent when the phase has only scaffold
+      // text (state.scriptSections[i].text === scaffoldForPhase(...)) so
+      // freshly-added phases visually invite generation.
+      const scaffoldText = scaffoldForPhase(s.phaseId);
+      const isScaffoldOnly = scaffoldText && (s.text || '').trim() === scaffoldText.trim();
+      const genBtn = isCustom ? '' : `<button class="preview-btn phase-generate${isScaffoldOnly ? ' phase-generate-pending' : ''}" data-idx="${i}" title="Generate AI content for this phase. Replaces the current text.">✨ generate</button>`;
+      const colCount = isCustom ? 5 : 5;
       // The grab handle sits to the left and is the actual drag-trigger
       // surface — making the whole row draggable would conflict with
       // text-selection in the preview line. draggable=true on the row
@@ -18599,6 +18651,7 @@ ${s.text.trim()}`).join('\n\n').trim();
           <button class="preview-btn phase-up" data-idx="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
           <button class="preview-btn phase-down" data-idx="${i}" ${i === sections.length - 1 ? 'disabled' : ''}>↓</button>
           ${auditionBtn}
+          ${genBtn}
           <button class="preview-btn phase-remove" data-idx="${i}">remove</button>
           ${reimagineBtn}
         </div>
@@ -18656,6 +18709,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     list.querySelectorAll('.phase-remove').forEach(btn => btn.addEventListener('click', () => removePhaseSection(parseInt(btn.dataset.idx, 10))));
     list.querySelectorAll('.phase-reimagine').forEach(btn => btn.addEventListener('click', () => reimagineCustomPhase(parseInt(btn.dataset.idx, 10))));
     list.querySelectorAll('.phase-audition').forEach(btn => btn.addEventListener('click', () => auditionPhase(parseInt(btn.dataset.idx, 10), btn)));
+    list.querySelectorAll('.phase-generate').forEach(btn => btn.addEventListener('click', () => generatePhaseInline(parseInt(btn.dataset.idx, 10))));
     // Drag-drop reorder. Uses HTML5 native drag events. Drag is cancelled
     // if the mousedown didn't originate on the grab handle — keeps text-
     // selection in the preview lines working. Drop indicator is a colored
@@ -19163,6 +19217,64 @@ Start immediately:`;
       _aiInProgress = false;
       if (btn) { btn.disabled = false; btn.textContent = origLabel || '✨ reimagine'; }
     }
+  }
+
+  /**
+   * In-row "✨ generate" button on the phase editor.
+   *
+   * Two paths:
+   *   - If a prior generation has populated _genState, use the existing
+   *     retry handler — same flow as clicking the status dot in #genPhases,
+   *     including the diff modal for re-rolls. Single AI call, single phase.
+   *   - If _genState is null (user is generating for the first time), fall
+   *     back to generateFullScript so the full pipeline gets built. Generating
+   *     ONE phase without the shared context that generateFullScript builds
+   *     produces lower-quality output, so we'd rather do the whole pass.
+   */
+  async function generatePhaseInline(idx) {
+    if (_aiInProgress) { notify.info('An AI call is already in progress — try again in a moment.'); return; }
+    const sections = getScriptSectionsFromState();
+    const section = sections[idx];
+    if (!section) return;
+    if (phaseBase(section.phaseId) === 'custom') {
+      // Custom blocks have their own reimagine flow. Defensive — the
+      // button shouldn't render for these, but if it does, route correctly.
+      return reimagineCustomPhase(idx);
+    }
+
+    // Path 1: existing gen state — re-use the retry handler, same as
+    // clicking the dot in #genPhases. The retryPhase function is captured
+    // on _genState during generateFullScript; sync first so the indices
+    // match the current section list.
+    if (_genState && typeof _genStateRetryHandler === 'function') {
+      syncGenStateWithPhases(); // guarantees idx maps to the right phase
+      // After sync, find the phase ID at this section position and look up
+      // its idx in _genState.phases (could differ if sections != gs.phases —
+      // shouldn't, but defensive).
+      const targetPhase = section.phaseId;
+      const gsIdx = _genState.phases.indexOf(targetPhase);
+      if (gsIdx === -1) {
+        notify.warn('Phase index out of sync — try regenerating the full script.');
+        return;
+      }
+      // Visual: row's button → loading state. The retry path will repaint
+      // the dots in #genPhases independently.
+      const btn = document.querySelector(`.phase-generate[data-idx="${idx}"]`);
+      const origLabel = btn?.textContent;
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ generating…'; }
+      try {
+        await _genStateRetryHandler(gsIdx);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = origLabel || '✨ generate'; }
+      }
+      return;
+    }
+
+    // Path 2: cold start — no prior gen state. Generating one phase without
+    // the full pipeline's shared context (profile, director brief, memory,
+    // prior summary) would produce a weaker result. Run the full pass instead.
+    notify.info('First-time generation — running the full pass so this phase has proper context.');
+    return generateFullScript();
   }
 
   function resetPhaseOrderToDefault() {
