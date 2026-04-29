@@ -6406,6 +6406,20 @@ I return to myself easily"></textarea>
         </span>
       </label>
       <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px">When off: history still saves, but no digests/embeddings/adaptive updates are written, and no profile/memory/adaptive context is injected into AI prompts.</div>
+      <!-- Round 24 follow-up — AI scene directives toggle. When the AI
+           emits [BG:type] / [VIZ:type] markers in generated text, the
+           speak loop dispatches them through the live soundscape /
+           visual switchers. When this toggle is off, the markers are
+           still stripped from the text (so they never leak into TTS)
+           but no dispatch fires — the scene stays where the user set it. -->
+      <label class="toggle-row" for="aiSceneDirectivesEnabled" style="align-items:flex-start;margin-top:8px">
+        <input type="checkbox" id="aiSceneDirectivesEnabled">
+        <span>
+          AI scene directives
+          <span class="hint">Let the AI switch soundscape and visualizer mid-script when the language calls for it.</span>
+        </span>
+      </label>
+      <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px">Off: your manual scene choices are preserved across the whole session. On (default): when the AI writes about rain, the soundscape can become rain.</div>
       <!-- Director calibration — shifts every rule threshold + AI tone directive. -->
       <div id="directorBiasRow" style="margin-top:12px;padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border)">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
@@ -7646,6 +7660,12 @@ I return to myself easily"></textarea>
     scriptSections: [],
     remoteProcessingOptIn: false,
     smartDirectorEnabled: true,
+    // Round 24 follow-up — AI prompt sentinels (`[BG:type]` / `[VIZ:type]`).
+    // When true (default), the speak loop dispatches scene-change directives
+    // emitted by the AI through the live soundscape/visual switchers. When
+    // false, sentinels are still stripped from the text (so they never
+    // leak into TTS) but no dispatch fires.
+    aiSceneDirectivesEnabled: true,
     directorBias: 0, // -3..+3. Negative = lean cautious, positive = lean forward.
     // Pace axis — -3..+3, scales speech rate via _phaseRateMult during sessions.
     // Independent from intensity bias so users can tune timing without
@@ -8019,10 +8039,145 @@ I return to myself easily"></textarea>
       : log.filter(e => e.kind === _directorAuditFilter);
     if (!filtered.length) {
       list.innerHTML = `<div class="library-empty" style="font-size:0.7rem">no audit entries yet — entries are recorded as the Director works</div>`;
+      _renderAuditPatternCallouts([]); // clear any stale callouts
       return;
     }
     // Render top 50 (newest-first cap)
     list.innerHTML = filtered.slice(0, 50).map(e => _renderAuditEntry(e)).join('');
+    // Round 24 follow-up (Batch 1P) — surface notable patterns above the
+    // entry list. Computed against the FULL log (not the filtered view)
+    // so a "ratings" filter still shows recommendation-side patterns.
+    _renderAuditPatternCallouts(log);
+  }
+
+  /** Round 24 follow-up — Cluster B pattern detection.
+   *  Walks recent audit entries looking for stuck or anomalous trajectories.
+   *  Surfaces 1-3 short observations above the audit list. Pure local
+   *  computation; never uploaded.
+   *
+   *  Patterns detected:
+   *    1. Repeat-recommendation rut — same persona+method picked ≥4 times
+   *       in a row across the last 6 recommendations. Signal: Director may
+   *       be stuck on a local optimum.
+   *    2. Adaptive weights frozen — no rating-driven mutations in the last
+   *       2 weeks despite ≥5 sessions. Signal: user isn't rating, so the
+   *       Director can't learn.
+   *    3. Repeat-rec with bad ratings — Director kept picking X but recent
+   *       ratings of X trended <3. Signal: rating signal isn't flowing back
+   *       into the recommendation engine, or the user keeps overriding.
+   *    4. Profile-flag fingerprint — recent recommendations all carry the
+   *       same posture/copresence flags. Informational; tells the user the
+   *       Director is "reading the room" consistently.
+   */
+  function _renderAuditPatternCallouts(log) {
+    const wrap = $('directorAuditDetails');
+    if (!wrap) return;
+    const callouts = [];
+    if (Array.isArray(log) && log.length) {
+      // === Pattern 1 — repeat-recommendation rut ===
+      try {
+        const recs = log.filter(e => e.kind === 'recommendation').slice(0, 6);
+        if (recs.length >= 4) {
+          const keys = recs.map(r => `${r.rec?.persona || '?'}|${r.rec?.method || '?'}`);
+          // longest run of identical keys from the front
+          let run = 1;
+          for (let i = 1; i < keys.length; i++) {
+            if (keys[i] === keys[0]) run++;
+            else break;
+          }
+          if (run >= 4) {
+            const [persona, method] = keys[0].split('|');
+            callouts.push(
+              `Director picked <strong>${escapeHtml(persona)}</strong> + <strong>${escapeHtml(method)}</strong> for the last ${run} sessions in a row. ` +
+              `If you'd like more variety, rate a few sessions or manually pick a different combination — the adaptive weights will catch up.`
+            );
+          }
+        }
+      } catch {}
+
+      // === Pattern 2 — adaptive weights frozen ===
+      try {
+        const ratings = log.filter(e => e.kind === 'rating');
+        const recsCount = log.filter(e => e.kind === 'recommendation').length;
+        const fortnightAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+        const recentRatings = ratings.filter(r => (r.ts || 0) > fortnightAgo);
+        if (recsCount >= 5 && recentRatings.length === 0) {
+          callouts.push(
+            `No rating-driven adaptive updates in the last 2 weeks across ${recsCount} session${recsCount === 1 ? '' : 's'}. ` +
+            `The Director can only learn from ratings — try the 1-5 stars on a few sessions to nudge it.`
+          );
+        }
+      } catch {}
+
+      // === Pattern 3 — repeat-rec with bad ratings ===
+      try {
+        const recs = log.filter(e => e.kind === 'recommendation').slice(0, 8);
+        const ratings = log.filter(e => e.kind === 'rating' && Number.isFinite(e.rating));
+        if (recs.length >= 4) {
+          const recKeys = recs.map(r => `${r.rec?.persona || '?'}|${r.rec?.method || '?'}`);
+          // Find the most common key in the recent recs
+          const counts = recKeys.reduce((acc, k) => { acc[k] = (acc[k] || 0) + 1; return acc; }, {});
+          const topKey = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+          if (topKey && topKey[1] >= 3) {
+            const [persona, method] = topKey[0].split('|');
+            // Find ratings on sessions matching that persona/method
+            const matchingRatings = ratings.filter(r =>
+              (r.rec?.persona === persona || r.rec?.method === method) &&
+              Number.isFinite(r.rating)
+            ).slice(0, 5);
+            if (matchingRatings.length >= 2) {
+              const meanRating = matchingRatings.reduce((s, r) => s + r.rating, 0) / matchingRatings.length;
+              if (meanRating < 3) {
+                callouts.push(
+                  `Director keeps picking <strong>${escapeHtml(persona)}</strong> + <strong>${escapeHtml(method)}</strong> ` +
+                  `(${topKey[1]} of last ${recs.length}) but recent ratings of that combo average ${meanRating.toFixed(1)}/5. ` +
+                  `Worth a manual override — try a different persona or method on the next session.`
+                );
+              }
+            }
+          }
+        }
+      } catch {}
+
+      // === Pattern 4 — profile-flag fingerprint ===
+      try {
+        const recs = log.filter(e => e.kind === 'recommendation' && e.profileFlags).slice(0, 5);
+        if (recs.length >= 4) {
+          const postures = new Set(recs.map(r => r.profileFlags?.posture).filter(Boolean));
+          const copres   = new Set(recs.map(r => r.profileFlags?.coPresence).filter(Boolean));
+          if (postures.size === 1 && copres.size === 1) {
+            const p = [...postures][0], c = [...copres][0];
+            // Only surface if the flags are non-default AND meaningful
+            if ((p && p !== 'sitting') || (c && c !== 'alone')) {
+              callouts.push(
+                `Recent recommendations are tuned for <strong>${escapeHtml(p)}</strong>, ` +
+                `<strong>${escapeHtml(c)}</strong>. ` +
+                `If your context has changed, update the profile so the Director sees it.`
+              );
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // Render or remove the callout block based on what we found.
+    let calloutEl = $('auditPatternCallouts');
+    if (!callouts.length) {
+      if (calloutEl) calloutEl.remove();
+      return;
+    }
+    if (!calloutEl) {
+      calloutEl = document.createElement('div');
+      calloutEl.id = 'auditPatternCallouts';
+      calloutEl.style.cssText = 'margin: 6px 0 10px; padding: 7px 9px; background: rgba(201,168,85,0.06); border-left: 2px solid rgba(201,168,85,0.45); font-size: 0.7rem; color: var(--text-dim); line-height: 1.5;';
+      const list = $('directorAuditList');
+      if (list && list.parentNode) {
+        list.parentNode.insertBefore(calloutEl, list);
+      }
+    }
+    calloutEl.innerHTML = callouts.map(c => `<div style="margin-bottom:5px">${c}</div>`).join('');
+    const last = calloutEl.lastElementChild;
+    if (last) last.style.marginBottom = '0';
   }
 
   function _renderAuditEntry(e) {
@@ -11383,6 +11538,8 @@ I return to myself easily"></textarea>
       reimagineMode: state.reimagineMode || 'smart',
       remoteProcessingOptIn: !!$('remoteProcessingOptIn')?.checked,
       smartDirectorEnabled: !!$('smartDirectorEnabled')?.checked,
+      // Round 24 follow-up — AI scene directives toggle. Default-true semantics.
+      aiSceneDirectivesEnabled: state.aiSceneDirectivesEnabled !== false,
       directorBias: Number($('directorBiasSlider')?.value ?? state.directorBias ?? 0),
       directorPace: Number($('directorPaceSlider')?.value ?? state.directorPace ?? 0),
       directorBiasByDomain: { ...(state.directorBiasByDomain || {}) },
@@ -11879,6 +12036,9 @@ I return to myself easily"></textarea>
       const rpcb = $('remoteProcessingOptIn'); if (rpcb) rpcb.checked = !!state.remoteProcessingOptIn;
       state.smartDirectorEnabled = s.smartDirectorEnabled !== false;
       const sdcb = $('smartDirectorEnabled'); if (sdcb) sdcb.checked = state.smartDirectorEnabled;
+      // Round 24 follow-up — AI scene directives toggle. Default true.
+      state.aiSceneDirectivesEnabled = s.aiSceneDirectivesEnabled !== false;
+      const ascd = $('aiSceneDirectivesEnabled'); if (ascd) ascd.checked = state.aiSceneDirectivesEnabled;
       state.directorBias = s.directorBias ?? 0;
       const dbSlider = $('directorBiasSlider'); if (dbSlider) dbSlider.value = state.directorBias;
       // Pace axis
@@ -23173,6 +23333,14 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
     // it can mark key command words for the TTS to drop voice on. Optional
     // (low priority); the TTS layer falls back to flat delivery if absent.
     const markupBlock = `\nMARKUP: You may wrap KEY COMMAND WORDS in double brackets so the narrator drops voice on them, e.g. "and you might find yourself [[going deeper]] now". Use this 1-3 times per phase, on transition or trance-deepening commands. Do not overuse.`;
+    // Round 24 follow-up — Scene-sentinel primer. When enabled, lets the
+    // AI direct the soundscape and visualizer to align with the language
+    // of the phase. Gated on `state.aiSceneDirectivesEnabled` (default
+    // true). Appears as a low-priority block so it can be trimmed under
+    // tight context budgets without affecting core guidance.
+    const sceneBlock = (state.aiSceneDirectivesEnabled !== false)
+      ? `\nSCENE DIRECTIVES (optional, sparing): If the language of this phase clearly evokes a different audio/visual texture than the current setting, you may emit one or both of:\n  • [BG:type]   — switch soundscape. Valid types: rain, ocean, fire, forest, stream, wind, thunder, storm, drone, bowls, heartbeat, binaural, isochronic, chimes, pink, brown, white, fan, cave, crickets, temple, spaceship, underwater, clock, train, city, owls, whales, none.\n  • [VIZ:type]  — switch visualizer. Valid types: spiral, breathing, candle, moire, tunnel, starfield, colorwash, vortex, mandala, lissajous, aurora, rain, smoke, ink, sacred-geo, waveform, fireflies, ripples, pulse, none.\nUse at most ONE of each per phase, placed at the start of the phase before the first sentence. Skip entirely if the current scene already fits — defaulting to the user's choice is correct.`
+      : '';
     const freshBlock = buildFreshnessBlock();
     const sharedContext = trimToTokenBudget([
       { name: 'header',     text: headerBlock,       priority: 5 }, // persona + method + theme — never drop
@@ -23184,6 +23352,7 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
       { name: 'profile',    text: profileCtx,        priority: 3 },
       { name: 'metrics',    text: metricsTrendCtx,   priority: 3 }, // recent-day trend signals
       { name: 'markup',     text: markupBlock,       priority: 2 }, // embedded-command markup primer
+      { name: 'scene',      text: sceneBlock,        priority: 2 }, // scene-sentinel primer (Round 24 follow-up)
       { name: 'freshSeeds', text: freshBlock,        priority: 2 }, // optional anchors — drops before adaptive
       { name: 'adaptive',   text: adaptiveCtx,       priority: 2 },
       { name: 'memory',     text: memoryCtx,         priority: 1 }, // first to drop
@@ -26517,7 +26686,7 @@ Start immediately:`;
       catch (e) { console.warn(`[backup] ${label} read failed:`, e); return fallback; }
     };
     const backup = {
-      version: 6,
+      version: 7,
       exportedAt: Date.now(),
       personas:  await safe('personas',  () => loadCustomPersonas(), []),
       history:   await safe('history',   async () => (await idbGet('stillness_history_v1')) || [], []),
@@ -26545,10 +26714,22 @@ Start immediately:`;
       customTags: await safe('customTags', async () => (await idbGet('stillness_custom_tags_v1')) || [], []),
       // A/B experiment results — only relevant if user opted into A/B mode.
       abResults: await safe('abResults', async () => (await idbGet('stillness_ab_results_v1')) || [], []),
+      // Round 24 follow-up — Round 23/24 IDB stores so users don't lose
+      // them on backup→restore round-trip.
+      // Director audit log (Cluster B) — the chronological feed of every
+      // recommendation + every adaptive-weight rating mutation. Local-only
+      // by design; included here so portable across reinstalls + devices.
+      directorAudit: await safe('directorAudit', async () => (await idbGet('hne_director_audit_v1')) || [], []),
+      // Shared-links library (Round 24 / batch 1N) — tracks every upload-
+      // share with its deletionUrl + expiry so the user can revoke from a
+      // sidebar panel. Without this in backup, users on a fresh install
+      // can't revoke things they shared from the previous install.
+      sharedLinks: await safe('sharedLinks', async () => (await idbGet('hne_shared_links_v1')) || [], []),
       // NOTE: deliberately NOT backed up:
       //   stillness_embed_v1         — regenerable from history+memory text
       //   stillness_program_pregen_v1 — transient 26h cache, no value preserving
       //   stillness_ai_audit_v1      — debug log, can be very large + privacy
+      //   hne_palette_recents_v1     — ephemeral usage trail, no value preserving
     };
     const replacer = _corruptItemReplacer();
     let json;
@@ -26944,6 +27125,32 @@ Start immediately:`;
           importedAB = fresh.length;
         }
       }
+      // Round 24 follow-up — Director audit and Shared-links restoration.
+      // Both are append-only logs keyed by an `id` (audit) or `ts` (rating
+      // entries). Use union-by-id with the existing log so we don't lose
+      // local entries the user has accumulated since the backup was made.
+      let importedAudit = 0, importedSharedLinks = 0;
+      if (Array.isArray(backup.directorAudit) && backup.directorAudit.length) {
+        const existing = (await idbGet('hne_director_audit_v1')) || [];
+        const seen = new Set(existing.map(e => `${e.kind || 'x'}::${e.ts || 0}`));
+        const fresh = backup.directorAudit.filter(e => e && !seen.has(`${e.kind || 'x'}::${e.ts || 0}`));
+        if (fresh.length) {
+          // Keep most-recent-first ordering and respect the 200-entry cap
+          const merged = [...fresh, ...existing].sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 200);
+          await idbSet('hne_director_audit_v1', merged);
+          importedAudit = fresh.length;
+        }
+      }
+      if (Array.isArray(backup.sharedLinks) && backup.sharedLinks.length) {
+        const existing = (await idbGet('hne_shared_links_v1')) || [];
+        const seen = new Set(existing.map(e => e.id));
+        const fresh = backup.sharedLinks.filter(e => e && e.id && !seen.has(e.id));
+        if (fresh.length) {
+          const merged = [...fresh, ...existing].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 100);
+          await idbSet('hne_shared_links_v1', merged);
+          importedSharedLinks = fresh.length;
+        }
+      }
       if (backup.memory && !(await idbGet('stillness_memory_v1'))) {
         // Memory store gets first-write-wins to avoid mangling the
         // Director's recollection of past sessions. If user already has
@@ -26966,6 +27173,8 @@ Start immediately:`;
       if (importedTags)          counts.push(`${importedTags} tag${importedTags === 1 ? '' : 's'}`);
       if (importedTriggers)      counts.push(`${importedTriggers} trigger fire${importedTriggers === 1 ? '' : 's'}`);
       if (importedAB)            counts.push(`${importedAB} A/B result${importedAB === 1 ? '' : 's'}`);
+      if (importedAudit)         counts.push(`${importedAudit} audit entr${importedAudit === 1 ? 'y' : 'ies'}`);
+      if (importedSharedLinks)   counts.push(`${importedSharedLinks} shared link${importedSharedLinks === 1 ? '' : 's'}`);
       notify.success(counts.length ? `Imported: ${counts.join(', ')}.` : 'Backup imported (nothing new to add).');
     } catch(e) { notify.error('Import failed: ' + e.message); }
   }
@@ -27580,6 +27789,157 @@ Start immediately:`;
     return segments.filter(s => s.text);
   }
 
+  // ====================================================================
+  // SCENE SENTINELS — `[BG:type]` and `[VIZ:type]` AI prompt directives
+  // ====================================================================
+  // The AI can embed scene-change directives inside generated phase
+  // text. The speak loop extracts these BEFORE the generic bracket
+  // strip and fires them through the live soundscape/visual switchers.
+  // Gated by state.aiSceneDirectivesEnabled (default true) — users who
+  // don't want their AI to direct the scene can disable it; sentinels
+  // are still stripped from the text either way so they never leak
+  // into TTS.
+  //
+  // Why we want this: scripts that say "let the rain wash through
+  // your shoulders…" feel disjointed when the soundscape is ocean.
+  // Letting the AI choose the soundscape per phase keeps the audio
+  // texture aligned with the language, without requiring the user to
+  // manually swap. The same applies for visualizers — a "tunnel into
+  // depth" passage works better with the tunnel viz than the candle.
+  //
+  // Validation: only known soundscape/viz values are accepted (mapped
+  // from the option lists in #soundscapeSelect and #vizSelect). Unknown
+  // values are silently ignored — this is a forgiving parser, not a
+  // strict one, since AI output is non-deterministic.
+  // ====================================================================
+
+  /** Set of valid `[BG:type]` values — must match a #soundscapeSelect option. */
+  const _VALID_BG_SENTINELS = new Set([
+    'none',
+    // Natural
+    'rain', 'ocean', 'fire', 'forest', 'stream', 'wind', 'thunder', 'storm', 'owls', 'whales',
+    // Tonal
+    'drone', 'bowls', 'heartbeat', 'binaural', 'isochronic', 'chimes',
+    // Noise
+    'pink', 'brown', 'white', 'fan',
+    // Ambient
+    'cave', 'crickets', 'temple', 'spaceship', 'underwater', 'clock', 'train', 'city',
+  ]);
+
+  /** Set of valid `[VIZ:type]` values — must match a #vizSelect option. */
+  const _VALID_VIZ_SENTINELS = new Set([
+    'auto',
+    // Induction
+    'spiral', 'breathing', 'candle', 'moire', 'highway',
+    // Deepening
+    'tunnel', 'starfield', 'colorwash', 'canvas-pulse',
+    // Trance
+    'vortex', 'mandala', 'lissajous', 'pendulum-viz',
+    // Intense
+    'flowfield', 'plasma', 'kaleidoscope-flow', 'kaleidoscope-plasma',
+    // Atmospheric
+    'aurora', 'rain', 'smoke', 'ink', 'sacred-geo', 'waveform',
+    // Soft / Sleep
+    'fireflies', 'ripples',
+    // Minimal
+    'pulse', 'none',
+    // Experimental
+    'gamma-flicker',
+  ]);
+
+  /** Pull `[BG:type]` and `[VIZ:type]` markers out of a text block.
+   *  Case-insensitive on the prefix; case-sensitive on the value to
+   *  match the option-list values exactly. Returns the stripped text
+   *  and an in-document-order list of dispatches.
+   *  @returns {{stripped: string, dispatches: Array<{kind: 'bg'|'viz', value: string}>}} */
+  function _extractSceneSentinels(text) {
+    const dispatches = [];
+    if (!text || typeof text !== 'string') return { stripped: text || '', dispatches };
+    const stripped = text.replace(/\[(BG|VIZ):\s*([\w\-]+)\s*\]/gi, (_, kind, value) => {
+      const k = kind.toUpperCase();
+      const v = String(value || '').toLowerCase().trim();
+      if (k === 'BG' && _VALID_BG_SENTINELS.has(v)) {
+        dispatches.push({ kind: 'bg', value: v });
+      } else if (k === 'VIZ' && _VALID_VIZ_SENTINELS.has(v)) {
+        dispatches.push({ kind: 'viz', value: v });
+      } // else: silently drop unknown sentinels
+      return ''; // always strip from the text
+    });
+    return { stripped, dispatches };
+  }
+
+  /** Walk a list of scene dispatches in document order, firing each
+   *  through the appropriate live switcher. Inter-dispatch gap of 800ms
+   *  to avoid multiple soundscape engines stomping on each other when
+   *  the AI emits stacked directives like `[BG:rain][VIZ:waveform]`.
+   *  Skipped entirely when state.aiSceneDirectivesEnabled is false
+   *  (caller checks). */
+  function _dispatchSceneSentinels(dispatches) {
+    if (!Array.isArray(dispatches) || !dispatches.length) return;
+    let delay = 0;
+    for (const d of dispatches) {
+      const ms = delay;
+      setTimeout(() => {
+        try {
+          if (d.kind === 'bg') {
+            if (typeof _switchSoundscapeLive === 'function') _switchSoundscapeLive(d.value);
+          } else if (d.kind === 'viz') {
+            if (typeof _switchVisualLive === 'function') _switchVisualLive(d.value);
+          }
+        } catch (e) { console.warn('[scene sentinel dispatch]', d, e); }
+      }, ms);
+      delay += 800; // 800ms between dispatches keeps audio engine churn calm
+    }
+  }
+
+  /** Live soundscape switch — equivalent to user-changing the live
+   *  soundscape select. Validates against _VALID_BG_SENTINELS so it's
+   *  safe to call from sentinel dispatch as well. Updates state, the
+   *  Configure-step select, restarts the drone with the new type,
+   *  re-applies the current phase frequency. */
+  async function _switchSoundscapeLive(type) {
+    if (typeof type !== 'string') return;
+    type = type.toLowerCase().trim();
+    if (!_VALID_BG_SENTINELS.has(type)) return;
+    if (state.soundscape === type) return; // no-op
+    state.soundscape = type;
+    state.droneEnabled = type !== 'none';
+    state._soundscapeOverridden = true;
+    // Sync UI — both the live select and the Configure-step select
+    const liveSel = $('liveSoundscapeSelect'); if (liveSel) liveSel.value = type;
+    const ssSelect = $('soundscapeSelect'); if (ssSelect) ssSelect.value = type;
+    try { saveUserSettings?.(); } catch {}
+    try { await drone.stop(); } catch {}
+    if (type !== 'none') {
+      try {
+        await drone.start(state.droneVolume, type);
+        if (state._currentPhase) {
+          try { drone.setPhaseFreq(state._currentPhase); } catch {}
+        }
+        const ai = $('audioIndicator');
+        if (ai) ai.textContent = '· ' + type + ' ·';
+      } catch (e) { console.warn('[scene sentinel] drone start failed:', e); }
+    } else {
+      const ai = $('audioIndicator');
+      if (ai) ai.textContent = '';
+    }
+  }
+
+  /** Live visual switch — wraps setupVisual with sentinel validation. */
+  function _switchVisualLive(type) {
+    if (typeof type !== 'string') return;
+    type = type.toLowerCase().trim();
+    if (!_VALID_VIZ_SENTINELS.has(type)) return;
+    if (state.vizOverride === type) return; // no-op
+    state.vizOverride = type;
+    const sel = $('vizSelect'); if (sel) sel.value = type;
+    const liveSel = $('liveVizSelect'); if (liveSel) liveSel.value = type;
+    try { saveUserSettings?.(); } catch {}
+    try {
+      if (typeof setupVisual === 'function') setupVisual(type);
+    } catch (e) { console.warn('[scene sentinel] visual switch failed:', e); }
+  }
+
   async function speakScript(text, bypassAbort = false) {
     // Resolve \{\{user\}\}, \{\{nar\}\}, \{\{intention\}\}, \{\{affirmation\}\} tokens before
     // speech. Runs BEFORE sanitization so any expanded content (e.g. a
@@ -27623,6 +27983,22 @@ Start immediately:`;
     // to sentinel-wrapped form (\u0001…\u0002) so the generic bracket-strip
     // below doesn't eat them. Per-segment speech opts applied later.
     canonical = canonical.replace(/\[\[([^\[\]]+?)\]\]/g, '\u0001$1\u0002');
+    // Round 24 follow-up — AI prompt sentinels (`[BG:type]` / `[VIZ:type]`).
+    // Extract scene-change directives before the generic bracket strip
+    // erases them, then dispatch to the live soundscape/visual switchers.
+    // Gated by state.aiSceneDirectivesEnabled (default true). When the
+    // toggle is off we still strip them from the text so they never leak
+    // into TTS, but skip the dispatch.
+    try {
+      const ext = _extractSceneSentinels(canonical);
+      canonical = ext.stripped;
+      if (state.aiSceneDirectivesEnabled !== false && ext.dispatches.length) {
+        // Fire-and-forget — don't block the speech path on audio engine
+        // start/stop. The sentinels run in document order with small
+        // inter-dispatch gaps so multiple BG changes don't fight.
+        _dispatchSceneSentinels(ext.dispatches);
+      }
+    } catch (e) { console.warn('[scene sentinels] extraction failed:', e); }
     canonical = canonical.replace(/\[[^\]]+\]/g, m =>
       /^\x5BPAUSE\s+\d+\x5D$/i.test(m) ? m : ''
     );
@@ -32787,6 +33163,115 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
                   : 'var(--text-faint)';
       deltaEl.innerHTML = `${first} → ${last} <span style="color:${color};font-weight:600">(${sign}${delta})</span>`;
     }
+
+    // Round 24 follow-up — Pattern callouts. Surfaces 1-3 sentence
+    // observations derived from the sparkline data so the user can read
+    // their own susceptibility trajectory without having to interpret
+    // the chart themselves.
+    _renderHipPatternCallouts(points, history);
+  }
+
+  /** Round 24 follow-up — Derive readable patterns from the HIP score
+   *  trajectory + the full session history. Surfaces the most useful
+   *  signal (band stability, time-of-day correlation, method-rating
+   *  alignment with band) as a small text block under the sparkline.
+   *  Pure local aggregation; never uploaded. */
+  function _renderHipPatternCallouts(points, history) {
+    const wrap = $('hipSparklineWrap');
+    if (!wrap || !Array.isArray(points) || points.length < 2) return;
+
+    // Banding helper — same thresholds as the sparkline gridlines.
+    const band = s => s <= 3 ? 'low' : s <= 6 ? 'medium' : 'high';
+
+    const callouts = [];
+
+    // Callout 1 — band stability across the trajectory.
+    const bands = points.map(p => band(p.score));
+    const uniqBands = new Set(bands);
+    if (uniqBands.size === 1 && points.length >= 3) {
+      callouts.push(`You've stayed in the <strong>${[...uniqBands][0]}</strong> band across ${points.length} attempts — your susceptibility profile is stable.`);
+    } else if (uniqBands.size === 3) {
+      callouts.push(`Your scores span all three bands (low / medium / high) — this is normal early on. The trend usually settles after 5-8 attempts.`);
+    } else if (uniqBands.size === 2 && points.length >= 4) {
+      // Two-band straddling. Useful: which is more recent?
+      const recentBand = bands[bands.length - 1];
+      callouts.push(`You currently straddle two bands; recent attempts trend <strong>${recentBand}</strong>.`);
+    }
+
+    // Callout 2 — time-of-day correlation. Are HIP-scored sessions
+    // happening at a particular time? Compute the modal hour bin.
+    try {
+      const sortedHistory = [...history].sort((a, b) => (a.date || 0) - (b.date || 0));
+      const scoredHours = [];
+      for (const r of sortedHistory) {
+        const raw = r.susceptibilityAtSessionStart;
+        if (raw === '' || raw == null) continue;
+        const n = Number(raw);
+        if (!Number.isFinite(n)) continue;
+        if (!r.date) continue;
+        scoredHours.push({ hour: new Date(r.date).getHours(), score: n });
+      }
+      if (scoredHours.length >= 4) {
+        // Bin into 4 quadrants — morning (5-11), afternoon (12-17), evening (18-22), late (23-4)
+        const labelOf = h => h >= 5 && h < 12 ? 'morning'
+                          : h >= 12 && h < 18 ? 'afternoon'
+                          : h >= 18 && h < 23 ? 'evening'
+                          : 'late night';
+        const bins = {};
+        for (const e of scoredHours) {
+          const lbl = labelOf(e.hour);
+          if (!bins[lbl]) bins[lbl] = { count: 0, sum: 0 };
+          bins[lbl].count++;
+          bins[lbl].sum += e.score;
+        }
+        const sorted = Object.entries(bins)
+          .map(([lbl, v]) => ({ lbl, count: v.count, mean: v.sum / v.count }))
+          .filter(x => x.count >= 2) // need ≥2 to be meaningful
+          .sort((a, b) => b.mean - a.mean);
+        if (sorted.length >= 2) {
+          const top = sorted[0], bot = sorted[sorted.length - 1];
+          const gap = top.mean - bot.mean;
+          if (gap >= 1.0) {
+            callouts.push(`Your highest scores cluster in the <strong>${top.lbl}</strong> (mean ${top.mean.toFixed(1)} vs ${bot.lbl} ${bot.mean.toFixed(1)}). Schedule deeper work during this window.`);
+          }
+        }
+      }
+    } catch (e) { /* never break the panel for a callout failure */ }
+
+    // Callout 3 — method-rating alignment. Compare top-rated methods
+    // for this user against their banding. High-band users who never
+    // try advanced methods get a nudge; low-band users who keep rating
+    // rapid methods low get a different nudge.
+    try {
+      const recentBand = band(points[points.length - 1].score);
+      const ratedSessions = (history || []).filter(r => Number.isFinite(r.rating) && r.method);
+      if (ratedSessions.length >= 5) {
+        const advancedCount = ratedSessions.filter(r => r.method && /advanced|rapid|hand-shake|elman|dave-elman/i.test(String(r.method))).length;
+        const advancedShare = advancedCount / ratedSessions.length;
+        if (recentBand === 'high' && advancedShare < 0.15) {
+          callouts.push(`High-band users tend to do well with advanced methods. You haven't explored those much — try one to see how it lands.`);
+        } else if (recentBand === 'low' && advancedShare > 0.3) {
+          callouts.push(`Low-band scores plus heavy use of advanced methods is an unusual combo. Stepping back to therapeutic / progressive methods may be more productive for now.`);
+        }
+      }
+    } catch (e) { /* nope */ }
+
+    // Render callouts (or remove a stale block if nothing notable).
+    let calloutEl = $('hipPatternCallouts');
+    if (!callouts.length) {
+      if (calloutEl) calloutEl.remove();
+      return;
+    }
+    if (!calloutEl) {
+      calloutEl = document.createElement('div');
+      calloutEl.id = 'hipPatternCallouts';
+      calloutEl.style.cssText = 'margin-top:6px;padding:6px 8px;background:rgba(0,212,230,0.04);border-left:2px solid rgba(0,212,230,0.3);font-size:0.66rem;color:var(--text-dim);line-height:1.5';
+      wrap.appendChild(calloutEl);
+    }
+    calloutEl.innerHTML = callouts.map(c => `<div style="margin-bottom:4px">${c}</div>`).join('');
+    // Trim trailing margin on last child
+    const lastChild = calloutEl.lastElementChild;
+    if (lastChild) lastChild.style.marginBottom = '0';
   }
 
   // ====================================================================
@@ -34457,7 +34942,13 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       const data = await root.aiTextPlugin({
         instruction,
         startWith: '{',
-        stopSequences: ['\n\n\n', '\n\n}\n', '```'],
+        // Round 24 follow-up — ai() options audit. Add the `\n\n[[` / `\n[[`
+        // chat-format-bleed safety net (per perchance-api skill §14) that
+        // every other direct aiTextPlugin call already includes. Some
+        // models occasionally drop into `[[Speaker]]:` chat completion
+        // format even when not requested — these stops catch that and
+        // protect the JSON parser below from chatter contamination.
+        stopSequences: ['\n\n\n', '\n\n}\n', '```', '\n\n[[', '\n[['],
         hideStartWith: true,
       });
       if (!data || data.stopReason === 'error') throw new Error('AI returned an error.');
@@ -37234,6 +37725,15 @@ Begin:`;
     return [
       { kind: 'action', label: 'Start a session',           hint: 'open the wizard at Step 1', keywords: 'start begin new session wizard',
         run: () => { try { goToStep?.(1); } catch {} window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+      { kind: 'action', label: 'SmartAssist',                hint: 'describe your session in your own words', keywords: 'smart assist describe natural language ai wizard skip',
+        run: () => {
+          try {
+            const det = $('smartAssistDetails');
+            if (det && !det.open) det.open = true;
+            $('smartAssistInput')?.focus();
+            $('smartAssistDetails')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+          } catch {}
+        } },
       { kind: 'action', label: 'Open profile',              hint: 'jump to the profile section', keywords: 'profile preferences personal',
         run: () => { try { $('profileForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {} } },
       { kind: 'action', label: 'Onboarding quiz',           hint: '1-min profile setup', keywords: 'onboard quiz personalize new',
@@ -37283,6 +37783,47 @@ Begin:`;
           if (det && !det.open) det.open = true;
           if (typeof renderChangeLog === 'function') renderChangeLog();
           $('profileDiffPanel')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+        } },
+      // Round 24 follow-up — palette entries for Round 23/24 deliverables
+      // that didn't have keyboard discovery yet.
+      { kind: 'action', label: 'Open Director audit',       hint: 'every recommendation + adaptive change', keywords: 'director audit log adaptive recommendation rating',
+        run: () => {
+          try {
+            const det = $('directorAuditDetails');
+            if (det) {
+              det.open = true;
+              det.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+              if (typeof renderDirectorAuditPanel === 'function') renderDirectorAuditPanel();
+            }
+          } catch {}
+        } },
+      { kind: 'action', label: 'My shared links',           hint: 'see + revoke upload-share links', keywords: 'shared links share revoke deletion my',
+        run: () => {
+          try {
+            const det = $('sharedLinksDetails');
+            if (det) {
+              det.open = true;
+              det.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+              if (typeof renderSharedLinksPanel === 'function') renderSharedLinksPanel();
+            }
+          } catch {}
+        } },
+      { kind: 'action', label: 'Share session config',      hint: 'create a shareable URL for this config', keywords: 'share session config link url',
+        run: () => { try { $('shareConfigBtn')?.click(); } catch {} } },
+      { kind: 'action', label: 'Backup & export',           hint: 'jump to the backup/export section', keywords: 'backup export download zip csv gz',
+        run: () => {
+          try {
+            // Find the "backup" details element — it's the only `<details>` whose summary text is exactly 'backup'
+            const dets = document.querySelectorAll('#sidebar details');
+            for (const d of dets) {
+              const sum = d.querySelector('summary')?.textContent?.trim().toLowerCase();
+              if (sum === 'backup') { d.open = true; d.scrollIntoView?.({ behavior: 'smooth', block: 'center' }); break; }
+            }
+          } catch {}
+        } },
+      { kind: 'action', label: 'Open command palette help', hint: 'this menu — keyboard shortcuts', keywords: 'help palette shortcuts keys keyboard',
+        run: () => {
+          notify.info('Cmd-K / Ctrl-K opens this menu. ↑↓ to navigate, Enter to run, Esc to close. Type to fuzzy-match. Recent items appear at the top when the query is empty.');
         } },
     ];
   }
@@ -37435,10 +37976,37 @@ Begin:`;
     _renderPaletteList(true);
   }
 
+  // Round 24 follow-up — palette recents. When the query is empty, show
+  // the 5 most recently executed items at the top of the list. Stored in
+  // localStorage as an array of `label` strings (matched back to items
+  // on each open). Capped at 5 to keep the list short.
+  const PALETTE_RECENTS_KEY = 'hne_palette_recents_v1';
+  const PALETTE_RECENTS_CAP = 5;
+  function _loadPaletteRecents() {
+    try {
+      const raw = localStorage.getItem(PALETTE_RECENTS_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.filter(s => typeof s === 'string').slice(0, PALETTE_RECENTS_CAP) : [];
+    } catch { return []; }
+  }
+  function _pushPaletteRecent(label) {
+    if (!label) return;
+    try {
+      const cur = _loadPaletteRecents();
+      const next = [label, ...cur.filter(l => l !== label)].slice(0, PALETTE_RECENTS_CAP);
+      localStorage.setItem(PALETTE_RECENTS_KEY, JSON.stringify(next));
+    } catch {}
+  }
+
   function _runPaletteCursor() {
     const item = _paletteState.filtered[_paletteState.cursor];
     if (!item) return;
     closeCommandPalette();
+    // Round 24 follow-up — record the run for the recents list. Skip
+    // dynamic items (presets/personas/methods) so the recents list
+    // doesn't fill up with "Persona: Sage" entries when the user is
+    // browsing — actions are the recent-list use case.
+    if (item.kind === 'action') _pushPaletteRecent(item.label);
     try { item.run(); } catch (e) { console.warn('[command palette] run failed:', e); }
   }
 
@@ -37451,11 +38019,25 @@ Begin:`;
       // Recompute filter
       const q = (_paletteState.query || '').trim().toLowerCase();
       const tokens = q ? q.split(/\s+/) : [];
-      const scored = _paletteState.items
-        .map(item => ({ item, score: _scorePaletteItem(item, tokens) }))
-        .filter(x => x.score > 0)
-        .sort((a, b) => b.score - a.score);
-      _paletteState.filtered = scored.slice(0, 12).map(x => x.item);
+      // Round 24 follow-up — when query is empty, prepend recents at the
+      // top so the user sees their most-used actions first. When query
+      // is non-empty, score everything normally.
+      if (!tokens.length) {
+        const recentLabels = _loadPaletteRecents();
+        const labelMap = new Map(_paletteState.items.map(it => [it.label, it]));
+        const recents = recentLabels.map(l => labelMap.get(l)).filter(Boolean);
+        const recentSet = new Set(recents.map(it => it.label));
+        const others = _paletteState.items.filter(it => !recentSet.has(it.label));
+        _paletteState.filtered = [...recents, ...others].slice(0, 12);
+        _paletteState._recentCount = recents.length; // for the visual divider
+      } else {
+        const scored = _paletteState.items
+          .map(item => ({ item, score: _scorePaletteItem(item, tokens) }))
+          .filter(x => x.score > 0)
+          .sort((a, b) => b.score - a.score);
+        _paletteState.filtered = scored.slice(0, 12).map(x => x.item);
+        _paletteState._recentCount = 0;
+      }
     }
     if (count) {
       count.textContent = _paletteState.filtered.length
@@ -37466,6 +38048,7 @@ Begin:`;
       list.innerHTML = `<div style="padding:24px 16px;text-align:center;color:var(--text-faint);font-size:0.78rem">no matches</div>`;
       return;
     }
+    const recentCount = _paletteState._recentCount || 0;
     list.innerHTML = _paletteState.filtered.map((item, i) => {
       const active = i === _paletteState.cursor;
       const kindBadge = {
@@ -37474,7 +38057,14 @@ Begin:`;
         persona:'rgba(140,100,200,0.14)',
         method: 'rgba(120,200,150,0.14)',
       }[item.kind] || 'rgba(255,255,255,0.05)';
+      // Round 24 follow-up — visual divider after the recents block
+      // so the user can tell where recents end and the full list begins.
+      const showDividerBefore = recentCount > 0 && i === recentCount;
+      const recentMark = i < recentCount
+        ? `<span style="font-size:0.6rem;color:var(--text-faint);flex:0 0 auto" title="recent">↩</span>`
+        : '';
       return `
+        ${showDividerBefore ? `<div style="border-top:1px solid var(--glass-border);margin:4px 16px;opacity:0.5"></div>` : ''}
         <div class="cp-row" data-idx="${i}" style="
             padding:8px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;
             background:${active ? 'rgba(0,212,230,0.10)' : 'transparent'};
@@ -37485,6 +38075,7 @@ Begin:`;
             <div style="font-size:0.82rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.label)}</div>
             ${item.hint ? `<div style="font-size:0.66rem;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.hint)}</div>` : ''}
           </span>
+          ${recentMark}
         </div>
       `;
     }).join('');
@@ -37850,6 +38441,13 @@ Begin:`;
     saveUserSettings();
     _updateDirectorBiasUI(); // grey out the bias row when director is off
     _refreshAffirmationsBtnState(); // affirmation button enables/disables with SD
+  });
+  // Round 24 follow-up — AI scene directives toggle. Mirrors the state
+  // flag; the speak-loop reads `state.aiSceneDirectivesEnabled` directly
+  // so no other plumbing is needed.
+  $('aiSceneDirectivesEnabled')?.addEventListener('change', e => {
+    state.aiSceneDirectivesEnabled = !!e.target.checked;
+    saveUserSettings();
   });
   // Affirmation auto-fill button (Step 4) — drafts from profile + intention via Smart Director.
   // Refresh button label as the user types (showing "regenerate" once content exists)
