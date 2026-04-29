@@ -3371,6 +3371,38 @@ padding: 8px 12px; font-size: 0.75rem;
     background: var(--neon-cyan-soft, rgba(0,212,230,0.14));
     border-color: var(--neon-cyan); color: var(--neon-cyan);
   }
+  /* Cluster B — Director audit panel chips + entries */
+  .audit-chip {
+    padding: 2px 8px; font-size: 0.62rem;
+    border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03);
+    color: var(--text-dim); cursor: pointer; border-radius: 0;
+    letter-spacing: 0.04em; transition: all 0.12s ease;
+    font-family: var(--font-body, inherit);
+  }
+  .audit-chip:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+  .audit-chip.active {
+    background: rgba(0,212,230,0.14);
+    border-color: var(--neon-cyan); color: var(--neon-cyan);
+  }
+  .audit-entry {
+    padding: 6px 8px; margin-bottom: 4px;
+    border-left: 3px solid var(--glass-border);
+    background: rgba(255,255,255,0.02);
+    font-size: 0.7rem; line-height: 1.45;
+  }
+  .audit-entry.kind-recommendation { border-left-color: rgba(0,212,230,0.45); }
+  .audit-entry.kind-rating         { border-left-color: rgba(201,168,85,0.55); }
+  .audit-entry .audit-head {
+    display: flex; justify-content: space-between; gap: 6px;
+    color: var(--text-faint); font-size: 0.6rem; margin-bottom: 4px;
+  }
+  .audit-entry .audit-kind {
+    text-transform: uppercase; letter-spacing: 0.08em;
+    font-weight: 600; color: var(--text-dim);
+  }
+  .audit-entry .audit-detail { color: var(--text-dim); }
+  .audit-entry code { font-size: 0.66rem; color: var(--neon-cyan); }
+  .audit-entry strong { color: var(--text); font-weight: 600; }
   .tl-entry {
     padding: 6px 8px; margin-bottom: 5px;
     border-left: 3px solid var(--glass-border);
@@ -4351,6 +4383,38 @@ padding: 6px 10px; font-size: 1.1rem;
               <div class="sublabel" style="font-size:0.58rem">A scene the script can return you to during work-phase peaks.</div>
             </div>
           </details>
+
+          <!-- ── S2 — Category-scope share toggles ────────────────────
+               Per-category opt-out for what the AI sees. Sits inside the
+               More profile data wrapper since the categories are exactly
+               the inner sections. The local Director ALWAYS reads every
+               category for safety gating (e.g. C3 health-notes block, C6
+               low-susceptibility filter); these toggles only gate AI
+               prompt assembly. -->
+          <details class="pf-extended" style="margin-top:10px">
+            <summary style="font-size:0.7rem;font-weight:600;color:var(--text);cursor:pointer;padding:6px 0">🔒 What the AI sees</summary>
+            <div class="sublabel" style="font-size:0.58rem;margin-bottom:8px;color:var(--text-faint)">Default ON for every category. Turning a category OFF hides those fields from the AI prompt only — the local Director and safety gates still use them. Identity (name, age, appearance, goals) uses the per-field share-toggles next to each field above.</div>
+            <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:0.74rem;color:var(--text-dim);cursor:pointer">
+              <input type="checkbox" id="pfCatShare_practiceContext" checked>
+              <span><strong>Practice Context</strong> <span style="color:var(--text-faint)">— typical time, space, posture, co-presence</span></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:0.74rem;color:var(--text-dim);cursor:pointer">
+              <input type="checkbox" id="pfCatShare_lifeContext" checked>
+              <span><strong>Current Life Context</strong> <span style="color:var(--text-faint)">— themes, stressors, wins, health notes</span></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:0.74rem;color:var(--text-dim);cursor:pointer">
+              <input type="checkbox" id="pfCatShare_style" checked>
+              <span><strong>Style Preferences</strong> <span style="color:var(--text-faint)">— metaphor density, authority, touch, spiritual frame</span></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:0.74rem;color:var(--text-dim);cursor:pointer">
+              <input type="checkbox" id="pfCatShare_susceptibility" checked>
+              <span><strong>Hypnotic Susceptibility</strong> <span style="color:var(--text-faint)">— HIP brief score (Director uses regardless)</span></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:0.74rem;color:var(--text-dim);cursor:pointer">
+              <input type="checkbox" id="pfCatShare_anchors" checked>
+              <span><strong>Personal Anchors</strong> <span style="color:var(--text-faint)">— safe place, power object, resource memory</span></span>
+            </label>
+          </details>
           </details><!-- /.pf-more-profile -->
           <div class="sublabel" style="font-size:0.58rem;margin-top:4px">Profile stays on your device. Local recommendations always use these fields; the AI only sees them when "Use profile details in script" is on.</div>
         </div>
@@ -4387,6 +4451,22 @@ padding: 6px 10px; font-size: 1.1rem;
             <div id="timelineList" style="margin-top:4px;max-height:300px;overflow-y:auto;font-size:0.74rem"></div>
             <div class="sublabel" style="margin-top:6px;font-size:0.58rem;color:var(--text-faint)">Newer entries are brighter. Profile edits show what the AI is currently aware of. AI calls show provider + source + size only — never content.</div>
           </div>
+        </details>
+        <!-- B5 — Director audit panel. Surfaces every recommendation +
+             every adaptive-weight rating mutation in a chronological
+             feed so power users can debug their adaptive trajectory. -->
+        <details id="directorAuditDetails">
+          <summary>director audit</summary>
+          <div class="sublabel" style="font-size:0.6rem;margin:6px 0 4px;color:var(--text-faint)">Each entry shows what the recommendation engine picked, with what inputs, and which filters fired. Local-only; never uploaded.</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;align-items:center">
+            <span class="pf-label" style="margin:0;font-size:0.62rem">filter:</span>
+            <button class="audit-chip active" data-audit-filter="all" type="button">all</button>
+            <button class="audit-chip" data-audit-filter="recommendation" type="button">recs</button>
+            <button class="audit-chip" data-audit-filter="rating" type="button">ratings</button>
+            <button class="btn secondary" id="directorAuditExportBtn" type="button" style="margin-left:auto;font-size:0.62rem;padding:3px 8px">copy JSON</button>
+            <button class="btn secondary" id="directorAuditClearBtn" type="button" style="font-size:0.62rem;padding:3px 8px">clear</button>
+          </div>
+          <div id="directorAuditList" style="max-height:340px;overflow-y:auto;font-size:0.7rem"></div>
         </details>
         <details>
           <summary>backup</summary>
@@ -7511,6 +7591,165 @@ I return to myself easily"></textarea>
     if (state._debug?.verbose) console.log('[SmartDirector]', ...args);
   }
 
+  // ====================================================================
+  // CLUSTER B — DIRECTOR OBSERVABILITY (B2-B6)
+  // ====================================================================
+  // A purpose-built audit log for the recommendation pipeline. The
+  // existing sdLog only surfaces in dev consoles; this captures every
+  // recommendation + every adaptive-weight rating-driven mutation in a
+  // ring-buffered IDB-persisted log so power users can debug WHY their
+  // sessions are coming out the way they are.
+  //
+  // Three event kinds:
+  //   • 'recommendation' — emitted at the end of getRecommendation().
+  //                       Includes all inputs (adaptive snapshot,
+  //                       analytics counts, profile flags, history len),
+  //                       the picks, confidences, and the C-cluster
+  //                       filter trace (which filters fired, which
+  //                       methods got blocked).
+  //   • 'rating'         — emitted when a post-session A/B rating
+  //                       mutates adaptive weights. Captures the
+  //                       before/after weight values for the touched
+  //                       keys + the reward applied.
+  //   • 'snapshot'       — periodic adaptive-weights diff vs previous
+  //                       snapshot (every save), so trajectory is
+  //                       visible over time.
+  //
+  // Storage: ring buffer in IDB key 'hne_director_audit_v1', cap 200
+  // entries. Cleared by the user via the panel, never auto-pruned
+  // beyond the cap. Read-only access from window.HNE.audit().
+  // ====================================================================
+  const DIRECTOR_AUDIT_KEY = 'hne_director_audit_v1';
+  const DIRECTOR_AUDIT_CAP = 200;
+  let _directorAuditCache = null; // lazy-loaded array
+
+  async function _loadDirectorAudit() {
+    if (Array.isArray(_directorAuditCache)) return _directorAuditCache;
+    try {
+      const raw = await idbGet(DIRECTOR_AUDIT_KEY);
+      _directorAuditCache = Array.isArray(raw) ? raw : [];
+    } catch { _directorAuditCache = []; }
+    return _directorAuditCache;
+  }
+  async function _saveDirectorAudit() {
+    if (!Array.isArray(_directorAuditCache)) return;
+    try { await idbSet(DIRECTOR_AUDIT_KEY, _directorAuditCache); } catch {}
+  }
+
+  /** Record one audit entry. Newest-first ring buffer. Best-effort. */
+  async function recordDirectorAudit(kind, payload) {
+    if (state.smartDirectorEnabled === false) return;
+    try {
+      const log = await _loadDirectorAudit();
+      log.unshift({ ts: Date.now(), kind, ...(payload || {}) });
+      if (log.length > DIRECTOR_AUDIT_CAP) log.length = DIRECTOR_AUDIT_CAP;
+      await _saveDirectorAudit();
+      // Refresh the visible panel if it's open. Cheap when closed (early-out).
+      if (typeof renderDirectorAuditPanel === 'function') {
+        try { renderDirectorAuditPanel(); } catch {}
+      }
+    } catch (e) { console.debug('[director audit] record failed:', e); }
+  }
+
+  /** Strip an adaptive snapshot to a small JSON-serializable shape. */
+  function _summarizeAdaptive(adaptive) {
+    if (!adaptive) return null;
+    const top = (map, n = 3) => {
+      const entries = Object.entries(map || {})
+        .map(([k, v]) => [k, Math.round(Number(v) * 100) / 100])
+        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+        .slice(0, n);
+      return Object.fromEntries(entries);
+    };
+    return {
+      ts: adaptive.ts || 0,
+      difficulty: typeof adaptive.difficulty === 'number' ? Math.round(adaptive.difficulty * 100) / 100 : null,
+      recoveryMode: !!adaptive.recoveryMode,
+      topPersona: top(adaptive.w?.p),
+      topMethod:  top(adaptive.w?.m),
+      topSound:   top(adaptive.w?.s),
+      topLength:  top(adaptive.w?.ln),
+    };
+  }
+
+  /** B5 — render the audit panel. Honors state._directorAuditFilter. */
+  let _directorAuditFilter = 'all';
+  async function renderDirectorAuditPanel() {
+    const list = $('directorAuditList');
+    if (!list) return; // panel not in DOM yet
+    const det = $('directorAuditDetails');
+    if (det && !det.open) return; // skip work when the section is closed
+    const log = await _loadDirectorAudit();
+    const filtered = _directorAuditFilter === 'all'
+      ? log
+      : log.filter(e => e.kind === _directorAuditFilter);
+    if (!filtered.length) {
+      list.innerHTML = `<div class="library-empty" style="font-size:0.7rem">no audit entries yet — entries are recorded as the Director works</div>`;
+      return;
+    }
+    // Render top 50 (newest-first cap)
+    list.innerHTML = filtered.slice(0, 50).map(e => _renderAuditEntry(e)).join('');
+  }
+
+  function _renderAuditEntry(e) {
+    const ts = new Date(e.ts).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+    if (e.kind === 'recommendation') {
+      const rec = e.rec || {};
+      const cc = rec._cluster_c || null;
+      const blocked = cc?.blockedMethods?.length
+        ? `<div class="audit-detail">blocked: <code>${escapeHtml(cc.blockedMethods.join(', '))}</code></div>` : '';
+      const personaBoost = cc?.personaTimeBoost
+        ? `<div class="audit-detail">time-of-day persona boost: <code>${escapeHtml(JSON.stringify(cc.personaTimeBoost).slice(0, 80))}</code></div>` : '';
+      const conf = rec._confidence || {};
+      const confTxt = `p=${(conf.persona ?? '?')} m=${(conf.method ?? '?')} s=${(conf.soundscape ?? '?')} ln=${(conf.length ?? '?')}`;
+      const flags = e.profileFlags || {};
+      const flagBits = [];
+      if (flags.posture)        flagBits.push(`posture=${flags.posture}`);
+      if (flags.coPresence)     flagBits.push(`copres=${flags.coPresence}`);
+      if (flags.spiritualFrame) flagBits.push(`frame=${flags.spiritualFrame}`);
+      if (flags.susceptibility) flagBits.push(`hip=${flags.susceptibility}`);
+      if (flags.hasHealthNotes) flagBits.push('healthNotes✓');
+      return `
+        <div class="audit-entry kind-recommendation">
+          <div class="audit-head">
+            <span class="audit-kind">recommendation</span>
+            <span>${escapeHtml(ts)}</span>
+          </div>
+          <div><strong>${escapeHtml(rec.persona || '—')}</strong> · ${escapeHtml(rec.method || '—')} · ${escapeHtml(rec.length || '—')} · ${escapeHtml(rec.soundscape || '—')}</div>
+          <div class="audit-detail">confidence: <code>${escapeHtml(confTxt)}</code></div>
+          ${flagBits.length ? `<div class="audit-detail">profile: <code>${escapeHtml(flagBits.join(' · '))}</code></div>` : ''}
+          ${blocked}
+          ${personaBoost}
+          ${e.adaptiveSnapshot ? `<div class="audit-detail">difficulty: <code>${e.adaptiveSnapshot.difficulty ?? '—'}</code>${e.adaptiveSnapshot.recoveryMode ? ' <strong>· recovery mode</strong>' : ''}</div>` : ''}
+        </div>
+      `;
+    }
+    if (e.kind === 'rating') {
+      const t = e.touched || {};
+      const before = e.before || {};
+      const after  = e.after  || {};
+      const fmtMut = (label, key, beforeVal, afterVal) =>
+        (key && Number.isFinite(beforeVal) && Number.isFinite(afterVal))
+          ? `<div class="audit-detail">${label} <strong>${escapeHtml(key)}</strong>: <code>${beforeVal} → ${afterVal}</code></div>` : '';
+      return `
+        <div class="audit-entry kind-rating">
+          <div class="audit-head">
+            <span class="audit-kind">A/B rating</span>
+            <span>${escapeHtml(ts)}</span>
+          </div>
+          <div><strong>${escapeHtml(e.preset || '—')}</strong> rated ${e.rating}/5 → reward ${e.reward >= 0 ? '+' : ''}${e.reward}</div>
+          ${fmtMut('persona',    t.persona,    before.p,  after.p)}
+          ${fmtMut('method',     t.method,     before.m,  after.m)}
+          ${fmtMut('soundscape', t.soundscape, before.s,  after.s)}
+          ${fmtMut('length',     t.length,     before.ln, after.ln)}
+        </div>
+      `;
+    }
+    return `<div class="audit-entry"><div class="audit-head"><span class="audit-kind">${escapeHtml(e.kind)}</span><span>${escapeHtml(ts)}</span></div></div>`;
+  }
+
   // Console-visible diagnostic shim. Read-only by design — surfaces the live
   // AI tier and a few derived signals so users can sanity-check the pipeline
   // from DevTools without ever exposing keys or mutation paths.
@@ -7533,6 +7772,28 @@ I return to myself easily"></textarea>
           bytes: e.bytes,
           ...(e.contextBytes != null ? { contextBytes: e.contextBytes, taskBytes: e.taskBytes } : {}),
         })),
+        // B6 — Director audit log accessor. Surfaces every recommendation
+        // and rating-driven adaptive mutation in chronological order.
+        // Read-only; the IDB ring buffer is the canonical store.
+        directorAudit: async (n = 20) => {
+          try {
+            const log = await _loadDirectorAudit();
+            return (log || []).slice(0, n).map(e => ({
+              when: new Date(e.ts).toISOString(),
+              kind: e.kind,
+              ...(e.kind === 'recommendation' ? {
+                rec: { persona: e.rec?.persona, method: e.rec?.method, length: e.rec?.length, soundscape: e.rec?.soundscape },
+                blockedMethods: e.rec?._cluster_c?.blockedMethods || null,
+                difficulty: e.adaptiveSnapshot?.difficulty ?? null,
+                recoveryMode: e.adaptiveSnapshot?.recoveryMode || false,
+              } : {}),
+              ...(e.kind === 'rating' ? {
+                preset: e.preset, rating: e.rating, reward: e.reward,
+                touched: e.touched,
+              } : {}),
+            }));
+          } catch { return []; }
+        },
         // localStorage budget snapshot — surfaces approximate usage and
         // remaining headroom. HNE keeps most data in IDB but mirrors
         // settings + a few flags here.
@@ -11518,6 +11779,13 @@ I return to myself easily"></textarea>
       shareAge:        $('pfShareAge')        ? !!$('pfShareAge').checked        : true,
       shareAppearance: $('pfShareAppearance') ? !!$('pfShareAppearance').checked : true,
       shareGoals:      $('pfShareGoals')      ? !!$('pfShareGoals').checked      : true,
+      // S2 — Category-scope share toggles. Per-category gate over what
+      // the AI sees, layered above the per-field toggles. See _isCategoryShared.
+      // Object — only present when at least one toggle has been touched
+      // by the user (the form helper writes empty object otherwise).
+      categoryShares:  (typeof _readCategorySharesFromForm === 'function')
+                       ? _readCategorySharesFromForm()
+                       : {},
     };
   }
 
@@ -11597,6 +11865,11 @@ I return to myself easily"></textarea>
     // false roll into "off" so the user has to opt back in deliberately.
     const shareAll = $('pfShareAll');
     if (shareAll) shareAll.checked = (p.shareAge !== false) && (p.shareAppearance !== false) && (p.shareGoals !== false);
+    // S2 — Restore category-scope share toggles to the form. Defaults
+    // are true (shared) when the persisted value is missing.
+    if (typeof _applyCategorySharesToForm === 'function') {
+      try { _applyCategorySharesToForm(p); } catch {}
+    }
     const nameEl = $('sidebarDisplayName');
     // FIREWALL: app-domain sidebar greeting reads ONLY from profile (the
     // user's personal hypnosis identity). Never falls back to cloudUser
@@ -11739,6 +12012,80 @@ I return to myself easily"></textarea>
     return map;
   })();
 
+  // ── Cluster S1 — Schema-driven derivation helper ────────────────────
+  // Reshape the flat profile through PROFILE_FIELD_SCHEMA into a grouped
+  // shape. Read-only — does NOT mutate. Each category gets its values
+  // plus a `_meta` block with the share-toggle state and field count.
+  // Future code can read by category without re-implementing the schema
+  // walk; current callers stay on the flat shape.
+  function getProfileGrouped(profile = null) {
+    const p = profile || (typeof getProfile === 'function' ? getProfile() : {});
+    const grouped = {};
+    for (const [catKey, cat] of Object.entries(PROFILE_FIELD_SCHEMA)) {
+      const values = {};
+      let nonEmptyCount = 0;
+      for (const f of cat.fields) {
+        const v = p[f.key];
+        values[f.key] = v;
+        if (v !== '' && v != null) nonEmptyCount++;
+      }
+      grouped[catKey] = {
+        label: cat.label,
+        values,
+        _meta: {
+          fieldCount: cat.fields.length,
+          nonEmptyCount,
+          shared: _isCategoryShared(catKey, p),
+        },
+      };
+    }
+    return grouped;
+  }
+
+  // ── Cluster S2 — Category-scope share toggles ───────────────────────
+  // Per-category opt-out for what the AI sees. Existing per-field toggles
+  // (shareAge, shareAppearance, shareGoals) remain and continue to work;
+  // these new category toggles are an OR-gate above them: a category set
+  // to "don't share" hides ALL its fields from getProfileContext, even
+  // ones whose per-field toggle is on.
+  //
+  // Defaults: all categories shared (true) — matches existing behavior
+  // for users who never touch the toggles. Toggles persist via the
+  // profile object (as `categoryShares: { practiceContext: true, ... }`).
+  // Identity is always shared (no toggle) since name/pronouns/about gate
+  // through their own per-field flags.
+  const _CATEGORY_SHARE_KEYS = [
+    'practiceContext', 'lifeContext', 'style', 'susceptibility', 'anchors',
+  ];
+
+  function _isCategoryShared(catKey, profile = null) {
+    if (catKey === 'identity') return true; // identity uses per-field flags
+    if (!_CATEGORY_SHARE_KEYS.includes(catKey)) return true;
+    const p = profile || (typeof getProfile === 'function' ? getProfile() : {});
+    const cs = p.categoryShares || {};
+    // Default true (shared) when unset — matches behavior before this feature.
+    return cs[catKey] !== false;
+  }
+
+  /** Read the category-share form values into an object for getProfile(). */
+  function _readCategorySharesFromForm() {
+    const out = {};
+    for (const k of _CATEGORY_SHARE_KEYS) {
+      const cb = $('pfCatShare_' + k);
+      if (cb) out[k] = !!cb.checked;
+    }
+    return out;
+  }
+
+  /** Apply persisted category-share values back to the form. */
+  function _applyCategorySharesToForm(p) {
+    const cs = (p && typeof p.categoryShares === 'object') ? p.categoryShares : {};
+    for (const k of _CATEGORY_SHARE_KEYS) {
+      const cb = $('pfCatShare_' + k);
+      if (cb) cb.checked = cs[k] !== false; // default true
+    }
+  }
+
   function initDiffBouncers() {
     // Text/CSV field bouncers — one per TRACKED_FIELD
     TRACKED_FIELDS.forEach(({ id, type }) => {
@@ -11771,6 +12118,57 @@ I return to myself easily"></textarea>
     // unified renderTimeline.
     document.getElementById('sessionHistoryDetails')?.addEventListener('toggle', e => {
       if (e.target.open) renderChangeLog();
+    });
+
+    // B5 — Director audit panel wiring. Lazy-renders on open.
+    document.getElementById('directorAuditDetails')?.addEventListener('toggle', e => {
+      if (e.target.open) {
+        try { renderDirectorAuditPanel(); } catch (err) { console.warn('[director audit render]', err); }
+      }
+    });
+    // Filter chip clicks. Event delegation on the chip row so we don't
+    // wire each chip individually.
+    document.querySelectorAll('#directorAuditDetails .audit-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const f = chip.dataset.auditFilter || 'all';
+        _directorAuditFilter = f;
+        document.querySelectorAll('#directorAuditDetails .audit-chip').forEach(c => c.classList.toggle('active', c === chip));
+        renderDirectorAuditPanel().catch(() => {});
+      });
+    });
+    // B6 — Copy-JSON export. Best-effort clipboard write; falls back to
+    // a temporary textarea on browsers without writeText.
+    $('directorAuditExportBtn')?.addEventListener('click', async () => {
+      try {
+        const log = await _loadDirectorAudit();
+        const json = JSON.stringify(log, null, 2);
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(json);
+          notify.success(`Director audit copied to clipboard (${log.length} entries).`);
+        } else {
+          // Fallback for older browsers
+          const ta = document.createElement('textarea');
+          ta.value = json;
+          ta.style.position = 'fixed';
+          ta.style.opacity  = '0';
+          document.body.appendChild(ta);
+          ta.focus(); ta.select();
+          try { document.execCommand('copy'); notify.success(`Director audit copied to clipboard (${log.length} entries).`); }
+          catch { notify.warn('Copy failed — open DevTools and call HNE.directorAudit() instead.'); }
+          ta.remove();
+        }
+      } catch (err) {
+        console.warn('[audit export]', err);
+        notify.warn('Could not copy audit — see console.');
+      }
+    });
+    // Clear log — prompt-confirms first since this is destructive.
+    $('directorAuditClearBtn')?.addEventListener('click', async () => {
+      if (!await confirmAsync('Clear the Director audit log?\n\nEntries are local-only and recreatable; this cannot be undone.')) return;
+      _directorAuditCache = [];
+      try { await idbSet(DIRECTOR_AUDIT_KEY, []); } catch {}
+      renderDirectorAuditPanel().catch(() => {});
+      notify.info('Director audit cleared.');
     });
 
     console.log('[DB] diff bouncers initialized:', Object.keys(diffBouncers).length);
@@ -12124,6 +12522,9 @@ I return to myself easily"></textarea>
     // When/where/how the user practices. These shape micro-decisions:
     // closeout style, environmental framing, body-metaphor alignment,
     // tone for shared spaces. Defaults blank → no instruction added.
+    // S2 — Category gate: skip the whole block when the user has opted
+    // out of sharing this category with the AI.
+    if (_isCategoryShared('practiceContext', p)) {
     if (p.typicalTime) {
       const timeHint = {
         morning:    'Morning practice — closeout can be alerting/energizing; reintroduction primes the day ahead.',
@@ -12166,10 +12567,13 @@ I return to myself easily"></textarea>
       }[p.coPresence];
       if (coHint) parts.push(`Co-presence: ${p.coPresence}. ${coHint}`);
     }
+    } // end practiceContext gate
 
     // ── Round 21 — Current Life Context (time-windowed, high-leverage)
     // The most important new fields for AI session shaping. Ride under
     // shareGoals because they're personal-life-adjacent.
+    // S2 — Category gate: also subject to the lifeContext share toggle.
+    if (_isCategoryShared('lifeContext', p)) {
     if (p.currentThemes && p.shareGoals !== false) {
       parts.push(`Current life themes: ${p.currentThemes}. Hold these as the larger arc the user is moving through; the session can reference them as the backdrop without making them the explicit topic unless intention asks.`);
     }
@@ -12182,8 +12586,11 @@ I return to myself easily"></textarea>
     if (p.healthNotes && p.shareGoals !== false) {
       parts.push(`Physical considerations: ${p.healthNotes}. The script MUST respect these — no instructions that would aggravate the listed conditions. Avoid prolonged holds, sudden movements, or imagery that could trigger discomfort. The app is not a substitute for clinical care; never offer medical advice.`);
     }
+    } // end lifeContext gate
 
     // ── Round 21 — Style Preferences (granular voice tuning) ──────────
+    // S2 — Category gate.
+    if (_isCategoryShared('style', p)) {
     if (p.metaphorDensity) {
       const mdHint = {
         minimal:  'Metaphor density: MINIMAL. Direct instructional language. Few or no metaphors. "Notice your breath" rather than "feel the breath like a tide".',
@@ -12220,8 +12627,12 @@ I return to myself easily"></textarea>
       }[p.spiritualFrame];
       if (sfHint) parts.push(sfHint);
     }
+    } // end style gate
 
     // ── Round 21 — Personal Anchors (pre-existing resources to weave) ─
+    // S2 — Category gate. Anchors are the most resource-intensive
+    // signal; opting out cleanly drops all three.
+    if (_isCategoryShared('anchors', p)) {
     if (p.safePlace && p.shareGoals !== false) {
       parts.push(`SAFE PLACE (use this — do NOT invent a generic one): "${p.safePlace}". Reference it during deepening or when constructing sanctuary imagery. It belongs to the listener, not the script.`);
     }
@@ -12231,6 +12642,7 @@ I return to myself easily"></textarea>
     if (p.resourceMemory && p.shareGoals !== false) {
       parts.push(`RESOURCE MEMORY (a real positive moment they can re-enter): "${p.resourceMemory}". Use during work-phase peak — invoke the felt sense of that moment as the present-tense state. NOT "remember when X happened" but "the same warmth that was in your chest then is here now".`);
     }
+    } // end anchors gate
 
     // Phase 4: inferred sensory modality. Only surfaced when inference is
     // confident (see inferModality). Wrong guidance is worse than silence.
@@ -13347,6 +13759,28 @@ I return to myself easily"></textarea>
     if (adaptive.recoveryMode) rec.length = 'short';
     else if (adaptive.difficulty > 0.7) rec.length = rec.length || 'long';
     else if (adaptive.difficulty < 0.3) rec.length = rec.length || 'short';
+    // B3 — record this recommendation in the audit log so power users
+    // can trace WHY a given session ran the persona/method it did. Fire
+    // and forget — failures don't block the recommendation. Profile is
+    // summarized down to flags-only; raw values stay local-only.
+    try {
+      recordDirectorAudit('recommendation', {
+        rec: { ...rec },
+        adaptiveSnapshot: _summarizeAdaptive(adaptive),
+        analyticsTotals: {
+          completions: analytics?.comp?.total || 0,
+          attempts:    analytics?.comp?.attempts || 0,
+        },
+        profileFlags: profile ? {
+          posture:        profile.posture || null,
+          coPresence:     profile.coPresence || null,
+          spiritualFrame: profile.spiritualFrame || null,
+          susceptibility: profile.susceptibility || '',
+          hasHealthNotes: !!(profile.healthNotes && String(profile.healthNotes).trim()),
+        } : null,
+        historyLen: Array.isArray(history) ? history.length : 0,
+      });
+    } catch {}
     return rec;
   }
 
@@ -30519,6 +30953,14 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
             // reward scale (mood-delta ±1-3 typical), so A/B has
             // comparable but not dominant influence.
             const reward = rating - 3;
+            // B4 — capture before/after weight values for the touched keys
+            // so the audit log shows the actual mutation, not just inputs.
+            const beforeSnap = {
+              p:  preset.persona    ? (adaptive.w?.p?.[preset.persona]    || 0) : null,
+              m:  preset.method     ? (adaptive.w?.m?.[preset.method]     || 0) : null,
+              s:  preset.soundscape ? (adaptive.w?.s?.[preset.soundscape] || 0) : null,
+              ln: preset.length     ? (adaptive.w?.ln?.[preset.length]    || 0) : null,
+            };
             const apply = (map, key) => { if (!key || !map) return; map[key] = (map[key] || 0) + reward; };
             apply(adaptive.w?.p,  preset.persona);
             apply(adaptive.w?.m,  preset.method);
@@ -30527,6 +30969,28 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
             adaptive.ts = Date.now();
             await idbSet(ADAPTIVE_KEY, adaptive);
             sdLog('ab→adaptive', { preset: presetName, rating, reward });
+            // B4 — record the mutation in the audit log.
+            const afterSnap = {
+              p:  preset.persona    ? (adaptive.w?.p?.[preset.persona]    || 0) : null,
+              m:  preset.method     ? (adaptive.w?.m?.[preset.method]     || 0) : null,
+              s:  preset.soundscape ? (adaptive.w?.s?.[preset.soundscape] || 0) : null,
+              ln: preset.length     ? (adaptive.w?.ln?.[preset.length]    || 0) : null,
+            };
+            try {
+              recordDirectorAudit('rating', {
+                preset: presetName,
+                rating,
+                reward,
+                touched: {
+                  persona:    preset.persona    || null,
+                  method:     preset.method     || null,
+                  soundscape: preset.soundscape || null,
+                  length:     preset.length     || null,
+                },
+                before: beforeSnap,
+                after:  afterSnap,
+              });
+            } catch {}
           }
         } catch (e) { console.warn('[ab→adaptive] failed:', e); }
       }
@@ -36612,6 +37076,14 @@ Begin:`;
       const el = $(id); if (el) el.checked = on;
     });
     saveProfile();
+  });
+  // S2 — Category-scope share toggles. Each one fires a profile save so
+  // the selection persists. The local Director never reads these (it
+  // always sees the full profile for safety gating); only AI prompt
+  // assembly via getProfileContext is gated.
+  ['pfCatShare_practiceContext', 'pfCatShare_lifeContext', 'pfCatShare_style',
+   'pfCatShare_susceptibility', 'pfCatShare_anchors'].forEach(id => {
+    $(id)?.addEventListener('change', () => saveProfile());
   });
   // When the age field changes, surfaces sensitive to the relaxation
   // gate refresh in place so the user sees the effect immediately —

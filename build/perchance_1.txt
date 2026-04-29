@@ -1,6 +1,6 @@
 $meta
   title = Advanced Hypnosis Narration Engine
-  description = Full-featured, FREE, science-based, high-quality hypnosis experience generator. Narrated voiceovers, ambient soundscapes, hypnotic visual effects, custom backgrounds (Ai image generation, local files, YouTube videos), mental health tracking tools, adaptive personal profile system, and much more! Useful for relaxation, mindfulness, grounding, meditation, and hypnosis.
+  description = Full-featured, FREE, science-based, high-quality hypnosis experience generator. Narrated voiceovers (free Web Speech default plus optional user-key ElevenLabs / OpenAI premium narration with sentence pre-buffering), ambient soundscapes, hypnotic visual effects, custom backgrounds (AI image generation, local files, YouTube videos), one-tap quick modes (SOS reset, meditation timer, power nap, sleep story), AI-generated personalized scripts, multi-day structured programs, Stanford-HIP-inspired susceptibility brief with longitudinal trajectory, mental health tracking tools, adaptive personal-profile system with category-scope AI sharing controls, profile-aware Director that learns from your A/B ratings, command palette (Cmd-K), session history with filter chips and side-by-side comparison, and much more. All data stays on-device. Useful for relaxation, mindfulness, grounding, meditation, and hypnosis.
   header
     mode = minimal // More room for visuals
   // Dynamic link-preview metadata — MUST be fully self-contained (no root.* refs).
@@ -15,22 +15,44 @@ $meta
       let hash = (inputs.urlHash || "").replace(/^#/, "");
       // Inline label map — CANNOT reference root.METHODS or root.BUILTIN_PERSONAS from here.
       let methodLabel = {
+        // Therapeutic
         "highway":"Highway Induction","spiral":"Spiral Fixation","betty-erickson":"Betty Erickson 3-2-1",
         "staircase":"Staircase Descent","hand-heaviness":"Hand Heaviness","confusion":"Confusion Method",
         "fractionation":"Fractionation","eye-roll":"Eye-Roll (Spiegel)","breath-478":"4-7-8 Breath",
         "progressive":"Progressive Relaxation","ericksonian":"Ericksonian Conversational",
-        "magnetic-hands":"Magnetic Hands","arm-catalepsy":"Arm Catalepsy","pendulum":"Chevreul's Pendulum",
-        "tipsy":"Tipsy Without Drinking","laughter-trigger":"Laughter Trigger",
-        "number-amnesia":"Number Amnesia","thermal-hand":"Hot/Cold Hand","stuck-to-seat":"Stuck to Your Seat",
+        // Demonstration
+        "magnetic-hands":"Magnetic Hands","arm-catalepsy":"Arm Catalepsy","tipsy":"Tipsy Without Drinking",
+        "laughter-trigger":"Laughter Trigger","number-amnesia":"Number Amnesia",
+        "thermal-hand":"Hot/Cold Hand","stuck-to-seat":"Stuck to Your Seat",
+        // Somatic
         "body-awareness":"Body Awareness Scan","floating-body":"Floating Body","glove-anesthesia":"Glove Anesthesia",
-        "double-induction":"Double Induction"
+        "heartbeat-sync":"Heartbeat Synchronization","automatic-writing":"Automatic Writing","pain-dial":"Pain Dial",
+        // Rapid
+        "handshake-interrupt":"Handshake Interrupt","arm-drop":"Arm Drop","magnetic-gaze":"Magnetic Gaze",
+        "dave-elman":"Dave Elman Induction","shock-induction":"Shock Induction",
+        // Advanced
+        "time-distortion":"Time Distortion","regression":"Age Regression",
+        "hallucination-pos":"Positive Hallucination","hallucination-neg":"Negative Hallucination",
+        "somnambulism":"Eyes-Open Somnambulism","double-induction":"Double Induction",
+        "anesthesia-full":"Full-Body Anesthesia",
+        // Stage classics also referenced via legacy share links
+        "pendulum":"Chevreul's Pendulum"
       };
       let intentionLabel = {
-        "trigger":"Post-hypnotic trigger","reframe":"Belief reframe","habit":"Habit change","trance":"Pure trance",
-        "sleep":"Sleep induction","performance":"Peak performance","focus":"Deep focus","creativity":"Creative flow",
-        "pain":"Pain management","energy":"Energy boost","convincer":"Convincer demo","novelty":"Novelty effect",
+        // Foundation
+        "emotional":"Emotional state shift","trigger":"Post-hypnotic trigger","behavior":"Behavior change",
+        "release":"Release / let go","perception":"Perception shift","anchor":"Install an anchor","trance":"Pure trance",
+        // Performance
+        "performance":"Peak performance","focus":"Deep focus","creativity":"Creative flow",
+        // Body
+        "pain":"Pain management","sleep":"Sleep induction","energy":"Energy boost",
+        // Demonstration
+        "convincer":"Convincer demo","novelty":"Novelty effect",
+        // Advanced
         "time":"Time distortion","amnesia":"Suggested amnesia","identity":"Identity exploration",
-        "surrender":"Surrender","conditioning":"Behavioral conditioning"
+        "surrender":"Surrender","conditioning":"Behavioral conditioning",
+        // Legacy values retained for older share links
+        "reframe":"Belief reframe","habit":"Habit change"
       };
       // Config-share URL: /?#cfg=p=...&m=...&i=...&l=...&t=... (URL-encoded intention text)
       if (hash.indexOf("cfg=") === 0) {
@@ -58,14 +80,39 @@ $meta
         };
       }
       // Named-character or named-preset URL: /?char=<name> or /?preset=<name>
+      // Preset ids match the PRESETS array in perchance_2.txt; legacy ids
+      // (quick-stress-reset, deep-sleep, focus-boost, creative-flow) are
+      // kept so older share links don't lose their preview.
       let presetLabel = {
+        // Current preset ids (match PRESETS in perchance_2.txt)
+        "sleep":"Sleep","calm":"Quick Calm","focus":"Deep Focus","demo":"Demo Night",
+        "pain":"Pain Relief","micro":"Micro Reset","anxiety":"Anxiety Relief",
+        "confidence":"Confidence","flow":"Peak Flow","habits":"Habit Change",
+        "creativity":"Creative Flow","energy":"Energy Boost","deep-dive":"Deep Dive",
+        "nightcap":"Nightcap","journey":"Train Journey","temple":"Temple Sit",
+        "method-intro":"Method Intro","skill-build":"Skill Builder",
+        "mission-brief":"Mission Brief","goal-lock":"Goal Lock-in",
+        // Legacy preset ids retained for older share links
         "quick-stress-reset":"Quick Stress Reset","deep-sleep":"Deep Sleep Induction",
-        "focus-boost":"Focus Boost","creative-flow":"Creative Flow","confidence":"Confidence Anchor"
+        "focus-boost":"Focus Boost","creative-flow":"Creative Flow"
+      };
+      // Multi-day program ids — same lookup pattern, separate URL key.
+      let programLabel = {
+        "sleep-7":"7-Day Sleep","anxiety-14":"14-Day Calm",
+        "confidence-10":"10-Day Confidence"
       };
       if (params.preset && presetLabel[params.preset]) {
         return {
           title: presetLabel[params.preset] + " · Hypnosis Narration Engine",
           description: "A curated one-click hypnosis preset. " + defaultDesc,
+          image: defaultImage,
+        };
+      }
+      // Multi-day structured-program share link: /?program=<id>
+      if (params.program && programLabel[params.program]) {
+        return {
+          title: programLabel[params.program] + " · Hypnosis Narration Engine",
+          description: "A multi-day structured program — daily sessions with progressive arc. " + defaultDesc,
           image: defaultImage,
         };
       }
