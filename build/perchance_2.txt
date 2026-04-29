@@ -3498,6 +3498,35 @@ padding: 8px 12px; font-size: 0.75rem;
   .audit-entry .audit-detail { color: var(--text-dim); }
   .audit-entry code { font-size: 0.66rem; color: var(--neon-cyan); }
   .audit-entry strong { color: var(--text); font-weight: 600; }
+  /* Round 24 follow-up — Shared-links library panel entries */
+  .shared-link-entry {
+    padding: 7px 8px; margin-bottom: 4px;
+    border-left: 3px solid rgba(0, 212, 230, 0.45);
+    background: rgba(255, 255, 255, 0.02);
+    font-size: 0.72rem; line-height: 1.45;
+  }
+  .shared-link-entry .shared-link-head {
+    display: flex; justify-content: space-between; gap: 8px;
+    align-items: baseline; margin-bottom: 4px;
+  }
+  .shared-link-entry strong { color: var(--text); font-weight: 600; }
+  .shared-link-entry .shared-link-meta {
+    color: var(--text-faint); font-size: 0.6rem;
+    text-transform: lowercase; letter-spacing: 0.04em; flex: 0 0 auto;
+  }
+  .shared-link-entry .shared-link-status {
+    color: var(--text-dim); font-size: 0.65rem; margin-bottom: 4px;
+  }
+  .shared-link-entry .shared-link-actions {
+    display: flex; gap: 8px;
+  }
+  .shared-link-entry .btn-link {
+    background: none; border: none; color: var(--accent);
+    font-size: 0.66rem; padding: 0; cursor: pointer;
+    font-family: inherit; letter-spacing: 0.04em;
+  }
+  .shared-link-entry .btn-link:hover { text-decoration: underline; }
+  .shared-link-entry .btn-link.revoke { color: #d46a6a; }
   .tl-entry {
     padding: 6px 8px; margin-bottom: 5px;
     border-left: 3px solid var(--glass-border);
@@ -4569,6 +4598,16 @@ padding: 6px 10px; font-size: 1.1rem;
             <button class="btn secondary" id="directorAuditClearBtn" type="button" style="font-size:0.62rem;padding:3px 8px">clear</button>
           </div>
           <div id="directorAuditList" style="max-height:340px;overflow-y:auto;font-size:0.7rem"></div>
+        </details>
+        <!-- Round 24 follow-up — Shared-links library. IDB-backed list
+             of upload-shares the user has created, with revoke buttons
+             that hit the deletionUrl. Only upload-shares appear here;
+             hash-shares (#cfg=, #persona=) don't exist on the upload
+             server, can't be revoked, and never expire. -->
+        <details id="sharedLinksDetails">
+          <summary>my shared links</summary>
+          <div class="sublabel" style="font-size:0.6rem;margin:6px 0 8px;color:var(--text-faint)">Links you've created via upload (?data=…). Hash-shares (#cfg=, #persona=) aren't listed because they don't exist on a server. Revoke is available within 3 days of upload.</div>
+          <div id="sharedLinksList" style="max-height:340px;overflow-y:auto;font-size:0.7rem"></div>
         </details>
         <details>
           <summary>backup</summary>
@@ -7822,6 +7861,151 @@ I return to myself easily"></textarea>
     };
   }
 
+  // ====================================================================
+  // SHARED LINKS LIBRARY (Round 24 follow-up)
+  // ====================================================================
+  // IDB-backed ring buffer of upload-share metadata. Captures every
+  // successful uploadPlugin share so the user can:
+  //   • see what they've shared and where each share resolves,
+  //   • revoke shares via deletionUrl while it's still valid (3-day window),
+  //   • see when each share expires.
+  //
+  // Hash-shares (#cfg= and #persona=) are NOT recorded — those don't
+  // exist on the upload server, can't be revoked, and never expire.
+  // Only upload-shares need this surface.
+  // ====================================================================
+  const SHARED_LINKS_KEY = 'hne_shared_links_v1';
+  const SHARED_LINKS_CAP = 100;
+  let _sharedLinksCache = null;
+
+  async function _loadSharedLinks() {
+    if (Array.isArray(_sharedLinksCache)) return _sharedLinksCache;
+    try {
+      const raw = await idbGet(SHARED_LINKS_KEY);
+      _sharedLinksCache = Array.isArray(raw) ? raw : [];
+    } catch { _sharedLinksCache = []; }
+    return _sharedLinksCache;
+  }
+  async function _saveSharedLinks() {
+    if (!Array.isArray(_sharedLinksCache)) return;
+    try { await idbSet(SHARED_LINKS_KEY, _sharedLinksCache); } catch {}
+  }
+
+  /** Record a successful upload-share into the IDB log. Newest-first. */
+  async function _recordSharedLink(meta) {
+    if (!meta || !meta.url) return;
+    const log = await _loadSharedLinks();
+    log.unshift({
+      id: 'sh_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      ...meta,
+      revoked: false,
+      revokedAt: null,
+    });
+    if (log.length > SHARED_LINKS_CAP) log.length = SHARED_LINKS_CAP;
+    await _saveSharedLinks();
+    // Refresh the visible panel if it's open
+    if (typeof renderSharedLinksPanel === 'function') {
+      try { renderSharedLinksPanel(); } catch {}
+    }
+  }
+
+  /** Revoke a shared link via its deletionUrl. Marks the entry revoked
+   *  in the local log regardless of server response (the server may
+   *  return success even for already-deleted files). */
+  async function _revokeSharedLink(id) {
+    const log = await _loadSharedLinks();
+    const entry = log.find(e => e.id === id);
+    if (!entry) return false;
+    if (entry.revoked) return true; // already done
+    if (!entry.deletionUrl) {
+      notify.warn('No deletion URL stored for this share — can\'t revoke.');
+      return false;
+    }
+    try {
+      const res = await fetch(entry.deletionUrl).then(r => r.json()).catch(() => null);
+      // Always mark revoked locally — server may cache and the caller
+      // shouldn't be confused into re-trying. The entry stays in the
+      // log so the user can see it was revoked.
+      entry.revoked = true;
+      entry.revokedAt = Date.now();
+      entry.revokeServerResponse = res;
+      await _saveSharedLinks();
+      if (res && res.success) {
+        notify.success('Share link revoked.');
+      } else {
+        notify.info('Marked revoked locally. The server may need up to 24h to fully drop the file.');
+      }
+      try { renderSharedLinksPanel(); } catch {}
+      return true;
+    } catch (e) {
+      console.warn('[shared-links] revoke failed:', e);
+      notify.warn('Revoke request failed — see console.');
+      return false;
+    }
+  }
+
+  /** Render the shared-links sidebar panel. Lazy — early-out when closed. */
+  async function renderSharedLinksPanel() {
+    const list = $('sharedLinksList');
+    if (!list) return;
+    const det = $('sharedLinksDetails');
+    if (det && !det.open) return;
+    const log = await _loadSharedLinks();
+    const now = Date.now();
+    if (!log.length) {
+      list.innerHTML = `<div class="library-empty" style="font-size:0.7rem">no upload-shares yet — links you share via persona / config upload appear here so you can revoke them within 3 days</div>`;
+      return;
+    }
+    list.innerHTML = log.slice(0, 30).map(e => {
+      const ageHours = (now - (e.createdAt || 0)) / 36e5;
+      const expiresIn = e.expiresAt ? ((e.expiresAt - now) / 86400000) : null;
+      const revokeWindowOpen = ageHours < 72; // 3-day server window
+      const expiryStatus = e.revoked
+        ? '<span style="color:#a47b3a">revoked</span>'
+        : (expiresIn != null && expiresIn < 0)
+          ? '<span style="color:#a47b3a">expired</span>'
+          : (expiresIn != null)
+            ? `expires in ${expiresIn < 1 ? Math.round(expiresIn * 24) + 'h' : Math.round(expiresIn) + 'd'}`
+            : 'permanent';
+      const created = new Date(e.createdAt || 0).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const sizeStr = e.sizeBytes ? ` · ${Math.round(e.sizeBytes / 1024)}kb` : '';
+      const canRevoke = !e.revoked && revokeWindowOpen && e.deletionUrl;
+      return `
+        <div class="shared-link-entry" data-id="${escapeHtml(e.id)}">
+          <div class="shared-link-head">
+            <strong>${escapeHtml(e.name || e.kind || 'share')}</strong>
+            <span class="shared-link-meta">${escapeHtml(e.kind)}${sizeStr} · ${escapeHtml(created)}</span>
+          </div>
+          <div class="shared-link-status">${expiryStatus}</div>
+          <div class="shared-link-actions">
+            <button class="btn-link" data-action="copy" data-id="${escapeHtml(e.id)}" type="button">copy link</button>
+            ${canRevoke
+              ? `<button class="btn-link revoke" data-action="revoke" data-id="${escapeHtml(e.id)}" type="button">revoke</button>`
+              : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+    // Wire actions via event delegation
+    list.querySelectorAll('button[data-action]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const action = btn.dataset.action;
+        const entry = (await _loadSharedLinks()).find(e => e.id === id);
+        if (!entry) return;
+        if (action === 'copy') {
+          try {
+            await navigator.clipboard.writeText(entry.shareUrl || entry.url);
+            notify.success('Link copied.');
+          } catch { notify.warn('Clipboard write failed.'); }
+        } else if (action === 'revoke') {
+          const ok = await confirmAsync('Revoke this share link? Anyone with the link will get a 404 (within ~24h).');
+          if (ok) await _revokeSharedLink(id);
+        }
+      });
+    });
+  }
+
   /** B5 — render the audit panel. Honors state._directorAuditFilter. */
   let _directorAuditFilter = 'all';
   async function renderDirectorAuditPanel() {
@@ -7941,6 +8125,24 @@ I return to myself easily"></textarea>
                 preset: e.preset, rating: e.rating, reward: e.reward,
                 touched: e.touched,
               } : {}),
+            }));
+          } catch { return []; }
+        },
+        // Round 24 follow-up — Shared-links accessor. Read-only summary
+        // of upload-shares the user has created, with their deletion
+        // URLs (within the 3-day server window) and expiry timestamps.
+        sharedLinks: async (n = 20) => {
+          try {
+            const log = await _loadSharedLinks();
+            return (log || []).slice(0, n).map(e => ({
+              id: e.id,
+              kind: e.kind,
+              name: e.name,
+              shareUrl: e.shareUrl,
+              created: new Date(e.createdAt).toISOString(),
+              expires: e.expiresAt ? new Date(e.expiresAt).toISOString() : null,
+              revoked: !!e.revoked,
+              hasDeletionUrl: !!e.deletionUrl,
             }));
           } catch { return []; }
         },
@@ -10703,6 +10905,23 @@ I return to myself easily"></textarea>
   /**
    * Upload a JSON payload via Perchance uploadPlugin and return a share URL.
    * Handles the `disallowed_content` error per Perchance skill guidance.
+   *
+   * Round 24 follow-up — `expires` option per upload-plugin docs:
+   *   "If you set the expires parameter to 24 hours or less, then the
+   *    maximum file size and allowed daily quota are increased by 400x.
+   *    And on the other extreme, if the expires parameter is 1 year,
+   *    then you'll get a 20x boost to the limits."
+   * For session/persona share-links, permanent retention has little
+   * real value (a friend opens the link within hours/days). A 30-day
+   * default trades a tiny risk of expiry against a meaningful quota
+   * boost. Callers can override via opts.expires (epoch ms) or pass
+   * opts.permanent: true to opt out of expiry entirely.
+   *
+   * @param {Object} payload  JSON-serializable share content
+   * @param {Object} [opts]
+   * @param {string} [opts.fileName]   Filename stem; defaults to 'share'
+   * @param {number} [opts.expires]    Custom expiry epoch ms (default: now + 30 days)
+   * @param {boolean} [opts.permanent] If true, omit expires (request permanent retention)
    * @returns {Promise<string|null>} Share URL or null on failure
    */
   async function createShareUpload(payload, opts = {}) {
@@ -10717,11 +10936,42 @@ I return to myself easily"></textarea>
       } catch { blob = new Blob([json], { type: 'application/json' }); }
       const fileName = (opts.fileName || 'share') + '.' + Date.now() + '.gz';
       const file = new File([blob], fileName, { type: 'application/gzip' });
-      // Per Perchance skill: uploadPlugin is called directly with a blob/file and returns { url, size, error }
-      const uploaded = await root.uploadPlugin(file);
+      // Round 24 follow-up — temporary-file expires option for quota
+      // headroom. 30-day default; explicit override or opts.permanent:true
+      // to skip expiry. The plugin reads this off the second positional
+      // arg's `expires` field (see upload-plugin source line 126).
+      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+      const uploadOpts = {};
+      if (!opts.permanent) {
+        uploadOpts.expires = Number.isFinite(opts.expires)
+          ? opts.expires
+          : Date.now() + THIRTY_DAYS_MS;
+      }
+      // Per Perchance skill: uploadPlugin is called directly with a blob/file and returns { url, size, error, deletionUrl }
+      const uploaded = await root.uploadPlugin(file, uploadOpts);
       if (!uploaded || !uploaded.url || uploaded.error) {
         throw new Error('Upload failed: ' + (uploaded?.error || 'no url returned'));
       }
+      // Round 24 follow-up — Capture this share into the "my shared
+      // links" IDB ring buffer so the user can manage and revoke their
+      // own shares from a sidebar panel. See _recordSharedLink below.
+      try {
+        const meta = {
+          kind: opts.fileName || 'share',
+          name: payload?.persona?.name || payload?.config?.intentionInput?.slice(0, 60) || opts.label || '',
+          url: uploaded.url,
+          shareUrl: `${window.location.origin}${window.location.pathname}?data=${encodeURIComponent(uploaded.url.replace(/^https?:\/\/user\.uploads\.dev\/file\//, ''))}`,
+          deletionUrl: uploaded.deletionUrl || null,
+          createdAt: Date.now(),
+          expiresAt: uploadOpts.expires || null,
+          sizeBytes: uploaded.size || null,
+        };
+        await _recordSharedLink(meta);
+        if (state._debug?.verbose) {
+          console.debug('[share] upload succeeded — deletionUrl:', uploaded.deletionUrl,
+            '· expires:', uploadOpts.expires ? new Date(uploadOpts.expires).toISOString() : 'never');
+        }
+      } catch (e) { console.warn('[share] failed to record metadata:', e); }
       // url is like "https://user.uploads.dev/file/<filename>" — extract the filename for the share URL
       const uploadedFileName = uploaded.url.replace(/^https?:\/\/user\.uploads\.dev\/file\//, '');
       const base = window.location.origin + window.location.pathname;
@@ -10756,12 +11006,32 @@ I return to myself easily"></textarea>
   /** Present a share-URL modal with copy button. */
   async function showShareLinkModal(url, title) {
     if (!url) { notify.warn('Could not create share link.'); return; }
+    // Round 24 follow-up — distinguish three URL shapes for the right note:
+    //   • ?data=…       — upload-share, 30-day expiry
+    //   • #cfg=…         — config hash-share, never expires (URL is the data)
+    //   • #persona=…    — persona hash-share, never expires (URL is the data)
+    const isUploadShare = /\?data=/.test(url);
+    const isHashShare   = /#(cfg|persona)=/.test(url);
+    let footerNote = '';
+    if (isUploadShare) {
+      footerNote =
+        '<div style="font-size:0.7rem; color:var(--text-faint); line-height:1.5; margin-top:6px">' +
+        '<strong style="color:var(--text-dim)">Note:</strong> Upload-based share links expire after 30 days. ' +
+        'For permanent sharing, send a config-only link (?#cfg=…) or use cloud upload from your account.' +
+        '</div>';
+    } else if (isHashShare) {
+      footerNote =
+        '<div style="font-size:0.7rem; color:var(--text-faint); line-height:1.5; margin-top:6px">' +
+        '<strong style="color:var(--text-dim)">Permanent:</strong> The data is encoded in the link itself, so it never expires and works on any HNE deployment — no upload server needed.' +
+        '</div>';
+    }
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop visible';
     backdrop.innerHTML = `<div class="modal" style="max-width:520px">
       <h2>${escapeHtml(title || 'Share link')}</h2>
       <div style="font-size:0.82rem; color:var(--text-dim); line-height:1.55; margin-bottom:12px">
         Anyone with this link can add this to their own library.
+        ${footerNote}
       </div>
       <input type="text" readonly id="_shareUrlInput" value="${escapeHtml(url)}"
         style="width:100%;padding:10px;background:var(--bg-softer);border:1px solid var(--glass-border);color:var(--text);font-family:monospace;font-size:0.78rem">
@@ -10859,6 +11129,101 @@ I return to myself easily"></textarea>
   }
 
   /** Share the persona currently open in the editor. */
+  /**
+   * Round 24 follow-up — Hash-based share fallback for personas (and
+   * potentially other content). Encodes a JSON payload as gzip + base64
+   * into the URL fragment, sidestepping the upload-plugin server entirely.
+   *
+   * Why we need this: the Perchance upload-plugin's API key is locked to
+   * specific generator slugs server-side. Forks and dev/preview deploys
+   * (hex-named subdomains) hit "Forbidden: API Key locked to specific
+   * domains" on every upload attempt. A hash-share URL doesn't talk to
+   * the upload server at all — the data IS the URL — so it works on any
+   * deployment, forked or canonical.
+   *
+   * URL length budget: most browsers / clients reliably accept URLs up
+   * to ~2048 chars. We target ~1900 chars total to leave room for
+   * messaging contexts that strip trailing whitespace or add prefixes
+   * (Slack, Discord embeds, etc.). Origin + path is typically 60-100
+   * chars, leaving ~1800 chars for the encoded payload. Gzip compresses
+   * persona JSON by 50-70%, base64 expands by 33%, net result: most
+   * personas with systemPrompt up to ~3000 chars fit comfortably.
+   *
+   * @returns {Promise<string|null>} Hash-share URL or null if too large
+   */
+  const HASH_SHARE_URL_BUDGET = 1900; // chars total
+  async function _buildHashShareUrl(payload, kind) {
+    try {
+      const json = JSON.stringify(payload);
+      // Gzip compress
+      const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+      const compressed = await new Response(stream).arrayBuffer();
+      // Base64 encode (URL-safe variant: + → -, / → _, no padding)
+      const bytes = new Uint8Array(compressed);
+      let bin = '';
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      const b64 = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const base = window.location.origin + window.location.pathname;
+      const url = `${base}#${kind}=${b64}`;
+      if (url.length > HASH_SHARE_URL_BUDGET) {
+        console.debug('[hash-share] payload too large for URL fragment:', url.length, 'chars');
+        return null;
+      }
+      return url;
+    } catch (e) {
+      console.warn('[hash-share] encoding failed:', e);
+      return null;
+    }
+  }
+
+  /** Decode a hash-share URL fragment back to a payload object.
+   *  Inverse of `_buildHashShareUrl`. Used by the import handler. */
+  async function _decodeHashShareFragment(b64) {
+    try {
+      // Reverse URL-safe base64
+      let std = b64.replace(/-/g, '+').replace(/_/g, '/');
+      while (std.length % 4) std += '=';
+      const bin = atob(std);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+      const json = await new Response(stream).text();
+      return JSON.parse(json);
+    } catch (e) {
+      console.warn('[hash-share] decode failed:', e);
+      return null;
+    }
+  }
+
+  /** Always-works fallback: copy a JSON dump to the clipboard so the
+   *  user can paste it into a message, file, or chat. Used when both
+   *  hash-share (too big) and uploadPlugin (server rejected) fail. */
+  async function _copyShareJsonToClipboard(payload, kind) {
+    const json = JSON.stringify(payload, null, 2);
+    try {
+      await navigator.clipboard.writeText(json);
+      notify.success(`${kind} JSON copied to clipboard. Send it directly — the receiver can import via the menu's "import from JSON" path.`);
+      return true;
+    } catch (e) {
+      // Last-resort fallback: open a textarea modal so user can manually copy
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop visible';
+      backdrop.innerHTML = `<div class="modal" style="max-width:560px">
+        <h2>Copy ${escapeHtml(kind)} JSON</h2>
+        <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:8px">
+          Clipboard write was blocked by the browser. Select the text below and copy manually (Ctrl/Cmd+A → Ctrl/Cmd+C).
+        </div>
+        <textarea readonly style="width:100%;min-height:200px;padding:8px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-family:monospace;font-size:0.74rem">${escapeHtml(json)}</textarea>
+        <div class="modal-actions"><button class="btn" id="_copyJsonClose">close</button></div>
+      </div>`;
+      document.body.appendChild(backdrop);
+      backdrop.querySelector('textarea').select();
+      backdrop.querySelector('#_copyJsonClose').addEventListener('click', () => backdrop.remove());
+      backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove(); });
+      return false;
+    }
+  }
+
   async function shareCurrentPersona() {
     const id = state.editingPersonaId;
     const name = $('personaFormName')?.value?.trim();
@@ -10872,14 +11237,36 @@ I return to myself easily"></textarea>
     };
     setLoading('personaShareBtn', true);
     try {
-      const url = await createShareUpload(payload, { fileName: 'persona' });
-      if (url) { await showShareLinkModal(url, 'Share persona'); await markFeatureUsed(FEAT.SHARE); }
-      else if (typeof root === 'undefined' || !root.uploadPlugin) {
-        // Only show the "plugin not loaded" hint when the plugin is genuinely
-        // missing — otherwise createShareUpload's catch block has already
-        // surfaced a more specific error (domain allowlist, content filter,
-        // size limit, etc.) and we'd just be talking over it.
-        notify.warn('Share link unavailable — uploadPlugin may not be loaded yet. Try again in a moment.');
+      // Round 24 follow-up — Cascade: hash-share (no server) → upload
+      // (might 403 on forks) → clipboard JSON (always works). The first
+      // path that succeeds wins. Hash-share is preferred because it
+      // never expires, never depends on Perchance's upload server, and
+      // works on any deployment — including forked / preview domains
+      // where the upload-plugin's API key isn't allowlisted.
+      const hashUrl = await _buildHashShareUrl(payload, 'persona');
+      if (hashUrl) {
+        await showShareLinkModal(hashUrl, 'Share persona');
+        await markFeatureUsed(FEAT.SHARE);
+        return;
+      }
+      // Persona too large for URL fragment — try server upload.
+      const uploadUrl = await createShareUpload(payload, { fileName: 'persona' });
+      if (uploadUrl) {
+        await showShareLinkModal(uploadUrl, 'Share persona');
+        await markFeatureUsed(FEAT.SHARE);
+        return;
+      }
+      // Both link paths failed — offer the always-works clipboard JSON.
+      // createShareUpload's catch block already surfaced a specific error
+      // toast (domain allowlist / quota / etc.), so we just complement
+      // it with the clipboard escape hatch.
+      const accepted = await confirmAsync(
+        'Couldn\'t create a share link for this persona — the link would be too long, and the upload server rejected the request.\n\n' +
+        'Would you like to copy the persona JSON to your clipboard instead? Anyone with that JSON can import it into their own HNE library.'
+      );
+      if (accepted) {
+        await _copyShareJsonToClipboard(payload, 'Persona');
+        await markFeatureUsed(FEAT.SHARE);
       }
     } finally { setLoading('personaShareBtn', false, '🔗 share'); }
   }
@@ -12296,6 +12683,12 @@ I return to myself easily"></textarea>
     document.getElementById('directorAuditDetails')?.addEventListener('toggle', e => {
       if (e.target.open) {
         try { renderDirectorAuditPanel(); } catch (err) { console.warn('[director audit render]', err); }
+      }
+    });
+    // Round 24 follow-up — Shared links panel. Same lazy-render pattern.
+    document.getElementById('sharedLinksDetails')?.addEventListener('toggle', e => {
+      if (e.target.open) {
+        try { renderSharedLinksPanel(); } catch (err) { console.warn('[shared links render]', err); }
       }
     });
     // Filter chip clicks. Event delegation on the chip row so we don't
@@ -25977,7 +26370,50 @@ Start immediately:`;
       }
     } catch (e) { console.warn('data= param handling failed:', e); }
 
+    // Round 24 follow-up — Hash-share fallback for personas. Encoded
+    // payloads in the URL fragment work on any deployment (no upload
+    // server roundtrip), so users on forked / preview domains can
+    // exchange personas without hitting the upload-plugin allowlist.
+    // Format: #persona=<base64-urlsafe-gzipped-json>
     const hash = window.location.hash;
+    if (hash.startsWith('#persona=')) {
+      try {
+        const b64 = hash.slice('#persona='.length);
+        const payload = await _decodeHashShareFragment(b64);
+        if (payload && payload.kind === 'custom-persona' && payload.persona) {
+          // Same age-gate + dedupe logic as the upload-share path so the
+          // user gets a consistent review experience regardless of how
+          // the persona arrived.
+          const confirmed = await confirmAsync(
+            `Someone shared a custom persona with you:\n\n"${payload.persona.name}"\n\n${payload.persona.tagline || ''}\n\nThis is user-generated content — review the voice instruction before using. Shared personas may describe sensitive themes. If you are under 18, click cancel.`,
+            { okText: 'review & add', cancelText: 'cancel' }
+          );
+          if (confirmed) {
+            const existing = loadCustomPersonas();
+            const dup = existing.find(p => p.id === payload.persona.id);
+            if (dup) {
+              const replace = await confirmAsync(`A persona with ID "${payload.persona.id}" already exists. Replace it?`, { okText: 'replace', cancelText: 'keep existing' });
+              if (replace) {
+                saveCustomPersonas(existing.filter(p => p.id !== payload.persona.id).concat([payload.persona]));
+                state.personas = [...BUILTIN_PERSONAS, ...loadCustomPersonas()];
+                renderPersonaGrid?.(); renderPersonaDetail?.();
+                notify.success(`Replaced persona "${payload.persona.name}".`);
+              }
+            } else {
+              saveCustomPersonas([...existing, payload.persona]);
+              state.personas = [...BUILTIN_PERSONAS, ...loadCustomPersonas()];
+              renderPersonaGrid?.(); renderPersonaDetail?.();
+              notify.success(`Added persona "${payload.persona.name}" to your library.`);
+            }
+            await markFeatureUsed?.(FEAT.SHARE);
+          }
+          // Clean URL whether they accepted or canceled — don't re-prompt on reload
+          history.replaceState(null, '', window.location.pathname + window.location.search);
+          return;
+        }
+      } catch (e) { console.warn('persona= hash handling failed:', e); }
+    }
+
     if (!hash.startsWith('#cfg=')) return;
     const paramStr = hash.slice(5);
     try {

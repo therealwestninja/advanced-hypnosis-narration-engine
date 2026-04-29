@@ -69,6 +69,18 @@ $meta
           image: defaultImage,
         };
       }
+      // Round 24 follow-up — Persona hash-share: /?#persona=<base64-gzipped-json>
+      // The encoded persona payload is opaque from $meta.dynamic (no
+      // decompression here), so we show a generic preview and let the
+      // client render details on load. Same shape as the uploaded
+      // payload case below — the link still works either way.
+      if (hash.indexOf("persona=") === 0) {
+        return {
+          title: "Shared Custom Guide (Persona)",
+          description: "Someone shared a custom hypnosis guide with you. Open to review the voice instruction and add it to your library.",
+          image: defaultImage,
+        };
+      }
       // Uploaded-payload share: /?data=<fileId>.gz (handles both full configs and custom personas).
       // Can't fetch the payload from $meta.dynamic (no network in this context), so show a generic
       // "shared content" preview and let the client render details on load.
