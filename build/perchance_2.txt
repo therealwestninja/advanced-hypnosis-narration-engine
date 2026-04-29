@@ -1720,6 +1720,14 @@ min-width: 28px; min-height: 0;
   /* ============ SESSION SCREEN ============ */
   #session-screen { text-align: center; padding-top: 8px; position: relative; }
   .bg-layer { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  /* When a 3D flip transition is running, the layer gets perspective so
+     the rotateX / rotateY transforms on bg-img elements actually look
+     like cards flipping rather than instant snaps. The class is added
+     at the start of the flip transition and removed on cleanup; an
+     interrupted flip (e.g. session end mid-transition) is handled by
+     bgEngine.cleanupAfterStop() which strips this class defensively. */
+  .bg-layer.bg-flipping { perspective: 1500px; }
+  .bg-layer.bg-flipping .bg-img { transform-style: preserve-3d; }
   .bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 3s ease-in-out; will-change: opacity, transform, filter, clip-path; }
   .bg-img.active { opacity: var(--bg-img-opacity, 0.35); }
   .bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: var(--bg-img-opacity, 0.35); }
@@ -2930,10 +2938,11 @@ padding: 8px 12px; font-size: 0.75rem;
   }
   .segmented-small button.active:hover { color: #000; }
   .bg-transition-grid {
-    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 5px; margin-top: 6px;
   }
-  @media (max-width: 560px) { .bg-transition-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 720px) { .bg-transition-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 500px) { .bg-transition-grid { grid-template-columns: repeat(2, 1fr); } }
   .bg-transition-grid label {
     display: flex; align-items: center; gap: 6px;
     padding: 5px 8px; background: var(--bg);
@@ -2958,6 +2967,36 @@ padding: 8px 12px; font-size: 0.75rem;
     letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
   }
   .bg-transition-bulk button:hover { color: var(--neon-amber); border-color: var(--neon-amber); }
+
+  /* ═══ BG soft-motion row — toggle + strength ═══
+     Sits below the transition grid; applies a slow drift/zoom to the
+     live BG between transitions so the image feels alive instead of
+     frozen. Especially useful for hypnosis sessions where a static
+     ambient image starts to read as "stuck" after 30+ seconds. */
+  .bg-soft-motion-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 10px; flex-wrap: wrap;
+  }
+  .bg-soft-motion-row label.cb-label {
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; flex: 1; min-width: 220px;
+    font-size: 0.78rem; color: var(--text-dim);
+    user-select: none;
+  }
+  .bg-soft-motion-row input[type="checkbox"] {
+    width: 14px; height: 14px; accent-color: var(--neon-amber);
+    cursor: pointer; margin: 0; flex-shrink: 0;
+  }
+  .bg-soft-motion-row .hint-inline {
+    color: var(--text-faint); font-style: italic;
+    font-size: 0.74em; letter-spacing: 0; text-transform: none;
+  }
+  .bg-soft-motion-row select {
+    width: auto; flex: 0 0 auto;
+    background: var(--bg); border: 1px solid var(--glass-border);
+    color: var(--text-dim); font-family: var(--font-body);
+    font-size: 0.7rem; padding: 4px 10px; cursor: pointer;
+  }
 
   .sidebar-toggle {
     display: none; position: fixed; top: 12px; left: 12px; z-index: 100;
@@ -4446,6 +4485,22 @@ I return to myself easily"></textarea>
               <button type="button" id="bgTxAll">All</button>
               <button type="button" id="bgTxNone">None</button>
               <button type="button" id="bgTxInvert">Invert</button>
+            </div>
+
+            <!-- Soft movements — slow drift/zoom applied to the live BG
+                 between transitions. Skipped when the running transition
+                 is `kenburns` (it does soft motion natively over the full
+                 rotation interval). -->
+            <div class="bg-soft-motion-row">
+              <label class="cb-label" for="bgSoftMotionToggle">
+                <input type="checkbox" id="bgSoftMotionToggle">
+                <span>Soft movements <span class="hint-inline">slow drift &amp; gentle zoom while each image is shown</span></span>
+              </label>
+              <select id="bgSoftMotionStrength" title="motion intensity">
+                <option value="subtle">subtle</option>
+                <option value="medium" selected>medium</option>
+                <option value="strong">strong</option>
+              </select>
             </div>
           </div>
           <div class="sublabel" style="margin-top:10px">Generates up to 4 images in parallel. Cycles through every <span id="bgRotationHint">45</span>s during sessions.</div>
@@ -6518,6 +6573,12 @@ I return to myself easily"></textarea>
     bgTransitionDuration: 3,     // seconds per transition (0.1-6)
     bgPlaybackOrder: 'sequential', // sequential | random
     bgEnabledTransitions: ['crossfade', 'fadeBlack', 'kenburns', 'blur'],
+    // Soft motion — gentle drift/zoom applied to the live BG between
+    // transitions. Off by default so existing user setups aren't
+    // changed; especially useful in long sessions where a static
+    // image starts to read as "stuck" after a while.
+    bgSoftMotion: false,         // boolean
+    bgSoftMotionStrength: 'medium', // subtle | medium | strong
     bgYoutubeUrl: '',
     bgStaticUrl: '',
     bgAutoGen: true,             // continuously generate images in background during session
@@ -9729,6 +9790,8 @@ I return to myself easily"></textarea>
       bgTransitionDuration: state.bgTransitionDuration,
       bgPlaybackOrder: state.bgPlaybackOrder,
       bgEnabledTransitions: state.bgEnabledTransitions,
+      bgSoftMotion: state.bgSoftMotion,
+      bgSoftMotionStrength: state.bgSoftMotionStrength,
       bgYoutubeUrl: state.bgYoutubeUrl,
       bgStaticUrl: state.bgStaticUrl,
       bgAutoGen: state.bgAutoGen,
@@ -10111,6 +10174,14 @@ I return to myself easily"></textarea>
         // Filter against the current registry — keys may have been renamed/removed
         state.bgEnabledTransitions = s.bgEnabledTransitions.filter(k => BG_TRANSITIONS[k]);
         if (typeof buildBgTransitionGrid === 'function') buildBgTransitionGrid();
+      }
+      if (typeof s.bgSoftMotion === 'boolean') {
+        state.bgSoftMotion = s.bgSoftMotion;
+        const cb = $('bgSoftMotionToggle'); if (cb) cb.checked = s.bgSoftMotion;
+      }
+      if (s.bgSoftMotionStrength && ['subtle','medium','strong'].includes(s.bgSoftMotionStrength)) {
+        state.bgSoftMotionStrength = s.bgSoftMotionStrength;
+        const sel = $('bgSoftMotionStrength'); if (sel) sel.value = s.bgSoftMotionStrength;
       }
       if (s.bgYoutubeUrl) { state.bgYoutubeUrl = s.bgYoutubeUrl; const el = $('bgYoutubeUrl'); if (el) el.value = s.bgYoutubeUrl; }
       if (s.bgStaticUrl) { state.bgStaticUrl = s.bgStaticUrl; const el = $('bgUrlInput'); if (el) el.value = s.bgStaticUrl; }
@@ -14754,11 +14825,19 @@ ${messages}
   const BG_ACTIVE_OPACITY = 0.35;
 
   function _bgPrep(oldEl, newEl) {
-    // Reset newEl state so the next transition starts clean
+    // Reset newEl state so the next transition starts clean.
+    // Includes properties the extended transition set touches
+    // (maskImage, transformOrigin, backfaceVisibility) so transition
+    // leakage between swaps is impossible — every run starts from a
+    // known-clean state regardless of what the previous one did.
     newEl.style.transition = 'none';
     newEl.style.transform = '';
     newEl.style.filter = '';
     newEl.style.clipPath = '';
+    newEl.style.maskImage = '';
+    newEl.style.webkitMaskImage = '';
+    newEl.style.transformOrigin = '';
+    newEl.style.backfaceVisibility = '';
     newEl.style.opacity = '0';
     newEl.style.zIndex = '2';
     oldEl.style.zIndex = '1';
@@ -14771,10 +14850,103 @@ ${messages}
         el.style.transform = '';
         el.style.filter = '';
         el.style.clipPath = '';
+        el.style.maskImage = '';
+        el.style.webkitMaskImage = '';
+        el.style.transformOrigin = '';
+        el.style.backfaceVisibility = '';
         el.style.opacity = '0';
         el.classList.remove('active');
       }
     }, delayMs);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // BG soft motion — gentle drift / scale during the idle phase
+  // ══════════════════════════════════════════════════════════════════════
+  // Applied to the LIVE bg-img AFTER its transition completes, for the
+  // remaining rotation interval (rotationSec − transitionDur). Makes
+  // each BG image feel alive instead of frozen between rotations —
+  // particularly important for hypnosis sessions where rotation
+  // intervals are long (default 45s).
+  //
+  // Three strength tiers:
+  //   subtle  — barely perceptible, ≤2% drift, ≤1.03× scale
+  //   medium  — Ken-Burns-equivalent, ≤3% drift, ≤1.07× scale
+  //   strong  — cinematic, ≤5% drift, ≤1.12× scale
+  //
+  // Edge cases handled:
+  //   • Skipped when the running transition is `kenburns` (it does its
+  //     own slow zoom over the full rotation interval — applying ours
+  //     on top would visibly snap mid-zoom).
+  //   • If rotation interval ≤ transition duration, we still run for
+  //     ≥1.5s so short-interval setups don't lose the effect entirely.
+  //   • The next swap's _bgPrep() resets the new slide's transform, so
+  //     soft motion can never leak across rotations.
+  //   • bgEngine maintains a generation counter (_softMotionGen) that's
+  //     bumped on every swap and on session stop — deferred timers
+  //     check it before applying styles, preventing stale fires from
+  //     overriding a newer rotation's transform.
+  const BG_SOFT_MOTION_PROFILES = {
+    subtle: [
+      { from: 'translate(0, 0) scale(1)',          to: 'translate(-1.5%, 0) scale(1.025)' },
+      { from: 'translate(0, 0) scale(1)',          to: 'translate(1.5%, 0) scale(1.025)'  },
+      { from: 'translate(0, 0) scale(1)',          to: 'translate(0, -1.5%) scale(1.025)' },
+      { from: 'translate(0, 0) scale(1)',          to: 'translate(0, 1.5%) scale(1.025)'  },
+      { from: 'translate(0, 0) scale(1)',          to: 'scale(1.03)' },
+      { from: 'scale(1.03)',                        to: 'translate(0, 0) scale(1)' },
+    ],
+    medium: [
+      { from: 'translate(0, 0) scale(1)',           to: 'translate(-3%, -1%) scale(1.05)' },
+      { from: 'translate(-3%, -1%) scale(1.05)',    to: 'translate(0, 0) scale(1)' },
+      { from: 'translate(0, 0) scale(1)',           to: 'translate(3%, 1%) scale(1.05)' },
+      { from: 'translate(3%, 1%) scale(1.05)',      to: 'translate(0, 0) scale(1)' },
+      { from: 'translate(0, 0) scale(1)',           to: 'translate(0, -2.5%) scale(1.05)' },
+      { from: 'translate(0, -2.5%) scale(1.05)',    to: 'translate(0, 0) scale(1)' },
+      { from: 'translate(0, 0) scale(1)',           to: 'scale(1.06)' },
+      { from: 'scale(1.06)',                         to: 'translate(0, 0) scale(1)' },
+    ],
+    strong: [
+      { from: 'translate(0, 0) scale(1)',           to: 'translate(-5%, -2%) scale(1.10)' },
+      { from: 'translate(-5%, -2%) scale(1.10)',    to: 'translate(0, 0) scale(1)' },
+      { from: 'translate(0, 0) scale(1)',           to: 'translate(5%, 2%) scale(1.10)' },
+      { from: 'translate(5%, 2%) scale(1.10)',      to: 'translate(0, 0) scale(1)' },
+      { from: 'translate(0, 0) scale(1)',           to: 'scale(1.12)' },
+      { from: 'scale(1.12)',                         to: 'translate(0, 0) scale(1)' },
+      { from: 'translate(0, -3%) scale(1.10)',      to: 'translate(0, 3%) scale(1.10)' },
+      { from: 'translate(-4%, 0) scale(1.08)',      to: 'translate(4%, 0) scale(1.08)' },
+    ],
+  };
+
+  /** Apply a slow CSS transform animation to `el` for the idle period
+   *  between rotations. Returns silently when soft motion is off, or
+   *  when `transitionName` is one that already does its own slow motion
+   *  (currently just kenburns).
+   *
+   *  IMPORTANT: This preserves the element's current `opacity` and
+   *  `transition` shorthand by writing only the `transform` property
+   *  on the transition string. The crossfade transition was already
+   *  set up by the caller and is mid-flight when this runs — we add
+   *  transform alongside it without resetting it. */
+  function applyBgSoftMotion(el, intervalSec, transitionDur, transitionName) {
+    if (!el) return;
+    if (!state.bgSoftMotion) return;
+    if (transitionName === 'kenburns') return; // kenburns does its own soft zoom
+
+    const idleSec = Math.max(1.5, Number(intervalSec) - Number(transitionDur));
+    const strength = state.bgSoftMotionStrength || 'medium';
+    const pool = BG_SOFT_MOTION_PROFILES[strength] || BG_SOFT_MOTION_PROFILES.medium;
+    if (!pool.length) return;
+    const profile = pool[Math.floor(Math.random() * pool.length)];
+
+    // Snap to from-state without animation, force reflow, then apply
+    // the long ease-in-out transition to the to-state. The reflow is
+    // critical — without it the browser collapses both writes into
+    // a single frame and the transition never plays.
+    el.style.transition = 'none';
+    el.style.transform = profile.from;
+    void el.offsetWidth;
+    el.style.transition = `transform ${idleSec}s ease-in-out`;
+    el.style.transform = profile.to;
   }
 
   const BG_TRANSITIONS = {
@@ -14985,6 +15157,617 @@ ${messages}
           oldEl.classList.remove('active');
           oldEl.style.opacity = '0';
         }, dur * 1000 + 50);
+      },
+    },
+
+    // ─── Mirrors of existing slides/wipes ─────────────────────────────
+    slideRight: {
+      label: 'Slide right',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'translateX(-100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateX(0)';
+        oldEl.style.transform = 'translateX(100%)';
+        newEl.classList.add('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    slideDown: {
+      label: 'Slide down',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'translateY(-100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateY(0)';
+        oldEl.style.transform = 'translateY(100%)';
+        newEl.classList.add('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    wipeRight: {
+      label: 'Wipe right',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.clipPath = 'inset(0 0 0 100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `clip-path ${dur}s ease`;
+        newEl.style.clipPath = 'inset(0 0 0 0)';
+        newEl.classList.add('active');
+        setTimeout(() => {
+          oldEl.classList.remove('active');
+          oldEl.style.opacity = '0';
+        }, dur * 1000 + 50);
+      },
+    },
+    wipeUp: {
+      label: 'Wipe up',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.clipPath = 'inset(100% 0 0 0)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `clip-path ${dur}s ease`;
+        newEl.style.clipPath = 'inset(0 0 0 0)';
+        newEl.classList.add('active');
+        setTimeout(() => {
+          oldEl.classList.remove('active');
+          oldEl.style.opacity = '0';
+        }, dur * 1000 + 50);
+      },
+    },
+    wipeDown: {
+      label: 'Wipe down',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.clipPath = 'inset(0 0 100% 0)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `clip-path ${dur}s ease`;
+        newEl.style.clipPath = 'inset(0 0 0 0)';
+        newEl.classList.add('active');
+        setTimeout(() => {
+          oldEl.classList.remove('active');
+          oldEl.style.opacity = '0';
+        }, dur * 1000 + 50);
+      },
+    },
+    diagonalWipe: {
+      label: 'Diagonal wipe',
+      run(oldEl, newEl, url, dur) {
+        // Polygon clip walks from top-left corner outward to a full square.
+        // Points define a triangle that grows along the anti-diagonal so
+        // the leading edge sweeps from corner to corner.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.clipPath = 'polygon(0 0, 0 0, 0 0)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `clip-path ${dur}s ease`;
+        newEl.style.clipPath = 'polygon(0 0, 200% 0, 0 200%)';
+        newEl.classList.add('active');
+        setTimeout(() => {
+          oldEl.classList.remove('active');
+          oldEl.style.opacity = '0';
+        }, dur * 1000 + 50);
+      },
+    },
+
+    // ─── Push transitions (both slides move together) ──────────────────
+    // Push differs from slide in that BOTH slides move with the same
+    // velocity, so they appear glued together — like dragging a film
+    // strip across the viewport. Slide animates only the new slide
+    // overtop a stationary old one.
+    pushLeft: {
+      label: 'Push left',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'translateX(100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateX(0)';
+        oldEl.style.transform = 'translateX(-100%)';
+        newEl.classList.add('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    pushRight: {
+      label: 'Push right',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'translateX(-100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateX(0)';
+        oldEl.style.transform = 'translateX(100%)';
+        newEl.classList.add('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    pushUp: {
+      label: 'Push up',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'translateY(100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateY(0)';
+        oldEl.style.transform = 'translateY(-100%)';
+        newEl.classList.add('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    pushDown: {
+      label: 'Push down',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'translateY(-100%)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateY(0)';
+        oldEl.style.transform = 'translateY(100%)';
+        newEl.classList.add('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+
+    // ─── Rotation / 3D transitions ────────────────────────────────────
+    spin: {
+      label: 'Spin',
+      run(oldEl, newEl, url, dur) {
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.transform = 'rotate(-180deg) scale(0.5)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'rotate(0) scale(1)';
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease`;
+        oldEl.style.transform = 'rotate(180deg) scale(0.5)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    swirl: {
+      label: 'Swirl',
+      run(oldEl, newEl, url, dur) {
+        // Like spin but tighter rotation + slow grow, more vortex-y
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.transform = 'rotate(360deg) scale(0)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-out`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'rotate(0) scale(1)';
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-in`;
+        oldEl.style.transform = 'rotate(-360deg) scale(0)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    flipH: {
+      label: 'Flip horizontal',
+      run(oldEl, newEl, url, dur) {
+        // 3D card-flip on the Y axis. Both slides need the perspective
+        // applied via #bgLayer.bg-flipping (set in CSS). The new slide
+        // starts back-facing; over the duration, it flips into view.
+        const layer = document.getElementById('bgLayer');
+        if (layer) layer.classList.add('bg-flipping');
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transformOrigin = 'center';
+        newEl.style.backfaceVisibility = 'hidden';
+        newEl.style.transform = 'rotateY(180deg)';
+        oldEl.style.transformOrigin = 'center';
+        oldEl.style.backfaceVisibility = 'hidden';
+        oldEl.style.transform = 'rotateY(0deg)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease-in-out`;
+        oldEl.style.transition = `transform ${dur}s ease-in-out`;
+        newEl.style.transform = 'rotateY(0deg)';
+        oldEl.style.transform = 'rotateY(-180deg)';
+        newEl.classList.add('active');
+        setTimeout(() => {
+          if (layer) layer.classList.remove('bg-flipping');
+          oldEl.classList.remove('active');
+          oldEl.style.opacity = '0';
+          oldEl.style.backfaceVisibility = '';
+          oldEl.style.transformOrigin = '';
+          newEl.style.backfaceVisibility = '';
+          newEl.style.transformOrigin = '';
+        }, dur * 1000 + 50);
+      },
+    },
+    flipV: {
+      label: 'Flip vertical',
+      run(oldEl, newEl, url, dur) {
+        const layer = document.getElementById('bgLayer');
+        if (layer) layer.classList.add('bg-flipping');
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transformOrigin = 'center';
+        newEl.style.backfaceVisibility = 'hidden';
+        newEl.style.transform = 'rotateX(180deg)';
+        oldEl.style.transformOrigin = 'center';
+        oldEl.style.backfaceVisibility = 'hidden';
+        oldEl.style.transform = 'rotateX(0deg)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease-in-out`;
+        oldEl.style.transition = `transform ${dur}s ease-in-out`;
+        newEl.style.transform = 'rotateX(0deg)';
+        oldEl.style.transform = 'rotateX(-180deg)';
+        newEl.classList.add('active');
+        setTimeout(() => {
+          if (layer) layer.classList.remove('bg-flipping');
+          oldEl.classList.remove('active');
+          oldEl.style.opacity = '0';
+          oldEl.style.backfaceVisibility = '';
+          oldEl.style.transformOrigin = '';
+          newEl.style.backfaceVisibility = '';
+          newEl.style.transformOrigin = '';
+        }, dur * 1000 + 50);
+      },
+    },
+    rollLeft: {
+      label: 'Roll left',
+      run(oldEl, newEl, url, dur) {
+        // Like slideLeft but the incoming slide rotates as it travels —
+        // gives a paper-tube unfurling feel. 15° is enough to sell the
+        // motion without making the image read as askew at rest.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'translateX(100%) rotate(15deg)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `transform ${dur}s ease`;
+        oldEl.style.transition = `transform ${dur}s ease`;
+        newEl.style.transform = 'translateX(0) rotate(0)';
+        oldEl.style.transform = 'translateX(-100%) rotate(-15deg)';
+        newEl.classList.add('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+
+    // ─── Zoom variations ──────────────────────────────────────────────
+    crossZoom: {
+      label: 'Cross zoom',
+      run(oldEl, newEl, url, dur) {
+        // Old falls toward viewer (scale up + fade), new arrives from
+        // far away (scale up from 0.5 + fade in). Cinematic "passing
+        // through" feel — works well between dissimilar images.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.transform = 'scale(0.5)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-out`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'scale(1)';
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-in`;
+        oldEl.style.transform = 'scale(2.2)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+      },
+    },
+    zoomBlur: {
+      label: 'Zoom blur',
+      run(oldEl, newEl, url, dur) {
+        // Zoom in with heavy blur dropping to clarity — focus-pull effect.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.transform = 'scale(1.4)';
+        newEl.style.filter = 'blur(40px)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-out, filter ${dur}s ease-out`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'scale(1)';
+        newEl.style.filter = 'blur(0px)';
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease, filter ${dur}s ease`;
+        oldEl.style.filter = 'blur(40px)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+        setTimeout(() => { oldEl.style.filter = ''; }, dur * 1000 + 150);
+      },
+    },
+
+    // ─── Shape-based wipes ────────────────────────────────────────────
+    circleClose: {
+      label: 'Circle close',
+      run(oldEl, newEl, url, dur) {
+        // New slide sits underneath at full opacity from the start.
+        // The OLD slide's clip-path closes inward to a point, revealing
+        // the new one below. Inverse of the existing iris transition.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.zIndex = '1'; // underneath
+        oldEl.style.zIndex = '2'; // on top
+        oldEl.style.clipPath = 'circle(150% at 50% 50%)';
+        void oldEl.offsetWidth;
+        oldEl.style.transition = `clip-path ${dur}s ease`;
+        oldEl.style.clipPath = 'circle(0% at 50% 50%)';
+        newEl.classList.add('active');
+        setTimeout(() => {
+          oldEl.classList.remove('active');
+          oldEl.style.opacity = '0';
+          oldEl.style.clipPath = '';
+          oldEl.style.zIndex = '';
+          newEl.style.zIndex = '';
+        }, dur * 1000 + 50);
+      },
+    },
+    splitV: {
+      label: 'Split vertical',
+      run(oldEl, newEl, url, dur) {
+        // Old splits along a horizontal seam: clip-inset closes from
+        // top and bottom toward the middle, reading as a horizontal
+        // slit collapsing — exposes the new slide underneath.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.zIndex = '1';
+        oldEl.style.zIndex = '2';
+        oldEl.style.clipPath = 'inset(0 0 0 0)';
+        void oldEl.offsetWidth;
+        oldEl.style.transition = `clip-path ${dur}s ease`;
+        oldEl.style.clipPath = 'inset(50% 0 50% 0)';
+        newEl.classList.add('active');
+        setTimeout(() => {
+          oldEl.classList.remove('active');
+          oldEl.style.opacity = '0';
+          oldEl.style.clipPath = '';
+          oldEl.style.zIndex = '';
+          newEl.style.zIndex = '';
+        }, dur * 1000 + 50);
+      },
+    },
+    splitH: {
+      label: 'Split horizontal',
+      run(oldEl, newEl, url, dur) {
+        // Like splitV but the seam runs vertically, splitting old
+        // into left/right halves that pinch toward the center seam.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.zIndex = '1';
+        oldEl.style.zIndex = '2';
+        oldEl.style.clipPath = 'inset(0 0 0 0)';
+        void oldEl.offsetWidth;
+        oldEl.style.transition = `clip-path ${dur}s ease`;
+        oldEl.style.clipPath = 'inset(0 50% 0 50%)';
+        newEl.classList.add('active');
+        setTimeout(() => {
+          oldEl.classList.remove('active');
+          oldEl.style.opacity = '0';
+          oldEl.style.clipPath = '';
+          oldEl.style.zIndex = '';
+          newEl.style.zIndex = '';
+        }, dur * 1000 + 50);
+      },
+    },
+
+    // ─── Color / filter transitions ───────────────────────────────────
+    fadeColor: {
+      label: 'Fade → color',
+      async run(oldEl, newEl, url, dur) {
+        // Like fadeBlack/fadeWhite but through a randomized warm or
+        // cool hue each time. Skews to ambient colors (deep magenta,
+        // indigo, teal, gold) rather than alarming reds — fits a
+        // hypnosis ambience much better than a red flash would.
+        const hues = [280, 240, 200, 170, 40, 320];
+        const hue = hues[Math.floor(Math.random() * hues.length)];
+        const flashColor = `hsl(${hue}, 65%, 30%)`;
+        const flash = $('bgFlash');
+        if (flash) {
+          flash.style.background = flashColor;
+          flash.style.transition = `opacity ${dur / 2}s ease`;
+          flash.style.opacity = '1';
+        }
+        await new Promise(r => setTimeout(r, dur * 500));
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.classList.add('active');
+        oldEl.classList.remove('active');
+        oldEl.style.opacity = '0';
+        await new Promise(r => setTimeout(r, 50));
+        if (flash) {
+          flash.style.opacity = '0';
+          // Restore default flash color (#000) after this swap settles
+          // so subsequent fadeBlack uses don't flash the random hue.
+          setTimeout(() => { flash.style.background = '#000'; }, dur * 1000 + 300);
+        }
+      },
+    },
+    desaturate: {
+      label: 'Desaturate',
+      run(oldEl, newEl, url, dur) {
+        // Old desaturates to grayscale while new fades in at full color.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.filter = 'grayscale(1)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, filter ${dur}s ease`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.filter = 'grayscale(0)';
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease, filter ${dur}s ease`;
+        oldEl.style.filter = 'grayscale(1)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+        setTimeout(() => { oldEl.style.filter = ''; }, dur * 1000 + 150);
+      },
+    },
+    bloom: {
+      label: 'Bloom',
+      async run(oldEl, newEl, url, dur) {
+        // Quick white overexposure (about 1/3 of duration) then
+        // crossfade in. Less dramatic than fadeWhite — the white
+        // pulse is shorter so it reads as a soft bloom rather than
+        // a hard cut to white.
+        const flash = $('bgFlash');
+        if (flash) {
+          flash.style.background = '#fff';
+          flash.style.transition = `opacity ${dur / 3}s ease`;
+          flash.style.opacity = '1';
+        }
+        await new Promise(r => setTimeout(r, dur * 333));
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur * 0.4}s ease`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.classList.add('active');
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+        await new Promise(r => setTimeout(r, 50));
+        if (flash) {
+          flash.style.opacity = '0';
+          setTimeout(() => { flash.style.background = '#000'; }, dur * 1000 + 300);
+        }
+      },
+    },
+    burn: {
+      label: 'Burn',
+      run(oldEl, newEl, url, dur) {
+        // Hot warm-yellow tint as old fades; new fades in cool. The
+        // contrast reads as a film burn-out without the harshness.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease, filter ${dur}s ease`;
+        oldEl.style.filter = 'sepia(1) hue-rotate(-20deg) saturate(2) brightness(1.3)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+        setTimeout(() => { oldEl.style.filter = ''; }, dur * 1000 + 150);
+      },
+    },
+    vignetteOut: {
+      label: 'Vignette',
+      run(oldEl, newEl, url, dur) {
+        // Old slide darkens from the edges inward (ring closes) while
+        // new fades in underneath at full brightness. The mask is a
+        // shrinking radial gradient applied via -webkit-mask-image.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.zIndex = '1';
+        oldEl.style.zIndex = '2';
+        oldEl.style.maskImage = 'radial-gradient(circle, black 100%, transparent 100%)';
+        oldEl.style.webkitMaskImage = 'radial-gradient(circle, black 100%, transparent 100%)';
+        void oldEl.offsetWidth;
+        oldEl.style.transition = `mask-image ${dur}s ease, -webkit-mask-image ${dur}s ease, opacity ${dur}s ease`;
+        oldEl.style.maskImage = 'radial-gradient(circle, black 0%, transparent 0%)';
+        oldEl.style.webkitMaskImage = 'radial-gradient(circle, black 0%, transparent 0%)';
+        oldEl.style.opacity = '0';
+        newEl.classList.add('active');
+        oldEl.classList.remove('active');
+        setTimeout(() => {
+          oldEl.style.maskImage = '';
+          oldEl.style.webkitMaskImage = '';
+          oldEl.style.zIndex = '';
+          newEl.style.zIndex = '';
+        }, dur * 1000 + 100);
+      },
+    },
+
+    // ─── Combo / kinetic ──────────────────────────────────────────────
+    fallIn: {
+      label: 'Fall in',
+      run(oldEl, newEl, url, dur) {
+        // New drops from above with a slight overshoot; old slides
+        // down a little while fading. Bouncy entrance, gentle exit.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = '0';
+        newEl.style.transform = 'translateY(-30%) scale(1.05)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur * 0.6}s ease, transform ${dur}s cubic-bezier(.34, 1.36, .64, 1)`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'translateY(0) scale(1)';
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-in`;
+        oldEl.style.transform = 'translateY(15%)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    floatIn: {
+      label: 'Float in',
+      run(oldEl, newEl, url, dur) {
+        // The opposite of fallIn — drifts upward gently. Hot-air-balloon
+        // ascending feel: slow, calm, no bounce.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.opacity = '0';
+        newEl.style.transform = 'translateY(20%) scale(0.95)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-out`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'translateY(0) scale(1)';
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-in`;
+        oldEl.style.transform = 'translateY(-15%) scale(1.05)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+        _bgScheduleCleanup(oldEl, dur * 1000 + 100);
+      },
+    },
+    breathe: {
+      label: 'Breathe',
+      run(oldEl, newEl, url, dur) {
+        // Slow scale-pulse at the start of new slide (1.0 → 1.03 → 1.0)
+        // alongside a crossfade. Reads like a quiet inhale/exhale —
+        // closest cousin to the kenburns transition but symmetrical.
+        // Particularly fitting for hypnosis ambient backgrounds.
+        _bgPrep(oldEl, newEl);
+        newEl.src = url;
+        newEl.style.transform = 'scale(0.97)';
+        void newEl.offsetWidth;
+        newEl.style.transition = `opacity ${dur}s ease, transform ${dur * 1.5}s ease-in-out`;
+        newEl.style.opacity = String(BG_ACTIVE_OPACITY);
+        newEl.style.transform = 'scale(1)';
+        newEl.classList.add('active');
+        oldEl.style.transition = `opacity ${dur}s ease, transform ${dur}s ease-out`;
+        oldEl.style.transform = 'scale(1.03)';
+        oldEl.style.opacity = '0';
+        oldEl.classList.remove('active');
+        _bgScheduleCleanup(oldEl, dur * 1500 + 100);
       },
     },
   };
@@ -15325,7 +16108,14 @@ ${messages}
 
     /** Swap to a new image using a random enabled transition.
      *  Replaces the old single-style crossfade(). Falls back to crossfade if
-     *  the randomly-picked one throws or no transitions are enabled. */
+     *  the randomly-picked one throws or no transitions are enabled.
+     *
+     *  When state.bgSoftMotion is on, schedules a slow drift/zoom on the
+     *  newly-active slide once the transition's animation has completed.
+     *  Uses _softMotionGen to invalidate stale timers if another swap
+     *  fires before the deferred soft-motion call — protects against
+     *  rapid back-to-back rotations leaving inline transforms on the
+     *  wrong slide. */
     swap(src) {
       const imgs = [$('bgImg0'), $('bgImg1')];
       if (!imgs[0] || !imgs[1] || !src) return;
@@ -15349,6 +16139,26 @@ ${messages}
         try { BG_TRANSITIONS.crossfade.run(oldEl, newEl, src, dur); } catch {}
       }
       this.currentSlot = 1 - this.currentSlot;
+
+      // Schedule soft motion to begin once the transition's animation
+      // has actually finished. Most transitions are fire-and-forget —
+      // they return as soon as the CSS transition is set up, NOT when
+      // it ends. Waiting `dur*1000 + 80ms` lets the transition's
+      // transform settle to its final value before we override it
+      // with the soft-motion from-state, so there's no visible snap.
+      //
+      // The closure captures `pick`, `newEl`, and `motionGen` so the
+      // timer can verify nothing has changed by the time it fires. If
+      // another swap started or the session stopped, the gen counter
+      // won't match and the timer is a silent no-op.
+      this._softMotionGen = (this._softMotionGen || 0) + 1;
+      const motionGen = this._softMotionGen;
+      const intervalSec = Number(state.bgRotationSec) || 45;
+      setTimeout(() => {
+        if (motionGen !== this._softMotionGen) return;     // newer swap or stop
+        if (!newEl.classList.contains('active')) return;   // slide isn't live anymore
+        applyBgSoftMotion(newEl, intervalSec, dur, pick);
+      }, dur * 1000 + 80);
     },
 
     /** Legacy alias — some callers still reference crossfade() directly. */
@@ -15399,16 +16209,36 @@ ${messages}
     clear() {
       this.stopRotation();
       this.stopFolderSlideshow();
+      // Invalidate any in-flight soft-motion timer so it can't apply
+      // styles after the BG layer has been torn down.
+      this._softMotionGen = (this._softMotionGen || 0) + 1;
       // Revoke object URLs from queue to free memory
       this.queue.forEach(u => { try { URL.revokeObjectURL(u); } catch {} });
       this.queue = [];
       const imgs = [$('bgImg0'), $('bgImg1')];
-      imgs.forEach(i => { if (i) { i.src = ''; i.classList.remove('active'); } });
+      imgs.forEach(i => {
+        if (i) {
+          i.src = '';
+          i.classList.remove('active');
+          // Strip any lingering inline transform/filter/mask from a
+          // mid-flight transition or soft-motion run — without this,
+          // the next session start would reuse the same <img> element
+          // with stale styles still applied.
+          i.style.cssText = '';
+        }
+      });
       const vid = $('bgLocalVideo'); if (vid) { vid.pause(); vid.src = ''; vid.style.display = 'none'; }
       const yt = $('bgYoutubeWrap'); if (yt) { yt.style.display = 'none'; }
       const yf = $('bgYoutube'); if (yf) yf.src = '';
       if (this._localObjectUrl) { URL.revokeObjectURL(this._localObjectUrl); this._localObjectUrl = null; }
-      const layer = $('bgLayer'); if (layer) layer.style.display = 'none';
+      const layer = $('bgLayer');
+      if (layer) {
+        layer.style.display = 'none';
+        // A flip transition may have been mid-flight when clear() ran;
+        // strip the perspective class defensively so the next session
+        // doesn't inherit a 3D context for transitions that don't need it.
+        layer.classList.remove('bg-flipping');
+      }
       document.body.classList.remove('bg-active');
     }
   };
@@ -25899,6 +26729,20 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   $('bgTxInvert')?.addEventListener('click', () => {
     document.querySelectorAll('#bgTransitionGrid input[type="checkbox"]').forEach(b => b.checked = !b.checked);
     syncBgEnabledFromGrid();
+  });
+
+  // Soft motion — toggle + strength persist immediately and take effect
+  // on the next BG swap (no need to restart the session).
+  $('bgSoftMotionToggle')?.addEventListener('change', e => {
+    state.bgSoftMotion = !!e.target.checked;
+    saveUserSettings();
+  });
+  $('bgSoftMotionStrength')?.addEventListener('change', e => {
+    const v = e.target.value;
+    if (['subtle','medium','strong'].includes(v)) {
+      state.bgSoftMotionStrength = v;
+      saveUserSettings();
+    }
   });
 
   $('bgOrderSeg')?.addEventListener('click', e => {
