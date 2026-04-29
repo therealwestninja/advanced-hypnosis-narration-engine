@@ -2887,6 +2887,101 @@ padding: 16px; margin-bottom: 16px; text-align: left;
   details.presets-collapsible[open] > *:last-child {
     padding-bottom: 14px;
   }
+  /* Round 24 follow-up — SmartAssist chat-style composer. The textarea
+     and send button share one accent-bordered surface so the affordance
+     reads as "ask the AI" not "fill in another form field". The accent
+     border lights up on focus to mirror Perchance's other chat-style
+     UIs (community comments, ai-chat plugin). */
+  .smart-assist-composer {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    background: var(--bg-deep);
+    border: 1px solid var(--neon-cyan-soft, rgba(0, 212, 230, 0.25));
+    border-radius: 4px;
+    overflow: hidden;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  .smart-assist-composer:focus-within {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 0 2px rgba(0, 212, 230, 0.18);
+  }
+  .smart-assist-input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.86rem;
+    line-height: 1.45;
+    resize: none; /* the composer has fixed height; use Shift+Enter for line breaks */
+    min-height: 56px;
+    max-height: 200px;
+  }
+  .smart-assist-input::placeholder { color: var(--text-faint); opacity: 0.7; }
+  .smart-assist-send {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px;
+    background: linear-gradient(135deg, var(--neon-cyan, #00d4e6), color-mix(in srgb, var(--neon-cyan, #00d4e6) 70%, var(--accent, #007a8a)));
+    color: var(--bg-deep, #0b0e10);
+    border: none;
+    border-left: 1px solid var(--neon-cyan-soft, rgba(0, 212, 230, 0.4));
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: background 0.18s ease, opacity 0.18s ease, transform 0.05s ease;
+  }
+  .smart-assist-send:hover { background: var(--neon-cyan); }
+  .smart-assist-send:active { transform: translateY(1px); }
+  .smart-assist-send:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    background: var(--glass);
+    color: var(--text-dim);
+  }
+  .smart-assist-send-icon { font-size: 1rem; }
+  .smart-assist-send-label { display: inline; }
+  @media (max-width: 540px) {
+    .smart-assist-send-label { display: none; } /* icon-only on small screens */
+    .smart-assist-send { padding: 0 14px; }
+  }
+  .smart-assist-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+  .smart-assist-hint {
+    font-size: 0.62rem;
+    color: var(--text-faint);
+    letter-spacing: 0.02em;
+  }
+  .smart-assist-status {
+    font-size: 0.66rem;
+    color: var(--text-faint);
+    text-align: right;
+    flex: 1;
+  }
+  .smart-assist-result {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: var(--bg-deep);
+    border-left: 2px solid var(--neon-cyan);
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
   @media (min-width: 900px) { .preset-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .preset-card {
     min-width: 0; max-width: none;
@@ -4562,22 +4657,34 @@ padding: 6px 10px; font-size: 1.1rem;
            Describe what you want in plain English; the AI fills in
            method, intention, length, soundscape, persona, and (when
            applicable) a preset hint. Bypasses 6 wizard steps in one
-           shot. AI prompt + parsing live in JS — see _runSmartAssist. -->
+           shot. AI prompt + parsing live in JS — see _runSmartAssist.
+           Round 24 follow-up — UI restyled as a proper chat composer:
+           accent-bordered surface, prominent send button, Enter-to-send
+           with Shift-Enter for newline. -->
       <details class="presets-collapsible" id="smartAssistDetails" style="margin-bottom:12px">
         <summary>
           <span class="presets-chevron">▸</span>
           <span class="presets-title">✨ SmartAssist <span style="font-weight:normal;color:var(--text-faint);font-size:0.7rem;text-transform:none;letter-spacing:0">(describe in your own words)</span></span>
           <span class="presets-hint">tap to expand · AI fills the wizard for you</span>
         </summary>
-        <div class="sublabel" style="margin-top:8px;margin-bottom:8px">Type what you want — the AI picks guide, method, intention, length, and soundscape for you. Examples: <em>"30-minute sleep session, releasing work stress"</em> · <em>"5-min focus reset before a presentation"</em> · <em>"deep grounding for after panic"</em>.</div>
-        <textarea id="smartAssistInput" rows="2" maxlength="400"
-                  placeholder="e.g. a 20-minute sleep session for restless mind, gentle ericksonian voice, ocean soundscape"
-                  style="width:100%;padding:8px 10px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-family:var(--font-body);font-size:0.82rem;resize:vertical;line-height:1.45"></textarea>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
-          <button class="btn primary" id="smartAssistRunBtn" type="button" style="font-size:0.78rem;padding:7px 14px">✨ configure my session</button>
-          <span id="smartAssistStatus" style="font-size:0.66rem;color:var(--text-faint);flex:1"></span>
+        <div class="sublabel" style="margin-top:8px;margin-bottom:10px">Type what you want — the AI picks guide, method, intention, length, and soundscape for you. Examples: <em>"30-minute sleep session, releasing work stress"</em> · <em>"5-min focus reset before a presentation"</em> · <em>"deep grounding for after panic"</em>.</div>
+        <!-- Chat-style composer: textarea + send button share one
+             accent-bordered surface so the affordance reads as
+             "ask the AI" instead of "fill out a form field". -->
+        <div class="smart-assist-composer">
+          <textarea id="smartAssistInput" class="smart-assist-input" rows="2" maxlength="400"
+                    placeholder="e.g. a 20-minute sleep session for restless mind, gentle ericksonian voice, ocean soundscape"
+                    aria-label="Describe your session"></textarea>
+          <button class="smart-assist-send" id="smartAssistRunBtn" type="button" title="Send (Enter) — Shift+Enter for newline" aria-label="Send to SmartAssist">
+            <span class="smart-assist-send-icon">✨</span>
+            <span class="smart-assist-send-label">send</span>
+          </button>
         </div>
-        <div id="smartAssistResult" style="display:none;margin-top:8px;padding:8px 10px;background:var(--bg-deep);border-left:2px solid var(--neon-cyan);font-size:0.74rem;color:var(--text-dim);line-height:1.5"></div>
+        <div class="smart-assist-meta">
+          <span class="smart-assist-hint">↵ Enter to send · Shift+↵ for newline</span>
+          <span id="smartAssistStatus" class="smart-assist-status"></span>
+        </div>
+        <div id="smartAssistResult" class="smart-assist-result" style="display:none"></div>
       </details>
 
       <!-- Presets & Programs — above the guide grid. Collapsed by default
@@ -10621,9 +10728,25 @@ I return to myself easily"></textarea>
       return `${base}?data=${encodeURIComponent(uploadedFileName)}`;
     } catch (e) {
       const msg = String(e?.message || e);
-      if (msg.includes('disallowed_content')) {
+      // Round 24 follow-up — domain-allowlist error. The Perchance upload
+      // server requires the generator slug to be on its allowlist. Forks
+      // and dev/preview deployments at hex-named subdomains hit this.
+      // Surface the cause clearly + offer a workable fallback (the
+      // hash-based ?#cfg= share URL doesn't need server upload).
+      if (/locked to specific domains/i.test(msg) || /Forbidden/i.test(msg)) {
+        const origin = (window.location.origin || '').replace(/^https?:\/\//, '');
+        notify.error(
+          'Upload server rejected this domain (' + origin + '). ' +
+          'This usually means HNE is running on a forked / preview deployment that\'s not on the upload-plugin\'s allowlist. ' +
+          'For small payloads, the in-link share format (?#cfg=…) works without an upload — try sharing a single preset / config rather than uploading a custom asset. ' +
+          'For full uploads on a fork, the generator name must be added to the upload-plugin allowlist on Perchance.'
+        );
+      } else if (msg.includes('disallowed_content')) {
         notify.error('Upload was rejected for disallowed content. If this persona/config is non-sexual and for adults, please report this — some content filters are overly strict.');
+      } else if (/over_daily_allowance|file_too_big|invalid_filetype/.test(msg)) {
+        notify.error('Upload failed: ' + msg.replace(/_/g, ' ') + '.');
       } else {
+        notify.warn('Share upload failed — see console.');
         console.warn('createShareUpload failed:', e);
       }
       return null;
@@ -10751,7 +10874,13 @@ I return to myself easily"></textarea>
     try {
       const url = await createShareUpload(payload, { fileName: 'persona' });
       if (url) { await showShareLinkModal(url, 'Share persona'); await markFeatureUsed(FEAT.SHARE); }
-      else notify.warn('Share link unavailable — uploadPlugin may not be loaded yet. Try again in a moment.');
+      else if (typeof root === 'undefined' || !root.uploadPlugin) {
+        // Only show the "plugin not loaded" hint when the plugin is genuinely
+        // missing — otherwise createShareUpload's catch block has already
+        // surfaced a more specific error (domain allowlist, content filter,
+        // size limit, etc.) and we'd just be talking over it.
+        notify.warn('Share link unavailable — uploadPlugin may not be loaded yet. Try again in a moment.');
+      }
     } finally { setLoading('personaShareBtn', false, '🔗 share'); }
   }
 
@@ -33930,14 +34059,16 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     }
   }
 
-  // Wire the run button + Enter-key submit in the textarea.
+  // Wire the run button + chat-style Enter-to-submit in the textarea.
+  // Round 24 follow-up — Enter submits (chat convention). Shift+Enter
+  // inserts a literal newline. Cmd/Ctrl+Enter still works as a power-
+  // user shortcut for muscle-memory parity with other AI inputs.
   $('smartAssistRunBtn')?.addEventListener('click', () => { _runSmartAssist(); });
   $('smartAssistInput')?.addEventListener('keydown', e => {
-    // Cmd/Ctrl+Enter submits without a newline; plain Enter inserts a newline.
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      _runSmartAssist();
-    }
+    if (e.key !== 'Enter') return;
+    if (e.shiftKey) return; // Shift+Enter → newline (default behavior)
+    e.preventDefault();
+    _runSmartAssist();
   });
 
   // Wire the sidebar button. Visibility check runs after profile load so
