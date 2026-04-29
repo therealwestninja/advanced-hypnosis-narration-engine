@@ -1017,6 +1017,108 @@ padding: 24px;
   .sos-card .sos-name { font-size: 0.82rem; color: var(--text); font-weight: 600; }
   .sos-card .sos-desc { font-size: 0.66rem; color: var(--text-faint); margin-top: 4px; line-height: 1.3; }
 
+  /* ============ HISTORY FILTER + TAGS + COMPARISON (UX1.1, 1.2, 1.5) ============
+     Filter chips appear above the history list, toggle on tap; the visible
+     state is held in state._historyFilter. Custom tags are pills rendered
+     inline on each history item with an add-tag affordance. Comparison
+     mode adds checkboxes to history items + a "compare selected" button. */
+  .history-filter-bar {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-bottom: 12px; padding: 8px;
+    background: var(--bg-deep); border: 1px solid var(--glass-border);
+  }
+  .history-filter-group {
+    display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+  }
+  .history-filter-label {
+    font-size: 0.58rem; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-right: 4px;
+  }
+  .history-filter-chip {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+    color: var(--text-dim); padding: 3px 8px;
+    font-size: 0.66rem; cursor: pointer;
+    transition: all 0.15s; line-height: 1.3;
+    font-family: var(--font-body);
+  }
+  .history-filter-chip:hover { color: var(--text); border-color: var(--neon-amber); }
+  .history-filter-chip.active {
+    background: rgba(0,212,230,0.12); border-color: var(--neon-cyan);
+    color: var(--text); font-weight: 600;
+  }
+  .history-filter-chip.clear-all { color: var(--text-faint); border: none; background: none; }
+  .history-filter-chip.clear-all:hover { color: var(--text); }
+
+  .history-tags {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+  }
+  .history-tag {
+    background: rgba(201,168,85,0.10); border: 1px solid rgba(201,168,85,0.4);
+    color: var(--neon-amber); padding: 1px 6px;
+    font-size: 0.6rem; line-height: 1.4;
+    cursor: default;
+  }
+  .history-tag.tag-add {
+    background: transparent; border: 1px dashed var(--glass-border);
+    color: var(--text-faint); cursor: pointer;
+  }
+  .history-tag.tag-add:hover { color: var(--neon-amber); border-color: var(--neon-amber); }
+  .history-tag-remove {
+    margin-left: 4px; cursor: pointer; opacity: 0.5;
+  }
+  .history-tag-remove:hover { opacity: 1; color: #d46a6a; }
+
+  .history-mode-badge {
+    display: inline-block; padding: 1px 6px;
+    font-size: 0.56rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-right: 4px; vertical-align: middle;
+  }
+  .history-mode-badge.mode-sos        { background: rgba(212,106,106,0.18); color: #ffb0b0; }
+  .history-mode-badge.mode-meditation { background: rgba(201,168,85,0.18);  color: var(--neon-amber); }
+  .history-mode-badge.mode-power-nap  { background: rgba(185,120,224,0.18); color: var(--neon-purple); }
+  .history-mode-badge.mode-sleep-story{ background: rgba(140,100,200,0.16); color: var(--neon-purple); }
+
+  /* Comparison mode */
+  body.history-compare-mode .history-item { padding-left: 36px; position: relative; }
+  body.history-compare-mode .history-item .h-compare-check {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    width: 18px; height: 18px; cursor: pointer; accent-color: var(--neon-cyan);
+  }
+  .history-compare-action {
+    margin-bottom: 10px; padding: 8px 10px;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0,212,230,0.06); border-left: 2px solid var(--neon-cyan);
+    font-size: 0.74rem; color: var(--text-dim);
+  }
+  .history-compare-action .btn { padding: 4px 10px; font-size: 0.7rem; }
+  .history-item .h-compare-check { display: none; }
+
+  /* Session comparison modal — two-column delta layout */
+  .compare-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    margin: 14px 0;
+  }
+  .compare-cell {
+    background: var(--bg-deep); border: 1px solid var(--glass-border);
+    padding: 10px 12px;
+  }
+  .compare-cell .compare-cell-label {
+    font-size: 0.58rem; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .compare-row {
+    display: grid; grid-template-columns: 110px 1fr 1fr;
+    gap: 10px; padding: 5px 0; border-top: 1px solid var(--glass-border);
+    font-size: 0.74rem;
+  }
+  .compare-row:first-child { border-top: none; }
+  .compare-row .compare-key { color: var(--text-faint); font-size: 0.66rem; align-self: center; }
+  .compare-row .compare-val { color: var(--text-dim); }
+  .compare-row.compare-diff .compare-val { color: var(--neon-amber); font-weight: 600; }
+
   /* ============ MEDITATION TIMER (SE1.3) ============
      Modal: pick duration, optional soundscape, optional bell intervals.
      No narrator — just a timer + soundscape + visualizer. */
@@ -1033,6 +1135,28 @@ padding: 24px;
   }
   .med-status .med-time { font-size: 3.2rem; color: var(--neon-cyan); display: block; margin-bottom: 6px; }
   .med-status .med-label { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-faint); }
+
+  /* ============ AI-GENERATED MODES (SE1.1, SE1.2) ============
+     Power Nap and Sleep Story share styling — both are sidebar quick-launch
+     buttons with config modals that trigger AI generation before launching.
+     Generation can take 5-20s on Perchance; show a clear loading state. */
+  .power-nap-btn:hover  { border-color: var(--neon-purple); color: var(--text); }
+  .sleep-story-btn:hover { border-color: var(--neon-purple); color: var(--text); }
+  .ai-mode-loading {
+    text-align: center; padding: 30px 20px;
+    font-size: 0.84rem; color: var(--text-dim); line-height: 1.55;
+  }
+  .ai-mode-loading .ai-mode-spinner {
+    display: inline-block; width: 28px; height: 28px;
+    border: 2px solid var(--glass-border); border-top-color: var(--neon-cyan);
+    border-radius: 50%; animation: ai-spin 1s linear infinite;
+    margin-bottom: 14px;
+  }
+  @keyframes ai-spin { to { transform: rotate(360deg); } }
+  .ai-mode-loading .ai-mode-status {
+    font-size: 0.7rem; color: var(--text-faint); letter-spacing: 0.06em;
+    margin-top: 10px;
+  }
 
   .oq-question { margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--glass-border); }
   .oq-question:last-of-type { border-bottom: none; }
@@ -1860,6 +1984,52 @@ min-width: 28px; min-height: 0;
   .bg-layer.bg-flipping .bg-img { transform-style: preserve-3d; }
   .bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 3s ease-in-out; will-change: opacity, transform, filter, clip-path; }
   .bg-img.active { opacity: var(--bg-img-opacity, 0.35); }
+  /* V1.3 — Ken Burns slow zoom/pan on active background images. Subtle
+     pan in a random direction across 60-90s; restarts when a new image
+     swaps in via the bg engine. Disabled by prefers-reduced-motion.
+     Skipped on .bg-video so videos don't double-animate. */
+  body.bg-active .bg-img.active {
+    animation: bg-ken-burns 80s ease-in-out infinite alternate;
+    transform-origin: center center;
+  }
+  @keyframes bg-ken-burns {
+    0%   { transform: scale(1.02) translate(0%, 0%); }
+    50%  { transform: scale(1.06) translate(-1.4%, 0.8%); }
+    100% { transform: scale(1.02) translate(1.2%, -0.6%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body.bg-active .bg-img.active { animation: none; transform: scale(1.02); }
+  }
+
+  /* V1.4 — Phase color-temperature shift overlay. A single full-stage
+     color wash with low opacity that interpolates across the session
+     arc: cool blue at induction, warming amber at peak work, cool blue
+     again at wake. Body class drives the active hue. Adds an emotional
+     temperature layer that anchors the user to where they are in the
+     arc without explicit progress UI. */
+  .stage::after {
+    content: ''; position: absolute; inset: 0;
+    pointer-events: none; z-index: 7;
+    background: transparent; opacity: 0;
+    transition: background 6s ease-in-out, opacity 6s ease-in-out;
+    mix-blend-mode: soft-light;
+  }
+  body.in-session.phase-temp-cool .stage::after {
+    background: radial-gradient(ellipse at center, rgba(96,180,230,0.30), rgba(60,120,180,0.12) 60%, transparent 100%);
+    opacity: 1;
+  }
+  body.in-session.phase-temp-warm .stage::after {
+    background: radial-gradient(ellipse at center, rgba(220,170,90,0.32), rgba(180,120,60,0.14) 60%, transparent 100%);
+    opacity: 1;
+  }
+  body.in-session.phase-temp-deep .stage::after {
+    background: radial-gradient(ellipse at center, rgba(140,100,200,0.26), rgba(80,60,140,0.12) 60%, transparent 100%);
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stage::after { transition: none; }
+  }
+
   .bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: var(--bg-img-opacity, 0.35); }
   .bg-flash { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 3; transition: opacity 0.5s ease; }
   .phase-dots, .phase-indicator, .stage, .text-display, .session-controls, .session-time, .kb-hint { position: relative; z-index: 1; }
@@ -4144,6 +4314,24 @@ padding: 6px 10px; font-size: 1.1rem;
             </div>
           </details>
 
+          <!-- ── Hypnotic Susceptibility (P1.1) ───────────────────────
+               Self-administered brief inspired by the Stanford HIP. ~3
+               minutes to complete; produces a 0-10 score that biases
+               method recommendations (low → permissive Ericksonian,
+               high → direct/rapid acceptable). Stored in pfSusceptibility
+               (hidden input, populated by the modal). -->
+          <details class="pf-extended" style="margin-top:6px">
+            <summary style="font-size:0.7rem;font-weight:600;color:var(--text);cursor:pointer;padding:6px 0">🌀 Hypnotic Susceptibility</summary>
+            <div class="sublabel" style="font-size:0.58rem;margin-bottom:8px;color:var(--text-faint)">A short self-administered brief (~3 minutes) producing a 0–10 score. Biases method recommendations: low scores get gentler permissive inductions, high scores can use rapid/direct techniques. Inspired by the Stanford HIP — simplified for self-administration.</div>
+            <input type="hidden" id="pfSusceptibility" value="">
+            <div id="pfSusceptibilityDisplay" style="font-size:0.74rem;color:var(--text-dim);margin-bottom:8px;padding:8px 10px;background:var(--bg-deep);border-left:2px solid var(--neon-amber);display:none">
+              <span style="color:var(--text-faint);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.08em">your score: </span>
+              <span id="pfSusceptibilityScore" style="color:var(--neon-amber);font-weight:600">—</span>
+              <span id="pfSusceptibilityBand" style="color:var(--text-faint);margin-left:8px"></span>
+            </div>
+            <button class="btn secondary" id="hipBriefBtn" type="button" style="width:100%;font-size:0.74rem;padding:7px">take the brief</button>
+          </details>
+
           <!-- ── Personal Anchors ─────────────────────────────────────
                Pre-existing positive resources the user already has. The
                AI weaves these in instead of inventing generic safe
@@ -4288,6 +4476,36 @@ padding: 6px 10px; font-size: 1.1rem;
         <div class="sublabel" style="margin-top:8px;margin-bottom:6px">Follow a daily program. Each session builds on the last.</div>
         <div id="programActivePanel"></div>
         <div class="preset-grid" id="programGrid"></div>
+      </details>
+
+      <!-- Quick AI Modes — alternative session types that bypass the
+           full wizard. Power Nap = structured Ericksonian descent with
+           alarm-style wake. Sleep Story = pure narrative bedtime story
+           with no induction language. Both AI-generate fresh content
+           per launch (Perchance default; user-key as fallback). -->
+      <details class="presets-collapsible" id="aiQuickModesDetails" style="margin-bottom:16px">
+        <summary>
+          <span class="presets-chevron">▸</span>
+          <span class="presets-title">Quick AI Modes <span style="font-weight:normal;color:var(--text-faint);font-size:0.7rem;text-transform:none;letter-spacing:0">(no wizard)</span></span>
+          <span class="presets-hint">tap to expand · skip the setup</span>
+        </summary>
+        <div class="sublabel" style="margin-top:8px;margin-bottom:10px">
+          One-tap session modes that bypass the full wizard. The AI generates a fresh script for the chosen mode every time.
+        </div>
+        <div class="preset-grid">
+          <div class="preset-card intent-trance" id="powerNapCard" style="cursor:pointer">
+            <div class="preset-icon">💤</div>
+            <div class="preset-name">Power Nap</div>
+            <div class="preset-desc">15–25 min · structured descent + alarm-style wake</div>
+            <div class="preset-intent-label">restorative</div>
+          </div>
+          <div class="preset-card intent-sleep" id="sleepStoryCard" style="cursor:pointer">
+            <div class="preset-icon">📖</div>
+            <div class="preset-name">Sleep Story</div>
+            <div class="preset-desc">15–30 min · themed narrative · drifts off</div>
+            <div class="preset-intent-label">sleep</div>
+          </div>
+        </div>
       </details>
 
       <div class="filter-tabs" id="personaFilterTabs">
@@ -6081,6 +6299,37 @@ I return to myself easily"></textarea>
         </div>
         <div class="sublabel" style="line-height:1.5;margin-top:6px">Session-only — cleared on reload, never persisted to disk. Use a low-spend / scoped key, never your primary account key. The call counter helps you spot unexpected activity. A risk warning will appear on first key entry.</div>
       </div>
+      <!-- ── Premium TTS provider (N2.1) ─────────────────────────────
+           Same pattern as the AI provider above: dropdown picks the
+           backend, conditional rows show key + voice picker. Web Speech
+           is free, the others are user-key opt-in. -->
+      <hr style="border:none;border-top:1px solid var(--glass-border);margin:12px 0">
+      <div class="pf-label" style="margin-bottom:4px">narrator (TTS) provider</div>
+      <select id="extTtsProvider" class="pf-select">
+        <option value="web-speech">Web Speech API (default, free, browser-native)</option>
+        <option value="elevenlabs">ElevenLabs (premium, user-key)</option>
+        <option value="openai">OpenAI TTS (premium, user-key)</option>
+      </select>
+      <div id="extTtsKeyRow" style="display:none;margin-top:6px">
+        <input type="password" id="extTtsKey" class="pf-input" placeholder="API key (xi-... for ElevenLabs, sk-... for OpenAI)" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+          <label class="pf-label" style="margin:0;flex:0 0 auto;font-size:0.66rem">voice</label>
+          <select id="extTtsVoice" class="pf-select" style="flex:1;font-size:0.74rem"></select>
+          <button type="button" id="extTtsRefreshVoicesBtn" class="preview-btn" style="font-size:0.62rem;padding:3px 8px" title="refresh voice list">↻</button>
+        </div>
+        <div id="extTtsModelRow" style="display:none;margin-top:6px;align-items:center;gap:6px">
+          <label class="pf-label" style="margin:0;flex:0 0 auto;font-size:0.66rem">model</label>
+          <select id="extTtsModel" class="pf-select" style="flex:1;font-size:0.74rem"></select>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px;align-items:center;justify-content:space-between">
+          <span id="extTtsCallCount" style="font-size:0.66rem;color:var(--text-faint);font-variant-numeric:tabular-nums">0 narration calls this session</span>
+          <div>
+            <button type="button" id="extTtsTestBtn" class="preview-btn" style="font-size:0.66rem;padding:3px 8px">test voice</button>
+            <button type="button" id="extTtsClearBtn" class="preview-btn" style="font-size:0.66rem;padding:3px 8px;margin-left:4px">clear key</button>
+          </div>
+        </div>
+        <div class="sublabel" style="line-height:1.5;margin-top:6px">Session-only key. <strong>Cost note:</strong> premium TTS bills per character — a 30-min session can run $0.30–$1.00+. Use a scoped/spend-capped key. Falls back to Web Speech automatically on any API error. Voice selection persists across reloads but the key does not.</div>
+      </div>
     </div>
     <div class="modal-actions" style="margin-top:16px">
       <button class="btn" id="optionsCloseBtn">done</button>
@@ -7190,6 +7439,20 @@ I return to myself easily"></textarea>
     // prefix, never persisted via _buildSettingsObj). Migrated from _extAiKey
     // on first switch — see provider-change handler.
     _extAiKeysByProvider: { anthropic: null, openai: null },
+    // ── Premium TTS (N2.1) ──
+    // Mirrors the AI-provider pattern. 'web-speech' = default browser TTS.
+    // 'local' = transformer.js local TTS (existing). 'elevenlabs' / 'openai' =
+    // user-key opt-in premium narrator backends. Per-provider key cache lives
+    // in _extTtsKeysByProvider; session-only. Voice selection persists via
+    // user settings (extTtsVoiceId per provider). Falls back to web-speech on
+    // any API error so a flaky key can't deadlock playback.
+    extTtsProvider: 'web-speech',
+    _extTtsKey: null,
+    _extTtsKeysByProvider: { elevenlabs: null, openai: null },
+    extTtsVoiceIdByProvider: { elevenlabs: '', openai: 'nova' },
+    extTtsModelByProvider:   { elevenlabs: 'eleven_turbo_v2_5', openai: 'tts-1' },
+    _elevenLabsVoices: null, // cached voice list per session
+    _ttsApiCallsThisSession: 0,
     // Debug flags — session-only, NEVER persisted. See _buildSettingsObj — these are
     // deliberately excluded. Mirrored from checkboxes by _syncDebugState().
     _debug: {
@@ -10307,6 +10570,12 @@ I return to myself easily"></textarea>
         ellipsisMode: state.autoTempoOptions?.ellipsisMode || 'keep',
         collapseSpaces: state.autoTempoOptions?.collapseSpaces !== false,
       },
+      // N2.1 — Premium TTS provider persistence. The API key itself is
+      // session-only (never persisted, see _extTtsKey / _extTtsKeysByProvider
+      // — both underscore-prefixed). Voice and model selections persist.
+      extTtsProvider: state.extTtsProvider || 'web-speech',
+      extTtsVoiceIdByProvider: { ...(state.extTtsVoiceIdByProvider || { elevenlabs: '', openai: 'nova' }) },
+      extTtsModelByProvider:   { ...(state.extTtsModelByProvider   || { elevenlabs: 'eleven_turbo_v2_5', openai: 'tts-1' }) },
       settingsVersion: 6,
     };
   }
@@ -10729,6 +10998,27 @@ I return to myself easily"></textarea>
         };
       }
       if (s.voiceName) state._savedVoiceName = s.voiceName;
+      // N2.1 — Restore premium TTS provider + voice selection (key is
+      // session-only, not persisted, so user must re-enter on each load).
+      if (typeof s.extTtsProvider === 'string') {
+        state.extTtsProvider = s.extTtsProvider;
+        const sel = $('extTtsProvider'); if (sel) sel.value = state.extTtsProvider;
+      }
+      if (s.extTtsVoiceIdByProvider && typeof s.extTtsVoiceIdByProvider === 'object') {
+        state.extTtsVoiceIdByProvider = {
+          elevenlabs: String(s.extTtsVoiceIdByProvider.elevenlabs || ''),
+          openai:     String(s.extTtsVoiceIdByProvider.openai     || 'nova'),
+        };
+      }
+      if (s.extTtsModelByProvider && typeof s.extTtsModelByProvider === 'object') {
+        state.extTtsModelByProvider = {
+          elevenlabs: String(s.extTtsModelByProvider.elevenlabs || 'eleven_turbo_v2_5'),
+          openai:     String(s.extTtsModelByProvider.openai     || 'tts-1'),
+        };
+      }
+      // Refresh the visible UI to reflect the restored selection. Voice
+      // list won't populate until the user enters their session-only key.
+      try { _refreshTtsProviderUi(); } catch {}
       // Local AI voice (Phase 6) — restore toggle + speaker; don't auto-load the
       // model on startup (heavy), wait for the user to actually start a session.
       state.useLocalTTS = !!s.useLocalTTS;
@@ -11198,6 +11488,11 @@ I return to myself easily"></textarea>
       authorityStyle:         $('pfAuthorityStyle')?.value || '',
       touchComfort:           $('pfTouchComfort')?.value || '',
       spiritualFrame:         $('pfSpiritualFrame')?.value || '',
+      // Round 23 — HIP susceptibility brief (P1.1). 0-10 score from a
+      // 4-question self-administered brief, populated by the HIP modal.
+      // Hidden input — not user-editable directly. Empty string when
+      // the user hasn't taken the brief yet.
+      susceptibility:         $('pfSusceptibility')?.value || '',
       // Round 21 — Personal Anchors (pre-existing positive resources)
       safePlace:              $('pfSafePlace')?.value?.trim() || '',
       powerObject:            $('pfPowerObject')?.value?.trim() || '',
@@ -11270,6 +11565,11 @@ I return to myself easily"></textarea>
     setVal('pfAuthorityStyle', p.authorityStyle, '');
     setVal('pfTouchComfort', p.touchComfort, '');
     setVal('pfSpiritualFrame', p.spiritualFrame, '');
+    // Round 23 — HIP susceptibility (P1.1). Hidden input + display row.
+    setVal('pfSusceptibility', p.susceptibility, '');
+    if (typeof _refreshSusceptibilityDisplay === 'function') {
+      try { _refreshSusceptibilityDisplay(); } catch {}
+    }
     // Round 21 — Personal Anchors
     setVal('pfSafePlace', p.safePlace, '');
     setVal('pfPowerObject', p.powerObject, '');
@@ -12798,6 +13098,16 @@ I return to myself easily"></textarea>
   // remove a small bias if they've explicitly chosen secular framing.
   const _C4_MYSTICAL_TAGS = new Set(['spiritual', 'mystic', 'sacred']);
 
+  // C6 — Susceptibility-aware method filter. Low-susceptibility users are
+  // not well-served by rapid/direct inductions (eye-roll, Dave Elman,
+  // shock-induction): the methods rely on quick imaginative compliance the
+  // user may not yet have. High-susceptibility users have no filter — all
+  // methods are open. Score 0-10 is the user's HIP brief result.
+  const _C6_LOW_SUSCEPT_BLOCK = new Set([
+    'eye-roll', 'dave-elman', 'shock-induction', 'rapid-induction',
+    'magnetic-hands', 'instant-induction',
+  ]);
+
   function _personaCountByHour(history) {
     // C2 — Compute persona × hour distribution for time-of-day biasing.
     // Returns { personaId: [count_h0, count_h1, ..., count_h23] }.
@@ -12873,6 +13183,18 @@ I return to myself easily"></textarea>
         if (mysticalIds.size) {
           if (!methodBlockSet) methodBlockSet = new Set();
           for (const m of mysticalIds) methodBlockSet.add(m);
+        }
+      }
+      // C6 · Susceptibility-aware method filter (HIP brief, P1.1). Score
+      // is on the profile as a string; coerce + check. Low (≤3) → suppress
+      // rapid/direct inductions. Med/High → no filter (open methods).
+      // Empty (untaken brief) → no filter, can't assume.
+      const susceptRaw = profile.susceptibility;
+      if (susceptRaw !== '' && susceptRaw != null) {
+        const sn = Number(susceptRaw);
+        if (Number.isFinite(sn) && sn <= 3) {
+          if (!methodBlockSet) methodBlockSet = new Set();
+          for (const m of _C6_LOW_SUSCEPT_BLOCK) methodBlockSet.add(m);
         }
       }
     }
@@ -19168,6 +19490,33 @@ ${messages}
   // spammed.
   let _lastReducedMotionToastAt = 0;
 
+  // V1.4 — Phase color-temperature mapping. Settling/induction = cool
+  // (anchoring, calming). Deepener/level = deep purple (descent). Work/
+  // affirm = warm amber (peak therapeutic landing). Lightener/wake/
+  // reintroduction = cool again (returning). Mapped via a body class so
+  // CSS handles the transition timing.
+  const _PHASE_TEMP_MAP = {
+    settling:       'cool',
+    induction:      'cool',
+    deepener:       'deep',
+    level:          'deep',
+    work:           'warm',
+    affirm:         'warm',
+    lightener:      'cool',
+    wake:           'cool',
+    reintroduction: 'cool',
+    emergence:      'cool',
+  };
+  function _updatePhaseColorTemp(phase) {
+    const cls = document.body.classList;
+    cls.remove('phase-temp-cool', 'phase-temp-warm', 'phase-temp-deep');
+    const baseKind = (typeof phaseBase === 'function')
+      ? phaseBase(phase)
+      : String(phase || '').replace(/-\d+$/, '');
+    const temp = _PHASE_TEMP_MAP[baseKind];
+    if (temp) cls.add('phase-temp-' + temp);
+  }
+
   // V1.1 — Personal-symbol overlay for the work phase. Fades the user's
   // crafted-suggestion symbol over the visualizer when work begins, fades
   // it out when the phase ends. Idempotent — repeatedly calling with the
@@ -23851,6 +24200,118 @@ Start immediately:`;
   // ====================================================================
   // SESSION HISTORY & STATS
   // ====================================================================
+  // UX1.1 — History filter state. Each key is null when "all"; otherwise
+  // a specific match value. The filter chip bar above the history list
+  // toggles entries here and re-renders.
+  if (!state._historyFilter) {
+    state._historyFilter = { mode: null, persona: null, method: null, moodBand: null, tag: null };
+  }
+  // UX1.5 — Comparison mode. When on, history items show checkboxes;
+  // selecting two opens a side-by-side delta view.
+  if (!state._historyCompareMode) state._historyCompareMode = false;
+  if (!state._historyCompareSel)  state._historyCompareSel  = []; // session id-ish (date)
+
+  /** Apply the current filter to a history slice (does NOT mutate). */
+  function _applyHistoryFilter(history) {
+    const f = state._historyFilter || {};
+    if (!f.mode && !f.persona && !f.method && !f.moodBand && !f.tag) return history;
+    return history.filter(s => {
+      if (f.mode) {
+        const m = s.mode || 'regular';
+        if (m !== f.mode) return false;
+      }
+      if (f.persona && (s.guide || s.personaId) !== f.persona) return false;
+      if (f.method  && (s.method || s.methodId) !== f.method)   return false;
+      if (f.moodBand) {
+        const delta = (Number(s.postMood) || 0) - (Number(s.preMood) || 0);
+        const band = delta >= 2 ? 'strong'
+                   : delta >= 1 ? 'improved'
+                   : delta <= -1 ? 'declined'
+                   : 'neutral';
+        if (band !== f.moodBand) return false;
+      }
+      if (f.tag) {
+        const tags = Array.isArray(s.sessionTags) ? s.sessionTags : [];
+        if (!tags.includes(f.tag)) return false;
+      }
+      return true;
+    });
+  }
+
+  /** Render the filter chip bar above the history list. */
+  function _renderHistoryFilterBar(host, history) {
+    if (!host || !history || history.length === 0) return;
+    // Aggregate available facets
+    const modes = new Set(), personas = new Set(), methods = new Set(), tags = {};
+    for (const s of history) {
+      modes.add(s.mode || 'regular');
+      if (s.guide || s.personaId) personas.add(s.guide || s.personaId);
+      if (s.method || s.methodId) methods.add(s.method || s.methodId);
+      const ts = Array.isArray(s.sessionTags) ? s.sessionTags : [];
+      for (const t of ts) tags[t] = (tags[t] || 0) + 1;
+    }
+    const f = state._historyFilter;
+    // Top-N tags by frequency
+    const topTags = Object.entries(tags).sort((a,b) => b[1] - a[1]).slice(0, 6).map(([t]) => t);
+    // Build chip group helper
+    const chipGroup = (label, key, values, formatter = v => v) => {
+      if (values.size === 0 && !Array.isArray(values)) return '';
+      const list = Array.isArray(values) ? values : [...values];
+      if (!list.length) return '';
+      const chips = list.map(v =>
+        `<button type="button" class="history-filter-chip ${f[key] === v ? 'active' : ''}" data-fkey="${escapeHtml(key)}" data-fval="${escapeHtml(String(v))}">${escapeHtml(formatter(v))}</button>`
+      ).join('');
+      return `<div class="history-filter-group"><span class="history-filter-label">${escapeHtml(label)}</span>${chips}</div>`;
+    };
+    const moodFmt = b => b === 'declined' ? '↓ declined' : b === 'neutral' ? '~ neutral' : b === 'improved' ? '↑ improved' : '✦ strong';
+    const modeFmt = m => m === 'regular' ? 'wizard' : m;
+    const hasAny = f.mode || f.persona || f.method || f.moodBand || f.tag;
+    host.innerHTML = `
+      ${chipGroup('mode',    'mode',    modes,   modeFmt)}
+      ${chipGroup('persona', 'persona', personas)}
+      ${chipGroup('method',  'method',  methods)}
+      ${chipGroup('mood',    'moodBand', ['declined','neutral','improved','strong'], moodFmt)}
+      ${topTags.length ? chipGroup('tags', 'tag', topTags) : ''}
+      ${hasAny ? `<button type="button" class="history-filter-chip clear-all" data-clear="1">✕ clear filters</button>` : ''}
+    `;
+    // Wire chip clicks (event delegation) — toggle on/off and re-render history
+    host.onclick = (e) => {
+      const chip = e.target.closest?.('.history-filter-chip');
+      if (!chip) return;
+      if (chip.dataset.clear) {
+        state._historyFilter = { mode: null, persona: null, method: null, moodBand: null, tag: null };
+      } else {
+        const k = chip.dataset.fkey;
+        const v = chip.dataset.fval;
+        state._historyFilter[k] = (state._historyFilter[k] === v) ? null : v;
+      }
+      renderSessionHistory();
+    };
+  }
+
+  /** UX1.5 — Compare-mode action bar above the filter (when on). */
+  function _renderHistoryCompareAction(host) {
+    if (!host) return;
+    if (!state._historyCompareMode) { host.innerHTML = ''; return; }
+    const sel = state._historyCompareSel.length;
+    host.innerHTML = `
+      <span>Compare mode — pick two sessions (${sel}/2 selected).</span>
+      <button class="btn" id="historyCompareGoBtn" ${sel === 2 ? '' : 'disabled'}>compare →</button>
+      <button class="btn secondary" id="historyCompareExitBtn">exit</button>
+    `;
+    host.querySelector('#historyCompareGoBtn')?.addEventListener('click', () => {
+      const all = state._historyCacheForCompare || [];
+      const [a, b] = state._historyCompareSel.map(id => all.find(s => String(s.date) === String(id)));
+      if (a && b) _openCompareModal(a, b);
+    });
+    host.querySelector('#historyCompareExitBtn')?.addEventListener('click', () => {
+      state._historyCompareMode = false;
+      state._historyCompareSel = [];
+      document.body.classList.remove('history-compare-mode');
+      renderSessionHistory();
+    });
+  }
+
   async function renderSessionHistory() {
     const panel = $('sessionStatsPanel');
     const list = $('sessionHistoryList');
@@ -23863,12 +24324,57 @@ Start immediately:`;
       return;
     }
 
-    // Panel cleared — stats are shown in sidebarStats, sparkline appends here
+    // Cache the unfiltered slice for compare-modal lookup later.
+    state._historyCacheForCompare = history;
+
+    // Panel cleared — stats are shown in sidebarStats, sparkline appends here.
     panel.innerHTML = '';
 
-    // Recent sessions list (last 20)
+    // UX1.1 + 1.5 — Compose toolbar above the list: compare-mode action +
+    // filter chips. We insert a single shared host element if missing,
+    // then re-render its contents.
+    let toolbar = list.previousElementSibling;
+    if (!toolbar || !toolbar.classList?.contains('history-toolbar')) {
+      toolbar = document.createElement('div');
+      toolbar.className = 'history-toolbar';
+      toolbar.innerHTML = `
+        <div class="history-compare-action" style="display:none"></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <div></div>
+          <button type="button" class="history-filter-chip" id="historyCompareToggleBtn" style="border-style:dashed">⇄ compare two</button>
+        </div>
+        <div class="history-filter-bar"></div>
+      `;
+      list.parentNode.insertBefore(toolbar, list);
+    }
+    const compareActionEl = toolbar.querySelector('.history-compare-action');
+    compareActionEl.style.display = state._historyCompareMode ? '' : 'none';
+    if (state._historyCompareMode) _renderHistoryCompareAction(compareActionEl);
+    _renderHistoryFilterBar(toolbar.querySelector('.history-filter-bar'), history);
+
+    // Wire compare-toggle once.
+    const compareBtn = toolbar.querySelector('#historyCompareToggleBtn');
+    if (compareBtn && !compareBtn._wired) {
+      compareBtn._wired = true;
+      compareBtn.addEventListener('click', () => {
+        state._historyCompareMode = !state._historyCompareMode;
+        state._historyCompareSel = [];
+        document.body.classList.toggle('history-compare-mode', state._historyCompareMode);
+        renderSessionHistory();
+      });
+    }
+
+    // Apply filter, then take last 20 of the FILTERED slice.
+    const filtered = _applyHistoryFilter(history);
     list.innerHTML = '';
-    history.slice(0, 20).forEach((s, idx) => {
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="library-empty">no sessions match the current filters — clear them above</div>';
+      return;
+    }
+    filtered.slice(0, 20).forEach((s, idx) => {
+      // idx here indexes the FILTERED list. We need the original index in
+      // history for delete/replay/edit actions, so recompute via match.
+      const realIdx = history.findIndex(h => h.date === s.date);
       const d = new Date(s.date);
       const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
       const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
@@ -23881,6 +24387,11 @@ Start immediately:`;
       const profileName = s.profileSnapshot?.name || s.profileName || '';
       const affirmMode = s.affirmationMode || '';
 
+      // Mode badge for SOS / meditation / power-nap / sleep-story sessions.
+      const modeBadge = s.mode
+        ? `<span class="history-mode-badge mode-${escapeHtml(s.mode)}">${escapeHtml(s.sosKind || s.mode)}</span>`
+        : '';
+
       // Script preview — first ~150 chars, strip markers
       let preview = '';
       if (hasScript) {
@@ -23889,16 +24400,31 @@ Start immediately:`;
         if (cleaned.length > 150) preview += '…';
       }
 
+      // UX1.2 — Tag pills + add-tag affordance.
+      const tags = Array.isArray(s.sessionTags) ? s.sessionTags : [];
+      const tagsHtml = `
+        <div class="history-tags">
+          ${tags.map(t => `<span class="history-tag" data-tag="${escapeHtml(t)}">${escapeHtml(t)}<span class="history-tag-remove" data-removetag="${escapeHtml(t)}" data-realidx="${realIdx}" title="remove tag">✕</span></span>`).join('')}
+          <span class="history-tag tag-add" data-addtag="1" data-realidx="${realIdx}">+ tag</span>
+        </div>
+      `;
+
+      // UX1.5 — Compare checkbox (visible only in compare mode via CSS).
+      const compareChecked = state._historyCompareSel.includes(String(s.date));
+      const compareCheckbox = `<input type="checkbox" class="h-compare-check" data-sid="${escapeHtml(String(s.date))}" ${compareChecked ? 'checked' : ''}>`;
+
       const item = document.createElement('div');
       item.className = 'history-item';
       item.innerHTML = `
-        <div class="h-title">${dateStr} ${timeStr} · ${status}</div>
+        ${compareCheckbox}
+        <div class="h-title">${modeBadge}${dateStr} ${timeStr} · ${status}</div>
         <div class="h-meta">${escapeHtml(s.guide || '—')} · ${escapeHtml(s.method || '—')} · ${phaseCount} phases · ${workBlocks} work block${workBlocks === 1 ? '' : 's'}${affirmMode ? ' · ' + escapeHtml(affirmMode) : ''}${profileName ? ' · ' + escapeHtml(profileName) : ''}${s.intentionText ? ' · ' + escapeHtml(s.intentionText.substring(0, 30)) : ''}</div>
         ${preview ? `<div class="h-preview">${escapeHtml(preview)}</div>` : '<div class="h-no-script">no script stored</div>'}
+        ${tagsHtml}
         <div class="h-actions">
-          <button class="h-btn h-play" data-idx="${idx}" title="Replay session" ${hasScript ? '' : 'disabled'}>▶</button>
-          <button class="h-btn h-edit" data-idx="${idx}" title="Edit script" ${hasScript ? '' : 'disabled'}>✎</button>
-          <button class="h-btn h-delete" data-idx="${idx}" title="Delete">✕</button>
+          <button class="h-btn h-play"   data-idx="${realIdx}" title="Replay session" ${hasScript ? '' : 'disabled'}>▶</button>
+          <button class="h-btn h-edit"   data-idx="${realIdx}" title="Edit script"    ${hasScript ? '' : 'disabled'}>✎</button>
+          <button class="h-btn h-delete" data-idx="${realIdx}" title="Delete">✕</button>
         </div>`;
       list.appendChild(item);
     });
@@ -23939,6 +24465,112 @@ Start immediately:`;
         notify.info('Session deleted.');
       });
     });
+
+    // UX1.2 — Wire tag add / remove buttons
+    list.querySelectorAll('[data-addtag]').forEach(el => {
+      el.addEventListener('click', async e => {
+        const realIdx = parseInt(e.target.dataset.realidx, 10);
+        const tag = (window.prompt('Add a tag (max 20 chars, comma-separated for multiple):') || '').trim();
+        if (!tag) return;
+        const tags = tag.split(',').map(t => t.trim().toLowerCase().slice(0, 20)).filter(Boolean);
+        if (!tags.length) return;
+        const h = (await idbGet('stillness_history_v1')) || [];
+        if (!h[realIdx]) return;
+        const existing = Array.isArray(h[realIdx].sessionTags) ? h[realIdx].sessionTags : [];
+        const merged = [...new Set([...existing, ...tags])].sort();
+        h[realIdx].sessionTags = merged;
+        await _writeHistoryCompact(h);
+        renderSessionHistory();
+      });
+    });
+    list.querySelectorAll('[data-removetag]').forEach(el => {
+      el.addEventListener('click', async e => {
+        e.stopPropagation();
+        const realIdx = parseInt(e.target.dataset.realidx, 10);
+        const tag = e.target.dataset.removetag;
+        const h = (await idbGet('stillness_history_v1')) || [];
+        if (!h[realIdx]) return;
+        const existing = Array.isArray(h[realIdx].sessionTags) ? h[realIdx].sessionTags : [];
+        h[realIdx].sessionTags = existing.filter(t => t !== tag);
+        await _writeHistoryCompact(h);
+        renderSessionHistory();
+      });
+    });
+
+    // UX1.5 — Wire comparison checkboxes
+    list.querySelectorAll('.h-compare-check').forEach(cb => {
+      cb.addEventListener('click', e => {
+        e.stopPropagation();
+        const sid = String(cb.dataset.sid);
+        const sel = state._historyCompareSel;
+        const i = sel.indexOf(sid);
+        if (i >= 0) sel.splice(i, 1);
+        else if (sel.length < 2) sel.push(sid);
+        else { cb.checked = false; notify.info('Pick at most two sessions.'); return; }
+        // Refresh action bar selection count without full re-render.
+        const actionEl = document.querySelector('.history-compare-action');
+        if (actionEl) _renderHistoryCompareAction(actionEl);
+      });
+    });
+  }
+
+  /** UX1.5 — Build the side-by-side compare modal for two sessions. */
+  function _openCompareModal(a, b) {
+    if (!a || !b) return;
+    const fmt = (v) => v == null || v === '' ? '—' : String(v);
+    const fmtMood = (s) => (s.preMood != null && s.postMood != null)
+      ? `${s.preMood} → ${s.postMood} (Δ ${(s.postMood - s.preMood >= 0 ? '+' : '')}${s.postMood - s.preMood})`
+      : '—';
+    const rows = [
+      { key: 'date',       a: new Date(a.date).toLocaleString(), b: new Date(b.date).toLocaleString() },
+      { key: 'mode',       a: fmt(a.mode || 'regular'),          b: fmt(b.mode || 'regular') },
+      { key: 'persona',    a: fmt(a.guide || a.personaId),       b: fmt(b.guide || b.personaId) },
+      { key: 'method',     a: fmt(a.method || a.methodId),       b: fmt(b.method || b.methodId) },
+      { key: 'length',     a: fmt(a.length),                     b: fmt(b.length) },
+      { key: 'soundscape', a: fmt(a.soundscape),                 b: fmt(b.soundscape) },
+      { key: 'duration',   a: a.durationSec ? `${Math.round(a.durationSec/60)}m` : '—',
+                           b: b.durationSec ? `${Math.round(b.durationSec/60)}m` : '—' },
+      { key: 'mood',       a: fmtMood(a),                        b: fmtMood(b) },
+      { key: 'depth',      a: fmt(a.depth),                      b: fmt(b.depth) },
+      { key: 'completed',  a: a.completed ? '✓' : '✗',           b: b.completed ? '✓' : '✗' },
+      { key: 'intention',  a: fmt(a.intentionText || a.intention), b: fmt(b.intentionText || b.intention) },
+      { key: 'tags',       a: (a.sessionTags || []).join(', ') || '—',
+                           b: (b.sessionTags || []).join(', ') || '—' },
+    ];
+    const rowsHtml = rows.map(r => {
+      const diff = r.a !== r.b;
+      return `<div class="compare-row${diff ? ' compare-diff' : ''}">
+        <span class="compare-key">${escapeHtml(r.key)}</span>
+        <span class="compare-val">${escapeHtml(r.a)}</span>
+        <span class="compare-val">${escapeHtml(r.b)}</span>
+      </div>`;
+    }).join('');
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop visible';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:680px;max-height:88vh">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+          <h2 style="margin:0;font-size:1.05rem">Session Comparison</h2>
+          <button class="btn secondary" id="compareCloseBtn" style="padding:4px 12px;font-size:0.74rem">close</button>
+        </div>
+        <div class="compare-grid">
+          <div class="compare-cell">
+            <div class="compare-cell-label">Session A</div>
+            <div style="font-size:0.78rem;color:var(--text)">${escapeHtml(new Date(a.date).toLocaleString())}</div>
+          </div>
+          <div class="compare-cell">
+            <div class="compare-cell-label">Session B</div>
+            <div style="font-size:0.78rem;color:var(--text)">${escapeHtml(new Date(b.date).toLocaleString())}</div>
+          </div>
+        </div>
+        <div style="margin-top:14px">${rowsHtml}</div>
+        <div style="font-size:0.66rem;color:var(--text-faint);margin-top:14px;text-align:center">Differences highlighted in amber.</div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    const close = () => wrap.remove();
+    wrap.querySelector('#compareCloseBtn').addEventListener('click', close);
+    wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
   }
 
   /** Replay a session from history — restores all settings and script */
@@ -25431,6 +26063,11 @@ Start immediately:`;
       // entry to a work phase, fade out on exit. Reinforces the spoken
       // suggestion with a sustained visual anchor. No-op if no symbol cached.
       try { _updatePersonalSymbolOverlay(phase); } catch (e) { console.warn('[symbol overlay]', e); }
+      // V1.4 — Phase color-temperature shift. Cool blue for settling/induction,
+      // deepening purple for deepener, warming amber for work/affirm, cool
+      // blue again for lightener/wake/reintroduction. Sets a body class so
+      // the .stage::after overlay drives the wash via CSS transitions.
+      try { _updatePhaseColorTemp(phase); } catch (e) { console.warn('[phase-temp]', e); }
       // Phase-aware speech rate. Settling stays at base, induction starts
       // slowing, deepener is slowest, work is moderate, lightener accelerates
       // back, wake briskest, reintroduction normal. Strip dynamic suffix
@@ -26034,8 +26671,339 @@ Start immediately:`;
     },
   };
 
+  // ====================================================================
+  // PREMIUM TTS — N2.1
+  // ====================================================================
+  // ElevenLabs and OpenAI as user-key narrator backends. Same architecture
+  // as the AI provider: Web Speech is the default (free, browser-native),
+  // premium providers are opt-in via session-only keys. Falls back to Web
+  // Speech on any API error so a flaky key can't deadlock playback.
+  //
+  // Cost is real here — premium TTS bills per character. A 30-min session
+  // can run $0.30–$1.00+. The UI surfaces this clearly and the call counter
+  // helps users spot unexpected activity.
+  //
+  // Voice selection: ElevenLabs voice list is fetched dynamically on key
+  // entry; OpenAI's 6 voices are hardcoded. Selection persists via user
+  // settings (extTtsVoiceIdByProvider); the key itself is session-only.
+  //
+  // §0a alignment: Web Speech default = no API call required. Premium tier
+  // is user-key opt-in, no Anthropic-managed proxy. Local-only otherwise.
+  // ====================================================================
+
+  const _PREMIUM_TTS_AUDIO = { current: null, currentUrl: null };
+
+  // OpenAI TTS voices — fixed list
+  const OPENAI_TTS_VOICES = [
+    { value: 'alloy',   label: 'Alloy (neutral)' },
+    { value: 'echo',    label: 'Echo (male, warm)' },
+    { value: 'fable',   label: 'Fable (British, expressive)' },
+    { value: 'onyx',    label: 'Onyx (male, deep)' },
+    { value: 'nova',    label: 'Nova (female, soft)' },
+    { value: 'shimmer', label: 'Shimmer (female, gentle)' },
+  ];
+  const OPENAI_TTS_MODELS = [
+    { value: 'tts-1',    label: 'tts-1 (faster, cheaper)' },
+    { value: 'tts-1-hd', label: 'tts-1-hd (higher fidelity)' },
+  ];
+  const ELEVENLABS_MODELS = [
+    { value: 'eleven_turbo_v2_5',      label: 'Turbo v2.5 (fast, low latency)' },
+    { value: 'eleven_multilingual_v2', label: 'Multilingual v2 (higher quality)' },
+    { value: 'eleven_monolingual_v1',  label: 'Monolingual v1 (legacy)' },
+  ];
+
+  /** Whether premium TTS is the active narrator. */
+  function _isPremiumTtsActive() {
+    return (state.extTtsProvider === 'elevenlabs' || state.extTtsProvider === 'openai')
+        && !!state._extTtsKey;
+  }
+
+  /** Map our internal speechRate (typically 0.55–1.20) to a 0.7–1.4-ish playback rate. */
+  function _ttsPlaybackRateScale(s) {
+    const r = Number.isFinite(s) ? s : 0.85;
+    return Math.max(0.70, Math.min(1.45, r));
+  }
+
+  /** Stop any in-flight premium TTS playback and revoke its blob URL. */
+  function _stopPremiumTtsAudio() {
+    const a = _PREMIUM_TTS_AUDIO.current;
+    if (a) {
+      try { a.pause(); a.src = ''; } catch {}
+    }
+    if (_PREMIUM_TTS_AUDIO.currentUrl) {
+      try { URL.revokeObjectURL(_PREMIUM_TTS_AUDIO.currentUrl); } catch {}
+      _PREMIUM_TTS_AUDIO.currentUrl = null;
+    }
+    _PREMIUM_TTS_AUDIO.current = null;
+  }
+
+  async function _speakViaPremiumTts(text, opts = {}) {
+    const provider = state.extTtsProvider;
+    const key      = state._extTtsKey;
+    if (!key) throw new Error('no key');
+    const trimmed = String(text || '').trim();
+    if (!trimmed) return;
+    let url, body, headers;
+    if (provider === 'elevenlabs') {
+      const voiceId = state.extTtsVoiceIdByProvider?.elevenlabs || '';
+      if (!voiceId) throw new Error('no ElevenLabs voice selected');
+      const model = state.extTtsModelByProvider?.elevenlabs || 'eleven_turbo_v2_5';
+      url = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`;
+      body = JSON.stringify({
+        text: trimmed,
+        model_id: model,
+        voice_settings: { stability: 0.5, similarity_boost: 0.75, use_speaker_boost: true },
+      });
+      headers = {
+        'Content-Type': 'application/json',
+        'xi-api-key': key,
+        'Accept': 'audio/mpeg',
+      };
+    } else if (provider === 'openai') {
+      const voice = state.extTtsVoiceIdByProvider?.openai || 'nova';
+      const model = state.extTtsModelByProvider?.openai || 'tts-1';
+      url = 'https://api.openai.com/v1/audio/speech';
+      body = JSON.stringify({
+        model: model,
+        input: trimmed,
+        voice: voice,
+        response_format: 'mp3',
+      });
+      headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`,
+      };
+    } else {
+      throw new Error('unsupported TTS provider: ' + provider);
+    }
+    state._ttsApiCallsThisSession = (state._ttsApiCallsThisSession || 0) + 1;
+    try { logAICall(provider, 'premium-tts', `[${trimmed.length} chars]`); } catch {}
+    _refreshTtsCallCount();
+
+    const res = await fetch(url, { method: 'POST', headers, body });
+    if (!res.ok) {
+      let detail = '';
+      try { detail = await res.text(); } catch {}
+      throw new Error(`${provider} HTTP ${res.status}: ${detail.slice(0, 200)}`);
+    }
+    const blob = await res.blob();
+    _stopPremiumTtsAudio();
+    const audioUrl = URL.createObjectURL(blob);
+    const audio = new Audio(audioUrl);
+    _PREMIUM_TTS_AUDIO.current    = audio;
+    _PREMIUM_TTS_AUDIO.currentUrl = audioUrl;
+    const volMult = Number.isFinite(opts.volMult) ? opts.volMult : 1.0;
+    audio.volume = Math.max(0, Math.min(1, (state.voiceVolume ?? 1.0) * volMult));
+    audio.playbackRate = _ttsPlaybackRateScale(state.speechRate);
+    return new Promise((resolve, reject) => {
+      let watcher = null;
+      const cleanup = () => {
+        if (watcher) { clearInterval(watcher); watcher = null; }
+        if (_PREMIUM_TTS_AUDIO.current === audio) {
+          try { URL.revokeObjectURL(audioUrl); } catch {}
+          _PREMIUM_TTS_AUDIO.current    = null;
+          _PREMIUM_TTS_AUDIO.currentUrl = null;
+        }
+      };
+      audio.onended = () => { cleanup(); resolve(); };
+      audio.onerror = (e) => { cleanup(); reject(e); };
+      // Watch pause/abort flags — abort the audio if the session is interrupted.
+      watcher = setInterval(() => {
+        if (state.abortFlag) { try { audio.pause(); } catch {} cleanup(); resolve(); return; }
+        if (state.paused && !audio.paused) try { audio.pause(); } catch {}
+        else if (!state.paused && audio.paused && !audio.ended) audio.play().catch(() => {});
+      }, 250);
+      audio.play().catch(reject);
+    });
+  }
+
+  async function _refreshElevenLabsVoiceList(force = false) {
+    const voiceSel = $('extTtsVoice');
+    if (!voiceSel) return;
+    const key = state._extTtsKey;
+    const provider = state.extTtsProvider;
+    if (provider !== 'elevenlabs' || !key) return;
+    if (!force && Array.isArray(state._elevenLabsVoices) && state._elevenLabsVoices.length) {
+      _populateElevenLabsVoiceSelect(state._elevenLabsVoices);
+      return;
+    }
+    voiceSel.innerHTML = `<option value="">loading voices…</option>`;
+    try {
+      const res = await fetch('https://api.elevenlabs.io/v1/voices', {
+        headers: { 'xi-api-key': key },
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const voices = (data?.voices || []).map(v => ({
+        value: v.voice_id,
+        label: `${v.name}${v.labels?.gender ? ' · ' + v.labels.gender : ''}${v.labels?.accent ? ' · ' + v.labels.accent : ''}`,
+      }));
+      state._elevenLabsVoices = voices;
+      _populateElevenLabsVoiceSelect(voices);
+    } catch (e) {
+      console.warn('[elevenlabs voices] fetch failed:', e);
+      voiceSel.innerHTML = `<option value="">(could not load — check API key)</option>`;
+      state._elevenLabsVoices = null;
+    }
+  }
+  function _populateElevenLabsVoiceSelect(voices) {
+    const voiceSel = $('extTtsVoice');
+    if (!voiceSel) return;
+    const saved = state.extTtsVoiceIdByProvider?.elevenlabs || '';
+    voiceSel.innerHTML = voices.map(v =>
+      `<option value="${escapeHtml(v.value)}"${v.value === saved ? ' selected' : ''}>${escapeHtml(v.label)}</option>`
+    ).join('') || '<option value="">(no voices available)</option>';
+    if (!saved && voices[0]) {
+      voiceSel.value = voices[0].value;
+      if (!state.extTtsVoiceIdByProvider) state.extTtsVoiceIdByProvider = {};
+      state.extTtsVoiceIdByProvider.elevenlabs = voices[0].value;
+      try { saveUserSettings(); } catch {}
+    }
+  }
+
+  function _populateOpenAiTtsVoiceSelect() {
+    const voiceSel = $('extTtsVoice');
+    if (!voiceSel) return;
+    const saved = state.extTtsVoiceIdByProvider?.openai || 'nova';
+    voiceSel.innerHTML = OPENAI_TTS_VOICES.map(v =>
+      `<option value="${escapeHtml(v.value)}"${v.value === saved ? ' selected' : ''}>${escapeHtml(v.label)}</option>`
+    ).join('');
+  }
+
+  function _populateTtsModelSelect() {
+    const modelSel = $('extTtsModel');
+    const modelRow = $('extTtsModelRow');
+    if (!modelSel || !modelRow) return;
+    const provider = state.extTtsProvider;
+    if (provider === 'openai' || provider === 'elevenlabs') {
+      modelRow.style.display = 'flex';
+      const list  = provider === 'openai' ? OPENAI_TTS_MODELS : ELEVENLABS_MODELS;
+      const saved = state.extTtsModelByProvider?.[provider] || list[0].value;
+      modelSel.innerHTML = list.map(m =>
+        `<option value="${escapeHtml(m.value)}"${m.value === saved ? ' selected' : ''}>${escapeHtml(m.label)}</option>`
+      ).join('');
+    } else {
+      modelRow.style.display = 'none';
+    }
+  }
+
+  function _refreshTtsCallCount() {
+    const el = $('extTtsCallCount');
+    if (el) el.textContent = `${state._ttsApiCallsThisSession || 0} narration call${(state._ttsApiCallsThisSession || 0) === 1 ? '' : 's'} this session`;
+  }
+
+  function _refreshTtsProviderUi() {
+    const row = $('extTtsKeyRow');
+    if (!row) return;
+    const provider = state.extTtsProvider;
+    if (provider === 'web-speech') {
+      row.style.display = 'none';
+      return;
+    }
+    row.style.display = '';
+    const keyInput = $('extTtsKey');
+    const cachedKey = state._extTtsKeysByProvider?.[provider] || '';
+    if (keyInput) {
+      keyInput.value = cachedKey;
+      state._extTtsKey = cachedKey || null;
+    }
+    _populateTtsModelSelect();
+    if (provider === 'elevenlabs') {
+      const voiceSel = $('extTtsVoice');
+      if (state._extTtsKey) _refreshElevenLabsVoiceList(false).catch(() => {});
+      else if (voiceSel) voiceSel.innerHTML = '<option value="">(enter API key first)</option>';
+    } else if (provider === 'openai') {
+      _populateOpenAiTtsVoiceSelect();
+    }
+  }
+
+  $('extTtsProvider')?.addEventListener('change', e => {
+    state.extTtsProvider = e.target.value;
+    _refreshTtsProviderUi();
+    try { saveUserSettings(); } catch {}
+  });
+  $('extTtsKey')?.addEventListener('input', async e => {
+    const newVal = e.target.value || null;
+    state._extTtsKey = newVal;
+    const provider = state.extTtsProvider;
+    if (provider === 'elevenlabs' || provider === 'openai') {
+      if (!state._extTtsKeysByProvider) state._extTtsKeysByProvider = { elevenlabs: null, openai: null };
+      state._extTtsKeysByProvider[provider] = newVal;
+    }
+    if (provider === 'elevenlabs' && newVal) {
+      _refreshElevenLabsVoiceList(true).catch(() => {});
+    }
+  });
+  $('extTtsVoice')?.addEventListener('change', e => {
+    const provider = state.extTtsProvider;
+    if (!state.extTtsVoiceIdByProvider) state.extTtsVoiceIdByProvider = { elevenlabs: '', openai: 'nova' };
+    if (provider === 'elevenlabs' || provider === 'openai') {
+      state.extTtsVoiceIdByProvider[provider] = e.target.value;
+      try { saveUserSettings(); } catch {}
+    }
+  });
+  $('extTtsModel')?.addEventListener('change', e => {
+    const provider = state.extTtsProvider;
+    if (!state.extTtsModelByProvider) state.extTtsModelByProvider = { elevenlabs: 'eleven_turbo_v2_5', openai: 'tts-1' };
+    if (provider === 'elevenlabs' || provider === 'openai') {
+      state.extTtsModelByProvider[provider] = e.target.value;
+      try { saveUserSettings(); } catch {}
+    }
+  });
+  $('extTtsClearBtn')?.addEventListener('click', () => {
+    state._extTtsKey = null;
+    if (state._extTtsKeysByProvider) state._extTtsKeysByProvider[state.extTtsProvider] = null;
+    const inp = $('extTtsKey'); if (inp) inp.value = '';
+    notify.info('TTS API key cleared.');
+  });
+  $('extTtsRefreshVoicesBtn')?.addEventListener('click', () => {
+    if (state.extTtsProvider === 'elevenlabs') {
+      _refreshElevenLabsVoiceList(true).catch(() => notify.warn('Could not load voices.'));
+    } else if (state.extTtsProvider === 'openai') {
+      _populateOpenAiTtsVoiceSelect();
+    }
+  });
+  $('extTtsTestBtn')?.addEventListener('click', async () => {
+    if (!_isPremiumTtsActive()) { notify.warn('Set provider + API key first.'); return; }
+    try {
+      await _speakViaPremiumTts(
+        'This is a quick test of the selected narrator. Settle in, breathe slowly, and notice how the voice feels in your body.',
+        {}
+      );
+      notify.success('Voice test complete.');
+    } catch (e) {
+      console.warn('[tts test] failed:', e);
+      notify.error('Voice test failed — check API key, voice selection, and console.');
+    }
+  });
+
   function speak(text, opts = {}) {
     return new Promise(resolve => {
+      // Premium TTS path — opt-in via state.extTtsProvider + user-supplied
+      // key. Falls back to local/system path on any API error.
+      if (_isPremiumTtsActive()) {
+        _speakViaPremiumTts(text, opts)
+          .then(resolve)
+          .catch((e) => {
+            console.warn('[speak] premium TTS failed, falling back:', e?.message || e);
+            // Light user signal that fallback happened — but only once per
+            // session to avoid noise, since one outage can cascade across
+            // every sentence.
+            if (!state._premiumTtsFallbackToasted) {
+              state._premiumTtsFallbackToasted = true;
+              try { notify.warn('Premium TTS failed — falling back to Web Speech for the rest of this session.'); } catch {}
+            }
+            // Local TTS path — opt-in, must be loaded.
+            if (state.useLocalTTS && _localTTS.ready) {
+              _localTTS.speak(text)
+                .then(resolve)
+                .catch(() => _speakSystemPath(text, resolve, opts));
+            } else {
+              _speakSystemPath(text, resolve, opts);
+            }
+          });
+        return;
+      }
       // Local TTS path — opt-in, must be loaded. On synth-timeout / failure,
       // _localTTS.speak rejects and we fall back to the system TTS path for
       // this sentence so a flaky local model can't deadlock the session.
@@ -26291,6 +27259,16 @@ Start immediately:`;
         _personalSymbolBlobUrl = null;
       }
     } catch {}
+    // V1.4 — Clear phase color-temperature classes so the next session
+    // starts neutral.
+    try {
+      document.body.classList.remove('phase-temp-cool', 'phase-temp-warm', 'phase-temp-deep');
+    } catch {}
+    // N2.1 — Stop any in-flight premium TTS audio + revoke its blob URL.
+    // Reset the fallback-toast flag so a fresh attempt next session can
+    // surface its own warning if it also fails.
+    try { _stopPremiumTtsAudio(); } catch {}
+    state._premiumTtsFallbackToasted = false;
     // (E1.2 _sosKind cleanup happens later, after the session record has
     // been built and persisted — see end of finishSession.)
     // Clear lock-screen media session so it doesn't linger post-session
@@ -26394,7 +27372,14 @@ Start immediately:`;
       // E1.2 — SOS sessions are tagged so they're distinguishable in
       // history filtering and stats. Null for normal sessions.
       ...(state._sosKind ? { sosKind: state._sosKind, mode: 'sos' } : {}),
-      workflowVersion: 11,
+      // SE1.1 / SE1.2 — AI-generated session modes (power-nap, sleep-story).
+      // Non-null only when launched via the sidebar quick-launch buttons.
+      ...(state._sessionMode && !state._sosKind ? { mode: state._sessionMode } : {}),
+      // P1.1 trajectory — capture HIP susceptibility score at session
+      // start so changes over practice can be tracked. Empty when the
+      // user hasn't taken the brief yet.
+      susceptibilityAtSessionStart: ($('pfSusceptibility')?.value || ''),
+      workflowVersion: 12,
       stepsTotal: 6,
     };
 
@@ -26736,10 +27721,13 @@ Start immediately:`;
     const moodFeedback = $('moodFeedback');
     if (moodFeedback) moodFeedback.textContent = '';
 
-    // E1.2 — Clear the SOS-kind tag now that the session record has been
-    // built + saved with it. Future sessions must not inherit the flag.
+    // E1.2 / SE1.1 / SE1.2 — Clear the per-session mode tags now that the
+    // session record has been built + saved with them. Future sessions
+    // must not inherit any of these flags.
     state._sosKind = null;
     state._sosLaunchedAt = null;
+    state._sessionMode = null;
+    state._sessionModeAt = null;
   }
 
   // Persona-specific re-alert scripts
@@ -27112,6 +28100,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   }
   _wirePresetCollapse('quickStartPresetsDetails', 'stillness_presets_open_v1');
   _wirePresetCollapse('structuredProgramsDetails', 'stillness_programs_open_v1');
+  _wirePresetCollapse('aiQuickModesDetails',       'stillness_ai_modes_open_v1');
   $('methodFilterTabs').addEventListener('click', async e => {
     if (!e.target.dataset.filter) return;
     const cat = e.target.dataset.filter;
@@ -31623,6 +32612,293 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   $('onboardingQuizBtn')?.addEventListener('click', openOnboardingQuiz);
 
   // ====================================================================
+  // HIP SUSCEPTIBILITY BRIEF (P1.1)
+  // ====================================================================
+  // Self-administered ~3-minute brief inspired by the Stanford Hypnotic
+  // Induction Profile. Four sub-tests measuring imaginative absorption
+  // and ideomotor responsiveness. Produces a 0-10 score banded into
+  // low / medium / high. Score biases method recommendations:
+  //   low  (0-3): permissive Ericksonian, no rapid inductions
+  //   med  (4-6): no specific bias, all methods available
+  //   high (7-10): direct/rapid methods (eye-roll, dave-elman) acceptable
+  //
+  // Single AI-free interaction. All scoring is local. Stored in profile
+  // via the hidden #pfSusceptibility input. Director picks it up via
+  // getRecommendation()'s profile arg added in Batch 1A (Cluster C).
+  // ====================================================================
+
+  // The brief itself — 4 questions, each scored 0-3 max except Q1 which
+  // scores 0-2 (caps total at 11 → clamped to 10). Designed so the user
+  // can self-administer by reading + reflecting; no observer needed.
+  const HIP_BRIEF_QUESTIONS = [
+    {
+      id: 'eye_roll',
+      title: 'Eye-roll test (Spiegel sign)',
+      instructions:
+        'Look up as high as you can — try to see your own eyebrows from the inside. ' +
+        'Keeping your eyes rolled up, slowly close your eyelids. ' +
+        'Open your eyes again. How easily did your eyes roll up?',
+      max: 3,
+      options: [
+        { value: 0, label: 'Eyes barely rolled up — uncomfortable / impossible' },
+        { value: 1, label: 'Some upward roll, mostly white visible briefly' },
+        { value: 2, label: 'Easy upward roll, clear whites visible' },
+        { value: 3, label: 'Strong roll — eyes pulled up effortlessly, lots of white' },
+      ],
+      hint: 'A classical observable indicator. Strong rolls correlate with higher trance capacity.',
+    },
+    {
+      id: 'hand_levitation',
+      title: 'Hand levitation suggestion',
+      instructions:
+        'Close your eyes for 30 seconds. Imagine a balloon tied to your right wrist, lifting it up. ' +
+        'Picture it vividly — the color, the string, the gentle pull. After 30s, open your eyes. ' +
+        'What did your hand do?',
+      max: 3,
+      options: [
+        { value: 0, label: 'Nothing — hand stayed still' },
+        { value: 1, label: 'Twitches or small involuntary movements' },
+        { value: 2, label: 'Hand drifted up clearly — half an inch or more' },
+        { value: 3, label: 'Hand lifted noticeably — several inches, felt almost automatic' },
+      ],
+      hint: 'Tests ideomotor responsiveness — the body acting on imagined input without conscious effort.',
+    },
+    {
+      id: 'lemon',
+      title: 'Vivid imagery (lemon test)',
+      instructions:
+        'Close your eyes. Imagine biting into a fresh, juicy lemon — the texture of the peel, ' +
+        'the cold burst of acidic juice on your tongue. Make it as vivid as possible for 20 seconds. ' +
+        'How did your body respond?',
+      max: 2,
+      options: [
+        { value: 0, label: 'No physical response — just an idea of a lemon' },
+        { value: 1, label: 'Slight saliva increase or face twinge' },
+        { value: 2, label: 'Clear physical response — mouth watering, face squinting' },
+      ],
+      hint: 'Measures imaginative absorption — how readily mental imagery produces real bodily responses.',
+    },
+    {
+      id: 'time_distortion',
+      title: 'Time perception',
+      instructions:
+        'Without checking a clock, sit with eyes closed for what FEELS like one minute. ' +
+        'When you think a minute has passed, open your eyes and check the actual time elapsed. ' +
+        'How close was your estimate?',
+      max: 2,
+      options: [
+        { value: 0, label: 'Spot on — within 5 seconds either way' },
+        { value: 1, label: 'Off by 10–20 seconds' },
+        { value: 2, label: 'Way off — 30+ seconds, time felt different' },
+      ],
+      hint: 'Time-distortion is a strong marker — the more your sense of time bends, the more responsive you tend to be.',
+    },
+  ];
+
+  /** 0-10 score → band label + descriptive copy. */
+  function _hipBand(score) {
+    if (score == null || score === '') return null;
+    const n = Number(score);
+    if (!Number.isFinite(n)) return null;
+    if (n <= 3) return { key: 'low',    label: 'low',    color: 'var(--text-faint)',
+      desc: 'Permissive Ericksonian methods will be prioritized. Rapid inductions less suitable for now.' };
+    if (n <= 6) return { key: 'medium', label: 'medium', color: 'var(--neon-amber)',
+      desc: 'Most methods will work for you. The Director can experiment freely.' };
+    return         { key: 'high',   label: 'high',   color: 'var(--neon-cyan)',
+      desc: 'Strong responsiveness — direct and rapid inductions (eye-roll, Dave Elman) are good fits.' };
+  }
+
+  /** Refresh the small score display row in the profile section. */
+  function _refreshSusceptibilityDisplay() {
+    const wrap = $('pfSusceptibilityDisplay');
+    const scoreEl = $('pfSusceptibilityScore');
+    const bandEl  = $('pfSusceptibilityBand');
+    const btn = $('hipBriefBtn');
+    if (!wrap || !scoreEl || !bandEl || !btn) return;
+    const raw = $('pfSusceptibility')?.value;
+    const band = _hipBand(raw);
+    if (!band) {
+      wrap.style.display = 'none';
+      btn.textContent = 'take the brief';
+      return;
+    }
+    wrap.style.display = '';
+    scoreEl.textContent = `${raw}/10`;
+    scoreEl.style.color = band.color;
+    bandEl.textContent  = `(${band.label} susceptibility)`;
+    btn.textContent = 'retake the brief';
+  }
+
+  let _hipModalEl = null;
+  function _ensureHipModal() {
+    if (_hipModalEl) return _hipModalEl;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'hipBriefModal';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:600px">
+        <div id="hipIntro">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+            <h2 style="margin:0;font-size:1.05rem">Hypnotic Susceptibility Brief</h2>
+            <button class="btn secondary" id="hipCloseBtn" style="padding:4px 12px;font-size:0.74rem">close</button>
+          </div>
+          <div class="oq-intro">
+            About 3 minutes. Four short self-administered tests inspired by the Stanford HIP. The result is a 0–10 score that helps the Director match induction styles to your responsiveness — low scores get permissive techniques, high scores can use rapid/direct methods.
+            <br><br>
+            <strong>Important:</strong> there are no good or bad scores here. Susceptibility varies across the population and changes over time. Even very low scores benefit from practice.
+            <br><br>
+            <span style="color:var(--text-faint);font-size:0.7rem">Find a quiet spot. Read each prompt carefully. Take your time. You'll need to close your eyes for some tests.</span>
+          </div>
+          <div class="modal-actions" style="margin-top:18px">
+            <button class="btn secondary" id="hipSkipBtn" style="flex:0 0 auto;padding:10px 18px">close</button>
+            <button class="btn primary" id="hipBeginBtn">begin</button>
+          </div>
+        </div>
+        <div id="hipQuestion" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+            <h2 style="margin:0;font-size:1.0rem" id="hipQuestionTitle">—</h2>
+            <span class="oq-progress" id="hipQuestionProgress" style="margin-top:0">—</span>
+          </div>
+          <div id="hipQuestionInstructions" style="font-size:0.84rem;color:var(--text);line-height:1.55;padding:12px 14px;background:rgba(0,212,230,0.04);border-left:2px solid var(--neon-cyan);margin-bottom:14px"></div>
+          <div id="hipQuestionOptions" class="oq-options" style="flex-direction:column;align-items:stretch;gap:6px"></div>
+          <div id="hipQuestionHint" style="font-size:0.66rem;color:var(--text-faint);margin-top:10px;line-height:1.5;font-style:italic"></div>
+          <div class="modal-actions" style="margin-top:18px">
+            <button class="btn secondary" id="hipBackBtn" style="flex:0 0 auto;padding:10px 18px">← back</button>
+            <button class="btn primary" id="hipNextBtn" disabled>next →</button>
+          </div>
+        </div>
+        <div id="hipResult" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+            <h2 style="margin:0;font-size:1.05rem">Your Score</h2>
+            <button class="btn secondary" id="hipResultCloseBtn" style="padding:4px 12px;font-size:0.74rem">close</button>
+          </div>
+          <div style="text-align:center;padding:24px 12px">
+            <div style="font-size:3.6rem;color:var(--neon-cyan);font-weight:300" id="hipScoreDisplay">—</div>
+            <div style="font-size:0.66rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-faint);margin-top:4px">out of 10</div>
+            <div style="font-size:1.0rem;color:var(--text);margin-top:14px;font-weight:500" id="hipBandLabel">—</div>
+            <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.55;margin:14px auto 0;max-width:440px" id="hipBandDesc">—</div>
+          </div>
+          <div class="modal-actions">
+            <button class="btn secondary" id="hipRetakeBtn" style="flex:0 0 auto;padding:10px 18px">retake</button>
+            <button class="btn primary" id="hipSaveBtn">save &amp; close</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _hipModalEl = wrap;
+    return wrap;
+  }
+
+  function openHipBrief() {
+    const modal = _ensureHipModal();
+    // Reset to intro every time we open
+    modal.querySelector('#hipIntro').style.display = '';
+    modal.querySelector('#hipQuestion').style.display = 'none';
+    modal.querySelector('#hipResult').style.display = 'none';
+    modal.classList.add('visible');
+
+    const answers = {};       // qid → numeric value
+    let questionIndex = 0;
+    const total = HIP_BRIEF_QUESTIONS.length;
+
+    const showQuestion = (i) => {
+      questionIndex = i;
+      const q = HIP_BRIEF_QUESTIONS[i];
+      modal.querySelector('#hipIntro').style.display = 'none';
+      modal.querySelector('#hipResult').style.display = 'none';
+      modal.querySelector('#hipQuestion').style.display = '';
+      modal.querySelector('#hipQuestionTitle').textContent = q.title;
+      modal.querySelector('#hipQuestionProgress').textContent = `${i + 1} of ${total}`;
+      modal.querySelector('#hipQuestionInstructions').textContent = q.instructions;
+      const optsHost = modal.querySelector('#hipQuestionOptions');
+      optsHost.innerHTML = q.options.map(o =>
+        `<button type="button" class="oq-option" data-value="${o.value}" style="text-align:left;padding:10px 14px">${escapeHtml(o.label)}</button>`
+      ).join('');
+      const selected = answers[q.id];
+      if (selected != null) {
+        const sel = optsHost.querySelector(`.oq-option[data-value="${selected}"]`);
+        if (sel) sel.classList.add('selected');
+      }
+      modal.querySelector('#hipQuestionHint').textContent = q.hint || '';
+      modal.querySelector('#hipNextBtn').disabled = (selected == null);
+      modal.querySelector('#hipNextBtn').textContent = (i === total - 1) ? 'finish →' : 'next →';
+      modal.querySelector('#hipBackBtn').disabled = (i === 0);
+    };
+
+    const computeScore = () => {
+      let raw = 0;
+      for (const q of HIP_BRIEF_QUESTIONS) {
+        raw += Number(answers[q.id]) || 0;
+      }
+      // Max raw = 3 + 3 + 2 + 2 = 10. Clamp to be safe.
+      return Math.max(0, Math.min(10, raw));
+    };
+
+    const showResult = () => {
+      const score = computeScore();
+      const band  = _hipBand(score);
+      modal.querySelector('#hipQuestion').style.display = 'none';
+      modal.querySelector('#hipResult').style.display = '';
+      modal.querySelector('#hipScoreDisplay').textContent = score;
+      modal.querySelector('#hipScoreDisplay').style.color = band?.color || 'var(--neon-cyan)';
+      modal.querySelector('#hipBandLabel').textContent = band ? `${band.label} susceptibility` : '—';
+      modal.querySelector('#hipBandDesc').textContent  = band?.desc || '';
+      // Stash score on the result panel so save can read it without recomputing.
+      modal.querySelector('#hipResult').dataset.score = score;
+    };
+
+    // Wire interactions (re-bind each open since we recreate handlers)
+    const intro = modal.querySelector('#hipIntro');
+    const result = modal.querySelector('#hipResult');
+    const close = () => modal.classList.remove('visible');
+    intro.querySelector('#hipBeginBtn').onclick = () => showQuestion(0);
+    intro.querySelector('#hipSkipBtn').onclick  = close;
+    modal.querySelector('#hipCloseBtn').onclick = close;
+    result.querySelector('#hipResultCloseBtn').onclick = close;
+    modal.querySelector('#hipQuestionOptions').onclick = (ev) => {
+      const opt = ev.target.closest?.('.oq-option');
+      if (!opt) return;
+      const q = HIP_BRIEF_QUESTIONS[questionIndex];
+      modal.querySelectorAll('#hipQuestionOptions .oq-option').forEach(el => el.classList.remove('selected'));
+      opt.classList.add('selected');
+      answers[q.id] = Number(opt.dataset.value);
+      modal.querySelector('#hipNextBtn').disabled = false;
+    };
+    modal.querySelector('#hipBackBtn').onclick = () => {
+      if (questionIndex > 0) showQuestion(questionIndex - 1);
+    };
+    modal.querySelector('#hipNextBtn').onclick = () => {
+      if (questionIndex < total - 1) showQuestion(questionIndex + 1);
+      else showResult();
+    };
+    result.querySelector('#hipRetakeBtn').onclick = () => {
+      // Wipe current answers and start over.
+      for (const k in answers) delete answers[k];
+      showQuestion(0);
+    };
+    result.querySelector('#hipSaveBtn').onclick = () => {
+      const score = result.dataset.score;
+      const inp = $('pfSusceptibility');
+      if (inp) {
+        inp.value = String(score);
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      _refreshSusceptibilityDisplay();
+      if (typeof saveProfile === 'function') saveProfile();
+      close();
+      if (typeof notify !== 'undefined') {
+        const band = _hipBand(score);
+        notify.success(band ? `Susceptibility recorded: ${score}/10 — ${band.label}.` : 'Saved.');
+      }
+    };
+  }
+
+  $('hipBriefBtn')?.addEventListener('click', openHipBrief);
+  // Refresh the display once on init so saved scores show immediately.
+  _refreshSusceptibilityDisplay();
+
+  // ====================================================================
   // SOS QUICK RESET SESSIONS (E1.2)
   // ====================================================================
   // Pre-built static scripts for emergency calming. Four scenarios cover
@@ -32120,6 +33396,379 @@ You're back. Move gently. The story can wait until you've put your feet down.`,
 
   function openMeditationModal() { _ensureMedModal().classList.add('visible'); }
   $('meditationBtn')?.addEventListener('click', openMeditationModal);
+
+  // ====================================================================
+  // POWER NAP MODE (SE1.1)
+  // ====================================================================
+  // 15-25 minute Ericksonian creative trance ending in an alarm-style
+  // wake. Distinct from sleep mode — power nap RETURNS you to alertness
+  // with energy. Most users don't realize hypnosis is the best
+  // 20-minute nap structure available.
+  //
+  // Architecture: AI-generates a fresh script per session for variety.
+  // Perchance AI is the default (free tier); user-key Anthropic/OpenAI
+  // is opt-in. Full §0a alignment.
+  // ====================================================================
+
+  const POWER_NAP_DURATIONS = [
+    { value: 15, label: '15 minutes' },
+    { value: 20, label: '20 minutes' },
+    { value: 25, label: '25 minutes' },
+  ];
+
+  function _buildPowerNapPrompt(duration) {
+    // Word budgets are intentional. Settling/Induction/Deepener are
+    // tightly written; Work is mostly silence (long [PAUSE N] markers
+    // with anchoring lines spread out); Wake is brisk + energizing
+    // (the alarm is the differentiator vs. the sleep preset).
+    return `You are writing a ${duration}-minute power nap session script in Ericksonian style. The user lies down, descends into a brief restorative trance, and wakes refreshed and alert.
+
+Use these phase markers EXACTLY (uppercase, three equals on each side):
+
+===SETTLING===
+60 seconds, ~50 words. Gentle settling. The body finds its position. Eyes close. One or two slow breaths.
+
+===INDUCTION===
+90 seconds, ~80 words. Permissive Ericksonian language: "you might notice", "perhaps allowing", "as you continue to…". Body softens, awareness narrows. End with the user "drifting toward a quieter inner space".
+
+===DEEPENER===
+60 seconds, ~50 words. A single short staircase or count-down (5 to 1, or "deeper, and deeper still"). End at "the deepest comfortable rest".
+
+===WORK===
+This is the nap itself — about ${duration - 5} minutes of mostly silence. Write only ~40 short anchoring lines spread across many [PAUSE N] markers (N in seconds, between 60 and 180). The lines should be sparse, spacious, drifting. Examples:
+  "Resting completely now. [PAUSE 120]"
+  "Nothing to do. Nothing to think. [PAUSE 150]"
+  "The body, knowing exactly what it needs. [PAUSE 180]"
+The total run time of this phase including pauses must be ~${duration - 5} minutes.
+
+===LIGHTENER===
+40 seconds, ~30 words. The first hint of returning. Beginning to feel the surroundings again. Color and light returning to awareness.
+
+===WAKE===
+60 seconds, ~80 words. Alarm-style — clear, energizing, brisk. NOT a gentle drift. Direct language: "fully alert", "feel refreshed", "energy returning to every muscle", "ready and clear". The user has things to do. Count up 1 to 5 and have them open their eyes at 5.
+
+===REINTRODUCTION===
+30 seconds, ~30 words. Fully awake and oriented. Notice the room. Feel the alertness. Brief. Productive.
+
+CRITICAL:
+- Use [PAUSE N] markers (square brackets) for silences, where N is seconds. Don't use ellipsis or "..." for pauses — only [PAUSE N].
+- Do NOT include any header, preamble, or commentary. Output starts with ===SETTLING=== and ends with the last reintroduction word.
+- Do NOT write "twenty minutes" inside the script — just write the content for each phase.
+
+Begin:`;
+  }
+
+  function _buildSleepStoryPrompt(theme, durationMin) {
+    return `You are writing a ${durationMin}-minute bedtime sleep story on the theme: "${theme}".
+
+STYLE:
+- Pure descriptive narrative. Present tense. Second-person ("you walk along...") OR third-person observer ("the path winds...").
+- ABSOLUTELY NO induction language. NEVER say "feel your body", "notice your breath", "relax your shoulders", "you may", "allowing yourself to", or anything else that sounds like hypnosis or guided meditation.
+- ABSOLUTELY NO trance language. No "deeper", no "going down", no "letting go" instructions.
+- Just describe the scene unfolding — slowly, sensory-rich early, sparser as time passes.
+- The arc gradually winds down: vivid sensory detail in early phases, longer pauses and quieter description toward the end, fading into stillness at the close.
+- Don't moralize, don't have characters speak about emotions, don't conclude with a lesson. Just the scene.
+
+Use these phase markers EXACTLY:
+
+===SETTLING===
+30 seconds, ~30 words. Open the scene. Set mood with one vivid detail.
+
+===WORK===
+This is the story body — split it into 3-4 chunks within this single section, each separated by a [PAUSE N] marker (N in seconds, 8-30). Each chunk is roughly 60-100 words. Across the chunks:
+  - First chunk: rich sensory detail. Sights, textures, ambient sounds.
+  - Each subsequent chunk: less detail, more drift. Shorter sentences.
+  - Final chunk: very sparse. Almost just imagery — "the moonlight, the soft creak of the oak". End on a still image.
+The total work runtime should be about ${durationMin - 1} minutes including pauses.
+
+===LIGHTENER===
+20 seconds, ~15 words. One last quiet image. Stillness settling in.
+
+CRITICAL:
+- Use [PAUSE N] markers in square brackets, N in seconds.
+- NO ===WAKE=== or ===REINTRODUCTION=== — this is sleep-intent, the user drifts off.
+- Do NOT include header, preamble, or commentary. Output starts with ===SETTLING=== and ends mid-sentence or with a still image.
+
+Begin:`;
+  }
+
+  // Shared loading-state helpers
+  function _showAiModeLoading(modal, label = 'Generating your script — about 10–20 seconds.') {
+    const setupEl = modal.querySelector('.ai-mode-setup');
+    const loadEl  = modal.querySelector('.ai-mode-loading');
+    if (setupEl) setupEl.style.display = 'none';
+    if (loadEl)  {
+      loadEl.style.display = '';
+      const status = loadEl.querySelector('.ai-mode-status');
+      if (status) status.textContent = label;
+    }
+  }
+  function _resetAiModeModal(modal) {
+    const setupEl = modal.querySelector('.ai-mode-setup');
+    const loadEl  = modal.querySelector('.ai-mode-loading');
+    if (setupEl) setupEl.style.display = '';
+    if (loadEl)  loadEl.style.display = 'none';
+  }
+
+  // ── Power Nap modal ─────────────────────────────────────────────────
+  let _powerNapModalEl = null;
+  function _ensurePowerNapModal() {
+    if (_powerNapModalEl) return _powerNapModalEl;
+    const opts = (arr, sel) => arr.map(o =>
+      `<option value="${escapeHtml(String(o.value))}"${o.value === sel ? ' selected' : ''}>${escapeHtml(o.label)}</option>`
+    ).join('');
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'powerNapModal';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:480px">
+        <div class="ai-mode-setup">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+            <h2 style="margin:0;font-size:1.05rem">Power Nap</h2>
+            <button class="btn secondary" id="powerNapCloseBtn" style="padding:4px 12px;font-size:0.74rem">close</button>
+          </div>
+          <div class="oq-intro" style="border-left-color:var(--neon-purple);background:rgba(185,120,224,0.04)">
+            Hypnosis-style power nap. Soft descent, brief deep rest, then a clear wake — you come back energized, not groggy. AI generates a fresh script per session.
+          </div>
+          <div class="med-row">
+            <label for="powerNapDuration">Duration</label>
+            <select id="powerNapDuration">${opts(POWER_NAP_DURATIONS, 20)}</select>
+          </div>
+          <div class="med-row">
+            <label for="powerNapSoundscape">Soundscape</label>
+            <select id="powerNapSoundscape">${opts(MEDITATION_SOUNDSCAPES, 'rain')}</select>
+          </div>
+          <div class="modal-actions" style="margin-top:18px">
+            <button class="btn primary" id="powerNapStartBtn">begin</button>
+          </div>
+        </div>
+        <div class="ai-mode-loading" style="display:none">
+          <div class="ai-mode-spinner"></div>
+          <div>Writing your power nap session…</div>
+          <div class="ai-mode-status">Generating your script — about 10–20 seconds.</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _powerNapModalEl = wrap;
+    $('powerNapCloseBtn')?.addEventListener('click', () => { wrap.classList.remove('visible'); _resetAiModeModal(wrap); });
+    wrap.addEventListener('click', (e) => {
+      if (e.target === wrap) { wrap.classList.remove('visible'); _resetAiModeModal(wrap); }
+    });
+    $('powerNapStartBtn')?.addEventListener('click', startPowerNap);
+    return wrap;
+  }
+
+  async function startPowerNap() {
+    const dur = parseInt($('powerNapDuration')?.value || '20', 10);
+    const soundscape = $('powerNapSoundscape')?.value || 'rain';
+    if (!Number.isFinite(dur) || dur <= 0) return;
+    const modal = _powerNapModalEl;
+    _showAiModeLoading(modal, `Writing a ${dur}-minute power nap script…`);
+    try {
+      const prompt = _buildPowerNapPrompt(dur);
+      const data = await aiGenerate(prompt, {
+        source: 'power-nap',
+        maxTokens: 4096,
+      });
+      if (!data || data.stopReason === 'error' || !data.generatedText) {
+        throw new Error(data?._note || 'empty AI response');
+      }
+      const script = data.generatedText.trim();
+      // Sanity check — must contain at least the required phase markers.
+      if (!/===\s*SETTLING\s*===/i.test(script) || !/===\s*WORK\s*===/i.test(script) || !/===\s*WAKE\s*===/i.test(script)) {
+        throw new Error('AI returned an incomplete script structure');
+      }
+      modal.classList.remove('visible');
+      _resetAiModeModal(modal);
+      // Launch via the shared AI-mode session helper.
+      _launchAiModeSession({
+        kind: 'power-nap',
+        script,
+        persona: 'therapist',
+        method: 'ericksonian',
+        length: dur >= 25 ? 'medium' : 'short',
+        soundscape,
+        intention: 'release', // not 'sleep' — power nap RETURNS to alertness
+        vizOverride: 'aurora',
+      });
+    } catch (e) {
+      console.error('[power-nap] generation failed:', e);
+      notify.error('Power nap generation failed — try again, or check your AI provider settings.');
+      _resetAiModeModal(modal);
+    }
+  }
+
+  function openPowerNapModal() { _ensurePowerNapModal().classList.add('visible'); }
+  // Wired to the Step-1 "Quick AI Modes" collapsible card (not the sidebar).
+  $('powerNapCard')?.addEventListener('click', openPowerNapModal);
+
+  // ── Sleep Story modal ───────────────────────────────────────────────
+  const SLEEP_STORY_THEMES = [
+    { value: 'forest-cabin',     label: '🌲 forest cabin in early autumn',  soundscape: 'rain' },
+    { value: 'ocean-cottage',    label: '🌊 cottage by a quiet ocean',      soundscape: 'ocean' },
+    { value: 'train-night',      label: '🚂 night train through countryside', soundscape: 'train' },
+    { value: 'mountain-village', label: '⛰ snowy mountain village at dusk', soundscape: 'fire' },
+    { value: 'old-library',      label: '📚 old library on a rainy night',  soundscape: 'rain' },
+    { value: 'walled-garden',    label: '🌿 walled garden in summer',       soundscape: 'forest' },
+    { value: 'lighthouse',       label: '🗼 lighthouse keeper\'s evening',  soundscape: 'ocean' },
+    { value: 'desert-camp',      label: '🏜 desert camp under starlight',   soundscape: 'drone' },
+    { value: 'river-boat',       label: '⛵ slow river boat at dawn',       soundscape: 'underwater' },
+  ];
+  const SLEEP_STORY_DURATIONS = [
+    { value: 15, label: '15 minutes' },
+    { value: 20, label: '20 minutes' },
+    { value: 30, label: '30 minutes' },
+  ];
+
+  let _sleepStoryModalEl = null;
+  function _ensureSleepStoryModal() {
+    if (_sleepStoryModalEl) return _sleepStoryModalEl;
+    const opts = (arr, sel) => arr.map(o =>
+      `<option value="${escapeHtml(String(o.value))}"${o.value === sel ? ' selected' : ''}>${escapeHtml(o.label)}</option>`
+    ).join('');
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'sleepStoryModal';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:520px">
+        <div class="ai-mode-setup">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+            <h2 style="margin:0;font-size:1.05rem">Sleep Story</h2>
+            <button class="btn secondary" id="sleepStoryCloseBtn" style="padding:4px 12px;font-size:0.74rem">close</button>
+          </div>
+          <div class="oq-intro" style="border-left-color:var(--neon-purple);background:rgba(185,120,224,0.04)">
+            Pure narrative — no induction language, no suggestions. Just a scene unfolding slowly, winding down to silence. Drifts off rather than ending.
+          </div>
+          <div class="med-row">
+            <label for="sleepStoryTheme">Theme</label>
+            <select id="sleepStoryTheme">${opts(SLEEP_STORY_THEMES, 'forest-cabin')}</select>
+          </div>
+          <div class="med-row">
+            <label for="sleepStoryDuration">Duration</label>
+            <select id="sleepStoryDuration">${opts(SLEEP_STORY_DURATIONS, 20)}</select>
+          </div>
+          <div class="med-row">
+            <label for="sleepStorySoundscape">Soundscape</label>
+            <select id="sleepStorySoundscape">${opts([{value:'auto',label:'auto (matches theme)'}, ...MEDITATION_SOUNDSCAPES], 'auto')}</select>
+          </div>
+          <div class="modal-actions" style="margin-top:18px">
+            <button class="btn primary" id="sleepStoryStartBtn">begin</button>
+          </div>
+        </div>
+        <div class="ai-mode-loading" style="display:none">
+          <div class="ai-mode-spinner"></div>
+          <div>Writing your sleep story…</div>
+          <div class="ai-mode-status">Generating — about 15–25 seconds.</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _sleepStoryModalEl = wrap;
+    $('sleepStoryCloseBtn')?.addEventListener('click', () => { wrap.classList.remove('visible'); _resetAiModeModal(wrap); });
+    wrap.addEventListener('click', (e) => {
+      if (e.target === wrap) { wrap.classList.remove('visible'); _resetAiModeModal(wrap); }
+    });
+    $('sleepStoryStartBtn')?.addEventListener('click', startSleepStory);
+    return wrap;
+  }
+
+  async function startSleepStory() {
+    const themeKey = $('sleepStoryTheme')?.value || 'forest-cabin';
+    const dur = parseInt($('sleepStoryDuration')?.value || '20', 10);
+    const ssChoice = $('sleepStorySoundscape')?.value || 'auto';
+    const theme = SLEEP_STORY_THEMES.find(t => t.value === themeKey);
+    if (!theme) return;
+    const soundscape = ssChoice === 'auto' ? (theme.soundscape || 'rain') : ssChoice;
+    const themeText = theme.label.replace(/^[^\sA-Za-z]+\s*/, ''); // strip leading emoji
+    const modal = _sleepStoryModalEl;
+    _showAiModeLoading(modal, `Writing a ${dur}-minute story about ${themeText.toLowerCase()}…`);
+    try {
+      const prompt = _buildSleepStoryPrompt(themeText, dur);
+      const data = await aiGenerate(prompt, {
+        source: 'sleep-story',
+        maxTokens: 4096,
+      });
+      if (!data || data.stopReason === 'error' || !data.generatedText) {
+        throw new Error(data?._note || 'empty AI response');
+      }
+      const script = data.generatedText.trim();
+      if (!/===\s*SETTLING\s*===/i.test(script) || !/===\s*WORK\s*===/i.test(script)) {
+        throw new Error('AI returned an incomplete script structure');
+      }
+      modal.classList.remove('visible');
+      _resetAiModeModal(modal);
+      _launchAiModeSession({
+        kind: 'sleep-story',
+        script,
+        persona: 'old-master',
+        method: 'ericksonian',
+        length: dur >= 25 ? 'long' : 'medium',
+        soundscape,
+        intention: 'sleep', // safety gate exempts wake/reintro
+        vizOverride: 'aurora',
+      });
+    } catch (e) {
+      console.error('[sleep-story] generation failed:', e);
+      notify.error('Sleep story generation failed — try again, or check your AI provider settings.');
+      _resetAiModeModal(modal);
+    }
+  }
+
+  function openSleepStoryModal() { _ensureSleepStoryModal().classList.add('visible'); }
+  // Wired to the Step-1 "Quick AI Modes" collapsible card (not the sidebar).
+  $('sleepStoryCard')?.addEventListener('click', openSleepStoryModal);
+
+  /**
+   * Shared launcher for AI-generated session modes (Power Nap, Sleep Story).
+   * Same wizard-bypass pattern as launchSosSession but takes a config object
+   * with a freshly-generated script. Tags state._sessionMode so finishSession
+   * can record the mode.
+   */
+  function _launchAiModeSession(cfg) {
+    if (!cfg || !cfg.script) return;
+    if (state._cooldownUntil && Date.now() < state._cooldownUntil) {
+      const remaining = (typeof getEmergencyCooldownRemaining === 'function')
+        ? getEmergencyCooldownRemaining() : null;
+      notify.warn(remaining
+        ? `Please wait ${remaining}s before starting another session.`
+        : 'Please wait a moment before starting another session.');
+      return;
+    }
+    try {
+      state.selectedPersonaId = cfg.persona;
+      state.selectedMethodId  = cfg.method;
+      state.length            = cfg.length;
+      state.soundscape        = cfg.soundscape;
+      state.droneEnabled      = cfg.soundscape !== 'none';
+      state.intentionType     = cfg.intention;
+      if (cfg.vizOverride) state.vizOverride = cfg.vizOverride;
+      state._phaseExtras      = [];
+      state._sessionMode      = cfg.kind; // 'power-nap' | 'sleep-story'
+      state._sessionModeAt    = Date.now();
+      const lengthSel = $('lengthSelect');     if (lengthSel) lengthSel.value = cfg.length;
+      const ssSelect  = $('soundscapeSelect'); if (ssSelect)  ssSelect.value  = cfg.soundscape;
+      const vizSel    = $('vizSelect');        if (vizSel && cfg.vizOverride) vizSel.value = cfg.vizOverride;
+      const intSel    = $('intentionType');    if (intSel)    intSel.value    = cfg.intention;
+      const stEl = $('scriptText'); if (stEl) stEl.value = cfg.script;
+      state.fullScript   = cfg.script;
+      state.parsedScript = parseScript(cfg.script);
+      state.generatedPhaseOrder = state.parsedScript?.ordered || [];
+      state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: false };
+      $('sidebar')?.classList.remove('open');
+      $('sidebarOverlay')?.classList.remove('open');
+      if (typeof renderPersonaGrid   === 'function') renderPersonaGrid();
+      if (typeof renderPersonaDetail === 'function') renderPersonaDetail();
+      if (typeof renderMethodGrid    === 'function') renderMethodGrid();
+      if (typeof renderMethodDetail  === 'function') renderMethodDetail();
+      if (typeof updateIntentionHint === 'function') updateIntentionHint();
+      if (typeof showScript          === 'function') showScript();
+      startSession();
+    } catch (e) {
+      console.error('[ai-mode] launch failed:', e);
+      notify.error('Could not start the session — try again or use the wizard.');
+    }
+  }
 
   // ====================================================================
   // GLOSSARY TOOLTIPS (UX1.4)
