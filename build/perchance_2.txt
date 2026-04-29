@@ -2947,6 +2947,13 @@ padding: 5px 15px; cursor: pointer;
   .preset-card.intent-behavior .preset-intent-label { color: var(--neon-amber); }
   .preset-card.intent-energy { border-left: 3px solid var(--neon-amber); }
   .preset-card.intent-energy .preset-intent-label { color: var(--neon-amber); }
+  /* Quick Modes (no wizard) — added when SOS + Meditation Timer moved
+     out of the sidebar in Round 23. Color-coded distinctly so the four
+     modes in the Quick Modes dropdown read at a glance. */
+  .preset-card.intent-emergency { border-left: 3px solid #d46a6a; }
+  .preset-card.intent-emergency .preset-intent-label { color: #ffb0b0; }
+  .preset-card.intent-stillness { border-left: 3px solid var(--neon-amber); }
+  .preset-card.intent-stillness .preset-intent-label { color: var(--neon-amber); }
   /* Programs get a distinct top stripe in addition to intent left-border to set them apart from single presets */
   .preset-card.is-program { border-top: 2px solid var(--accent); }
   .preset-card.is-program::before {
@@ -4083,22 +4090,6 @@ padding: 6px 10px; font-size: 1.1rem;
   <div class="app-layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-inner">
-        <!-- E1.2 — SOS Quick Reset. Always-visible top button for
-             emergency calming sessions (panic, racing thoughts, can't
-             sleep, urge-spiral). Pre-built static scripts; no AI call;
-             no wizard. ~90s each. Opt-in per click. -->
-        <button class="btn sos-btn" id="sosBtn"
-                style="width:100%;font-size:0.78rem;padding:9px;margin-bottom:8px"
-                title="Quick emergency-calming session, ~90 seconds, no setup">
-          🆘 quick reset
-        </button>
-        <!-- SE1.3 — Meditation Timer. Bare-bones timer with optional
-             soundscape and bell intervals. No narrator. -->
-        <button class="btn secondary meditation-btn" id="meditationBtn"
-                style="width:100%;font-size:0.74rem;padding:8px;margin-bottom:10px"
-                title="Silent meditation timer with optional soundscape and bells">
-          🧘 meditation timer
-        </button>
         <!-- Onboarding quiz — first-run personalization. Pre-fills the
              profile in 60 seconds so the AI/Director have something to
              work with from session 1. Hides itself permanently after
@@ -4158,7 +4149,7 @@ padding: 6px 10px; font-size: 1.1rem;
           <div class="pf-row"><label class="pf-label">Age Range</label>
             <select id="pfAge" class="pf-select"><option value="">prefer not to say</option><option value="18-24">18–24</option><option value="25-34">25–34</option><option value="35-44">35–44</option><option value="45-54">45–54</option><option value="55-64">55–64</option><option value="65+">65+</option></select>
           </div>
-          <div class="pf-row"><label class="pf-label">Experience</label>
+          <div class="pf-row"><label class="pf-label">Meditation Experience</label>
             <select id="pfExperience" class="pf-select"><option value="beginner">Beginner — first time</option><option value="some">Some experience</option><option value="experienced">Experienced practitioner</option><option value="professional">Professional / trained</option></select>
           </div>
           <div class="pf-row"><label class="pf-label">About You</label><textarea id="pfAbout" class="pf-textarea" rows="2" maxlength="300" placeholder="Anything you'd like to share..."></textarea></div>
@@ -4188,10 +4179,20 @@ padding: 6px 10px; font-size: 1.1rem;
               <option value="variable">variable / shift work</option>
             </select>
           </div>
-          <div class="pf-row"><label class="pf-label">Sensory Sensitivities</label>
-            <textarea id="pfSensorySensitivities" class="pf-textarea" rows="2" maxlength="300" placeholder="e.g. avoid water imagery, no countdowns, dislikes feeling enclosed..."></textarea>
-            <div class="sublabel" style="font-size:0.58rem">The AI is told to avoid these themes. Local-only when "Use profile details" is off.</div>
-          </div>
+
+          <!-- ── More profile data (Round 23 — schema consolidation, Cluster S1) ──
+               All extended fields wrapped in a single parent details so the
+               main profile stays compact. Inner details remain interactive
+               but nest under one summary heading. Sensory Sensitivities
+               leads since it's the highest-stakes signal (the AI is told
+               to AVOID these themes). -->
+          <details class="pf-extended pf-more-profile" style="margin-top:10px">
+            <summary style="font-size:0.78rem;font-weight:600;color:var(--text);cursor:pointer;padding:8px 0;border-top:1px solid var(--glass-border);border-bottom:1px solid var(--glass-border)">📂 More profile data</summary>
+            <div class="sublabel" style="font-size:0.58rem;margin:8px 0 4px;color:var(--text-faint)">Optional. Each section below sharpens what the AI and Director know about you. None of it is required.</div>
+            <div class="pf-row" style="margin-top:8px"><label class="pf-label">Sensory Sensitivities</label>
+              <textarea id="pfSensorySensitivities" class="pf-textarea" rows="2" maxlength="300" placeholder="e.g. avoid water imagery, no countdowns, dislikes feeling enclosed..."></textarea>
+              <div class="sublabel" style="font-size:0.58rem">The AI is told to avoid these themes. Local-only when "Use profile details" is off.</div>
+            </div>
 
           <!-- ── Practice Context ─────────────────────────────────────
                Where, when, and how the user typically practices. Used
@@ -4350,6 +4351,7 @@ padding: 6px 10px; font-size: 1.1rem;
               <div class="sublabel" style="font-size:0.58rem">A scene the script can return you to during work-phase peaks.</div>
             </div>
           </details>
+          </details><!-- /.pf-more-profile -->
           <div class="sublabel" style="font-size:0.58rem;margin-top:4px">Profile stays on your device. Local recommendations always use these fields; the AI only sees them when "Use profile details in script" is on.</div>
         </div>
         <details>
@@ -4478,21 +4480,33 @@ padding: 6px 10px; font-size: 1.1rem;
         <div class="preset-grid" id="programGrid"></div>
       </details>
 
-      <!-- Quick AI Modes — alternative session types that bypass the
-           full wizard. Power Nap = structured Ericksonian descent with
-           alarm-style wake. Sleep Story = pure narrative bedtime story
-           with no induction language. Both AI-generate fresh content
-           per launch (Perchance default; user-key as fallback). -->
+      <!-- Quick Modes — alternative session types that bypass the full
+           wizard. Mix of AI-generated (Power Nap, Sleep Story), static
+           templates (SOS quick-reset), and non-narrated tools (Meditation
+           Timer). Combined here so the sidebar stays focused on profile +
+           navigation, not session launching. -->
       <details class="presets-collapsible" id="aiQuickModesDetails" style="margin-bottom:16px">
         <summary>
           <span class="presets-chevron">▸</span>
-          <span class="presets-title">Quick AI Modes <span style="font-weight:normal;color:var(--text-faint);font-size:0.7rem;text-transform:none;letter-spacing:0">(no wizard)</span></span>
+          <span class="presets-title">Quick Modes <span style="font-weight:normal;color:var(--text-faint);font-size:0.7rem;text-transform:none;letter-spacing:0">(no wizard)</span></span>
           <span class="presets-hint">tap to expand · skip the setup</span>
         </summary>
         <div class="sublabel" style="margin-top:8px;margin-bottom:10px">
-          One-tap session modes that bypass the full wizard. The AI generates a fresh script for the chosen mode every time.
+          One-tap session modes that bypass the full wizard. SOS and Meditation Timer launch immediately; Power Nap and Sleep Story are AI-generated fresh per launch.
         </div>
         <div class="preset-grid">
+          <div class="preset-card intent-emergency" id="sosCard" style="cursor:pointer">
+            <div class="preset-icon">🆘</div>
+            <div class="preset-name">SOS Quick Reset</div>
+            <div class="preset-desc">~90 sec · panic / racing / can't sleep / spiral</div>
+            <div class="preset-intent-label">emergency</div>
+          </div>
+          <div class="preset-card intent-stillness" id="meditationCard" style="cursor:pointer">
+            <div class="preset-icon">🧘</div>
+            <div class="preset-name">Meditation Timer</div>
+            <div class="preset-desc">5–45 min · silent · optional soundscape + bells</div>
+            <div class="preset-intent-label">stillness</div>
+          </div>
           <div class="preset-card intent-trance" id="powerNapCard" style="cursor:pointer">
             <div class="preset-icon">💤</div>
             <div class="preset-name">Power Nap</div>
@@ -11648,6 +11662,82 @@ I return to myself easily"></textarea>
     { id: 'pfPowerObject',            type: 'text' },
     { id: 'pfResourceMemory',         type: 'text' },
   ];
+
+  // ── Cluster S3 — Profile field schema ──────────────────────────────
+  // Metadata layer that groups the (now 39+) profile fields into named
+  // categories with display labels and AI-prompt phrasing references.
+  // Existing read paths (getProfile, getProfileContext, applyProfileToForm)
+  // remain flat for backward compatibility — this is purely additive
+  // metadata. Future features (data-viewer page, category-scope share
+  // toggles, change-log labelling) read from here so all field knowledge
+  // lives in one place.
+  const PROFILE_FIELD_SCHEMA = {
+    identity: {
+      label: 'Identity',
+      fields: [
+        { id: 'pfName',         key: 'name',         label: 'First Name',     type: 'text' },
+        { id: 'pfPronouns',     key: 'pronouns',     label: 'Pronouns',       type: 'select' },
+        { id: 'pfAge',          key: 'age',          label: 'Age range',      type: 'select' },
+        { id: 'pfExperience',   key: 'experience',   label: 'Experience',     type: 'select' },
+        { id: 'pfAbout',        key: 'about',        label: 'About',          type: 'textarea' },
+        { id: 'pfAppearance',   key: 'appearance',   label: 'Appearance',     type: 'textarea' },
+        { id: 'pfGoals',        key: 'goals',        label: 'Goals',          type: 'textarea' },
+      ],
+    },
+    practiceContext: {
+      label: 'Practice Context',
+      fields: [
+        { id: 'pfTypicalTime',   key: 'typicalTime',   label: 'Typical Time',   type: 'select' },
+        { id: 'pfPracticeSpace', key: 'practiceSpace', label: 'Practice Space', type: 'select' },
+        { id: 'pfPosture',       key: 'posture',       label: 'Typical Posture', type: 'select' },
+        { id: 'pfCoPresence',    key: 'coPresence',    label: 'Co-Presence',    type: 'select' },
+      ],
+    },
+    lifeContext: {
+      label: 'Current Life Context',
+      fields: [
+        { id: 'pfCurrentThemes',     key: 'currentThemes',     label: 'Current Themes',    type: 'textarea' },
+        { id: 'pfCurrentStressors',  key: 'currentStressors',  label: 'Current Stressors', type: 'textarea' },
+        { id: 'pfCurrentWins',       key: 'currentWins',       label: 'Current Wins',      type: 'textarea' },
+        { id: 'pfHealthNotes',       key: 'healthNotes',       label: 'Health Notes',      type: 'textarea' },
+      ],
+    },
+    style: {
+      label: 'Style Preferences',
+      fields: [
+        { id: 'pfMetaphorDensity', key: 'metaphorDensity', label: 'Metaphor Density', type: 'select' },
+        { id: 'pfAuthorityStyle',  key: 'authorityStyle',  label: 'Authority Style',  type: 'select' },
+        { id: 'pfTouchComfort',    key: 'touchComfort',    label: 'Body-Touch Comfort', type: 'select' },
+        { id: 'pfSpiritualFrame',  key: 'spiritualFrame',  label: 'Spiritual Frame',  type: 'select' },
+      ],
+    },
+    susceptibility: {
+      label: 'Hypnotic Susceptibility',
+      fields: [
+        { id: 'pfSusceptibility', key: 'susceptibility', label: 'HIP score',  type: 'numeric' },
+      ],
+    },
+    anchors: {
+      label: 'Personal Anchors',
+      fields: [
+        { id: 'pfSafePlace',      key: 'safePlace',      label: 'Safe Place',      type: 'textarea' },
+        { id: 'pfPowerObject',    key: 'powerObject',    label: 'Power Object',    type: 'textarea' },
+        { id: 'pfResourceMemory', key: 'resourceMemory', label: 'Resource Memory', type: 'textarea' },
+      ],
+    },
+  };
+
+  /** Reverse lookup: field key → category name. Used for change-log labelling. */
+  const _PROFILE_FIELD_TO_CATEGORY = (() => {
+    const map = {};
+    for (const [catKey, cat] of Object.entries(PROFILE_FIELD_SCHEMA)) {
+      for (const f of cat.fields) {
+        map[f.key] = catKey;
+        map[f.id]  = catKey; // also indexable by DOM id
+      }
+    }
+    return map;
+  })();
 
   function initDiffBouncers() {
     // Text/CSV field bouncers — one per TRACKED_FIELD
@@ -24462,6 +24552,7 @@ Start immediately:`;
         renderSidebarStats();
         renderHeatmap();
         renderSparkline();
+        renderHipSparkline();
         notify.info('Session deleted.');
       });
     });
@@ -25540,6 +25631,7 @@ Start immediately:`;
       renderSidebarStats();
       renderHeatmap();
       renderSparkline();
+      renderHipSparkline();
       // Show all the slices that came in, not just personas+sessions, so
       // the user knows their library wasn't silently dropped.
       const counts = [];
@@ -26234,12 +26326,38 @@ Start immediately:`;
         // Duck FIRST — let it ramp down during display fade
         if (shouldDuck && !isDucked) { drone.duck(); isDucked = true; }
 
-        for (const sentence of sentences) {
+        // N1.1 — Premium TTS sentence pre-buffering. Kick off a fetch for
+        // sentence 0 right away, then iteratively kick off N+1 just before
+        // we play N. The cache in _premiumTtsFetch dedupes requests so
+        // these prefetches transparently feed the speak() path. Skipped
+        // entirely when premium TTS isn't active.
+        const premiumActive = (typeof _isPremiumTtsActive === 'function') && _isPremiumTtsActive();
+        if (premiumActive && sentences.length) {
+          // Pre-fetch the first sentence (or its first non-embedded segment).
+          // For embedded-command sentences we still pre-fetch the first chunk;
+          // the per-segment speak() path below will hit the cache for it.
+          const firstChunk = (sentences[0].includes('\u0001') && sentences[0].includes('\u0002'))
+            ? (_parseEmbeddedSegments(sentences[0]).find(s => s.text?.trim())?.text || sentences[0])
+            : sentences[0];
+          _premiumTtsPrefetch(firstChunk);
+        }
+
+        for (let _si = 0; _si < sentences.length; _si++) {
+          const sentence = sentences[_si];
           if (!bypassAbort && state.abortFlag) break;
           while (state.paused && !state.abortFlag) await sleep(200);
           if (!bypassAbort && state.abortFlag) break;
           // Skip noop sentences (just punctuation/whitespace/sentinels)
           if (!sentence.replace(/[\u0001\u0002\s.,;:!?…—–\-]/g, '').length) continue;
+          // Look-ahead pre-fetch for sentence i+1 — fires before we start
+          // playing sentence i so the network round-trip overlaps playback.
+          if (premiumActive && _si + 1 < sentences.length) {
+            const next = sentences[_si + 1];
+            const nextChunk = (next.includes('\u0001') && next.includes('\u0002'))
+              ? (_parseEmbeddedSegments(next).find(s => s.text?.trim())?.text || next)
+              : next;
+            _premiumTtsPrefetch(nextChunk);
+          }
 
           if (display) {
             display.style.opacity = 0;
@@ -26737,56 +26855,129 @@ Start immediately:`;
     _PREMIUM_TTS_AUDIO.current = null;
   }
 
-  async function _speakViaPremiumTts(text, opts = {}) {
+  // ── N1.1 Sentence pre-buffering (latency hedge) ─────────────────────
+  // Premium TTS adds 200-800ms of fetch latency per sentence. Pre-fetching
+  // sentence N+1 in the background while sentence N plays closes that
+  // gap so playback feels continuous like Web Speech.
+  //
+  // The cache is keyed by `provider|voiceId|model|text` so a re-used
+  // sentence (rare but possible — e.g. repeated affirmations) hits cache.
+  // Soft-cap at 12 entries so a long script doesn't pin a lot of mp3
+  // blobs in memory; oldest are evicted (FIFO). Cleared on session end.
+  //
+  // Errors are surfaced lazily — `_premiumTtsFetch` resolves with a
+  // sentinel `{ error }` object instead of throwing, so a prefetch
+  // failure doesn't unhandled-reject and crash the orchestrator. The
+  // play-side checks for `.error` and falls back via the existing path.
+  const _PREMIUM_TTS_PREFETCH = new Map(); // key → { promise, blob?, error? }
+  const _PREMIUM_TTS_PREFETCH_CAP = 12;
+
+  function _premiumTtsCacheKey(text) {
+    const provider = state.extTtsProvider;
+    const voice    = state.extTtsVoiceIdByProvider?.[provider] || '';
+    const model    = state.extTtsModelByProvider?.[provider]   || '';
+    return `${provider}|${voice}|${model}|${String(text || '').trim()}`;
+  }
+
+  /**
+   * Build the fetch URL/body/headers for the active provider. Returns
+   * null when the configuration is incomplete (no key, no voice).
+   */
+  function _premiumTtsBuildRequest(text) {
     const provider = state.extTtsProvider;
     const key      = state._extTtsKey;
-    if (!key) throw new Error('no key');
+    if (!key) return null;
     const trimmed = String(text || '').trim();
-    if (!trimmed) return;
-    let url, body, headers;
+    if (!trimmed) return null;
     if (provider === 'elevenlabs') {
       const voiceId = state.extTtsVoiceIdByProvider?.elevenlabs || '';
-      if (!voiceId) throw new Error('no ElevenLabs voice selected');
+      if (!voiceId) return null;
       const model = state.extTtsModelByProvider?.elevenlabs || 'eleven_turbo_v2_5';
-      url = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`;
-      body = JSON.stringify({
-        text: trimmed,
-        model_id: model,
-        voice_settings: { stability: 0.5, similarity_boost: 0.75, use_speaker_boost: true },
-      });
-      headers = {
-        'Content-Type': 'application/json',
-        'xi-api-key': key,
-        'Accept': 'audio/mpeg',
+      return {
+        url: `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
+        body: JSON.stringify({
+          text: trimmed,
+          model_id: model,
+          voice_settings: { stability: 0.5, similarity_boost: 0.75, use_speaker_boost: true },
+        }),
+        headers: { 'Content-Type': 'application/json', 'xi-api-key': key, 'Accept': 'audio/mpeg' },
+        provider, trimmed,
       };
-    } else if (provider === 'openai') {
+    }
+    if (provider === 'openai') {
       const voice = state.extTtsVoiceIdByProvider?.openai || 'nova';
-      const model = state.extTtsModelByProvider?.openai || 'tts-1';
-      url = 'https://api.openai.com/v1/audio/speech';
-      body = JSON.stringify({
-        model: model,
-        input: trimmed,
-        voice: voice,
-        response_format: 'mp3',
-      });
-      headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`,
+      const model = state.extTtsModelByProvider?.openai   || 'tts-1';
+      return {
+        url: 'https://api.openai.com/v1/audio/speech',
+        body: JSON.stringify({ model, input: trimmed, voice, response_format: 'mp3' }),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        provider, trimmed,
       };
-    } else {
-      throw new Error('unsupported TTS provider: ' + provider);
+    }
+    return null;
+  }
+
+  /**
+   * Fetch the audio blob for a sentence (or return cached). Resolves to
+   * { blob } on success or { error } on failure. Never rejects, so the
+   * caller's prefetch can't trigger an unhandled-rejection.
+   */
+  function _premiumTtsFetch(text) {
+    const key = _premiumTtsCacheKey(text);
+    const cached = _PREMIUM_TTS_PREFETCH.get(key);
+    if (cached) return cached.promise;
+    const req = _premiumTtsBuildRequest(text);
+    if (!req) {
+      const p = Promise.resolve({ error: new Error('not configured') });
+      _PREMIUM_TTS_PREFETCH.set(key, { promise: p });
+      return p;
     }
     state._ttsApiCallsThisSession = (state._ttsApiCallsThisSession || 0) + 1;
-    try { logAICall(provider, 'premium-tts', `[${trimmed.length} chars]`); } catch {}
+    try { logAICall(req.provider, 'premium-tts', `[${req.trimmed.length} chars]`); } catch {}
     _refreshTtsCallCount();
-
-    const res = await fetch(url, { method: 'POST', headers, body });
-    if (!res.ok) {
-      let detail = '';
-      try { detail = await res.text(); } catch {}
-      throw new Error(`${provider} HTTP ${res.status}: ${detail.slice(0, 200)}`);
+    const promise = (async () => {
+      try {
+        const res = await fetch(req.url, { method: 'POST', headers: req.headers, body: req.body });
+        if (!res.ok) {
+          let detail = '';
+          try { detail = await res.text(); } catch {}
+          return { error: new Error(`${req.provider} HTTP ${res.status}: ${detail.slice(0, 200)}`) };
+        }
+        const blob = await res.blob();
+        return { blob };
+      } catch (e) {
+        return { error: e };
+      }
+    })();
+    // Soft-cap eviction (oldest first by insertion order).
+    if (_PREMIUM_TTS_PREFETCH.size >= _PREMIUM_TTS_PREFETCH_CAP) {
+      const firstKey = _PREMIUM_TTS_PREFETCH.keys().next().value;
+      if (firstKey) _PREMIUM_TTS_PREFETCH.delete(firstKey);
     }
-    const blob = await res.blob();
+    _PREMIUM_TTS_PREFETCH.set(key, { promise });
+    return promise;
+  }
+
+  /** Kick off a prefetch without awaiting. Errors swallowed for safety. */
+  function _premiumTtsPrefetch(text) {
+    if (!_isPremiumTtsActive()) return;
+    if (state.abortFlag) return;
+    try { _premiumTtsFetch(text).catch(() => {}); } catch {}
+  }
+
+  /** Drop all cached blobs. Called at session end. */
+  function _clearPremiumTtsPrefetch() {
+    _PREMIUM_TTS_PREFETCH.clear();
+  }
+
+  async function _speakViaPremiumTts(text, opts = {}) {
+    const trimmed = String(text || '').trim();
+    if (!trimmed) return;
+    // Use the cached/prefetched blob when available; otherwise fetch now.
+    const result = await _premiumTtsFetch(trimmed);
+    if (result?.error) throw result.error;
+    if (!result?.blob) throw new Error('premium tts: empty response');
+    const blob = result.blob;
     _stopPremiumTtsAudio();
     const audioUrl = URL.createObjectURL(blob);
     const audio = new Audio(audioUrl);
@@ -27269,6 +27460,9 @@ Start immediately:`;
     // surface its own warning if it also fails.
     try { _stopPremiumTtsAudio(); } catch {}
     state._premiumTtsFallbackToasted = false;
+    // N1.1 — Drop the sentence pre-buffer cache so blobs from this
+    // session don't pin memory across the post-session screen.
+    try { _clearPremiumTtsPrefetch(); } catch {}
     // (E1.2 _sosKind cleanup happens later, after the session record has
     // been built and persisted — see end of finishSession.)
     // Clear lock-screen media session so it doesn't linger post-session
@@ -27406,6 +27600,7 @@ Start immediately:`;
     updateSessionMemory(state.fullScript, sessionRecord); // Memory system — non-blocking
     renderHeatmap(); // Refresh activity heatmap
     renderSparkline(); // Refresh rising-score sparkline
+    renderHipSparkline(); // P1.1 — HIP trajectory sparkline
     renderSidebarStats(); // Refresh sidebar stats
     // If the user has Session History details already open, refresh the
     // session list AND the unified activity timeline so the just-finished
@@ -31122,6 +31317,103 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     });
   }
 
+  /**
+   * P1.1 — HIP susceptibility trajectory sparkline. Surfaces the same
+   * data as the HIP brief modal trajectory, but in the sidebar stats
+   * panel so users see susceptibility shifts even without re-opening
+   * the brief. Reads `susceptibilityAtSessionStart` from history,
+   * dedupes consecutive identical scores (so the sparkline shows real
+   * inflection points, not flat runs), and renders a small canvas
+   * sparkline alongside the mood/depth one.
+   *
+   * Skipped silently when there are fewer than 2 distinct scores —
+   * one data point isn't a trajectory.
+   */
+  async function renderHipSparkline() {
+    const wrap = $('sessionStatsPanel');
+    if (!wrap) return;
+    const history = (await idbGet('stillness_history_v1')) || [];
+    // Walk oldest-first; only entries with a captured score; dedupe consecutive.
+    const sorted = [...history].sort((a, b) => (a.date || 0) - (b.date || 0));
+    const points = [];
+    for (const r of sorted) {
+      const raw = r.susceptibilityAtSessionStart;
+      if (raw === '' || raw == null) continue;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) continue;
+      if (points.length && points[points.length - 1].score === n) continue;
+      points.push({ date: r.date, score: n });
+    }
+    let hipWrap = $('hipSparklineWrap');
+    if (points.length < 2) {
+      // Remove any stale wrap when the data shrinks below threshold.
+      if (hipWrap) hipWrap.remove();
+      return;
+    }
+    if (!hipWrap) {
+      hipWrap = document.createElement('div');
+      hipWrap.id = 'hipSparklineWrap';
+      hipWrap.className = 'sparkline-wrap';
+      hipWrap.style.marginTop = '8px';
+      hipWrap.innerHTML = `
+        <div class="mood-label">HIP susceptibility over time
+          <span id="hipSparklineDelta" style="font-weight:normal;font-size:0.62rem;color:var(--text-faint);margin-left:6px"></span>
+        </div>
+        <canvas class="sparkline-canvas" id="hipSparklineCanvas"></canvas>
+      `;
+      wrap.appendChild(hipWrap);
+    }
+    const canvas = $('hipSparklineCanvas');
+    if (!canvas) return;
+    canvas.width  = canvas.offsetWidth || 280;
+    canvas.height = 60;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const pad = 8;
+    const xStep = points.length > 1 ? (W - pad * 2) / (points.length - 1) : 0;
+    ctx.clearRect(0, 0, W, H);
+
+    // Faint horizontal band gridlines at 3.5 (low/med boundary) and 6.5
+    // (med/high boundary) — visual reference for the user's banding.
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+    [3.5, 6.5].forEach(b => {
+      const y = H - pad - (b / 10) * (H - pad * 2);
+      ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
+    });
+
+    // Trajectory line — uses the cyan accent (matches the HIP modal).
+    ctx.beginPath();
+    points.forEach((p, i) => {
+      const x = pad + i * xStep, y = H - pad - (p.score / 10) * (H - pad * 2);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = 'rgba(0,212,230,0.7)'; ctx.lineWidth = 2; ctx.stroke();
+
+    // Dots colored by their band (low/med/high) — instantly readable.
+    const bandColor = s => {
+      if (s <= 3) return 'rgba(160,160,160,0.85)';      // low
+      if (s <= 6) return 'rgba(201,168,85,0.95)';        // medium (amber)
+      return 'rgba(0,212,230,0.95)';                     // high (cyan)
+    };
+    points.forEach((p, i) => {
+      const x = pad + i * xStep, y = H - pad - (p.score / 10) * (H - pad * 2);
+      ctx.beginPath(); ctx.arc(x, y, 2.8, 0, Math.PI * 2);
+      ctx.fillStyle = bandColor(p.score); ctx.fill();
+    });
+
+    // Delta annotation — first → last
+    const first = points[0].score, last = points[points.length - 1].score;
+    const delta = last - first;
+    const deltaEl = $('hipSparklineDelta');
+    if (deltaEl) {
+      const sign = delta > 0 ? '+' : '';
+      const color = delta > 0 ? 'var(--accent-green,#5cb87a)'
+                  : delta < 0 ? '#d46a6a'
+                  : 'var(--text-faint)';
+      deltaEl.innerHTML = `${first} → ${last} <span style="color:${color};font-weight:600">(${sign}${delta})</span>`;
+    }
+  }
+
   // ====================================================================
   // WARM OVERLAY FOR SLEEP SESSIONS
   // ====================================================================
@@ -32560,6 +32852,19 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       try { localStorage.setItem(ONBOARDING_QUIZ_DONE_KEY, '1'); } catch {}
       _refreshOnboardingQuizVisibility();
       wrap.classList.remove('visible');
+      // S4 — Structural change-log entry. Onboarding quiz completion sets
+      // multiple fields at once via applyOnboardingAnswers; the per-field
+      // DiffBouncer log catches the prose-ish ones but selects don't ping.
+      // A single summary entry is more useful here than 7 micro-entries.
+      try {
+        const summary = `Onboarding quiz completed — ${Object.keys(answers || {}).length} answers applied`;
+        commitChangeLogEntry(
+          'onboardingQuiz',
+          'structural',
+          { added: [summary], removed: [] },
+          { trigger: 'onboarding-quiz' }
+        );
+      } catch (e) { console.warn('[onboarding change log]', e); }
       if (typeof notify !== 'undefined') notify.success('Profile personalized — settings applied.');
     });
 
@@ -32729,6 +33034,86 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     btn.textContent = 'retake the brief';
   }
 
+  /**
+   * P1.1 trajectory — read history for sessions that captured a HIP score
+   * at start, dedupe consecutive identical scores (so the user sees real
+   * inflection points, not every session at the same level), and render a
+   * compact textual + sparkline trajectory in the HIP brief intro.
+   * Skipped silently when there's nothing meaningful to show.
+   */
+  async function _renderHipTrajectory(host) {
+    if (!host) return;
+    host.style.display = 'none';
+    host.innerHTML = '';
+    let history = [];
+    try { history = (await idbGet('stillness_history_v1')) || []; } catch { return; }
+    if (!history.length) return;
+    // Walk history oldest-first, keep entries with a captured susceptibility,
+    // dedupe consecutive same values.
+    const sorted = [...history].sort((a, b) => (a.date || 0) - (b.date || 0));
+    const points = [];
+    for (const r of sorted) {
+      const raw = r.susceptibilityAtSessionStart;
+      if (raw === '' || raw == null) continue;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) continue;
+      if (points.length && points[points.length - 1].score === n) {
+        points[points.length - 1].lastDate = r.date; // extend the run
+        continue;
+      }
+      points.push({ date: r.date, lastDate: r.date, score: n });
+    }
+    if (points.length < 2) {
+      // One inflection point isn't a trajectory — but still show the value
+      // for completeness when there's at least one captured score.
+      const current = $('pfSusceptibility')?.value;
+      if (!current && points.length === 0) return;
+      const onlyScore = points.length ? points[0].score : Number(current);
+      if (!Number.isFinite(onlyScore)) return;
+      const band = _hipBand(onlyScore);
+      host.style.display = '';
+      host.innerHTML = `
+        <div style="font-size:0.66rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">your trajectory</div>
+        <div style="font-size:0.78rem;color:var(--text-dim);padding:10px 12px;background:var(--bg-deep);border-left:2px solid var(--neon-amber)">
+          Current score: <strong style="color:${band?.color || 'var(--neon-amber)'}">${onlyScore}/10</strong> · ${band ? escapeHtml(band.label) : '—'}.
+          Take the brief again after a few weeks of practice — the score is known to shift with use.
+        </div>
+      `;
+      return;
+    }
+    // Build a sparkline. SVG path that walks through the points, scaled
+    // 0-10 → height. Width fixed; samples evenly spaced.
+    const w = 280, h = 56, pad = 6;
+    const xStep = points.length > 1 ? (w - pad * 2) / (points.length - 1) : 0;
+    const yFor = (score) => h - pad - ((score / 10) * (h - pad * 2));
+    const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${pad + i * xStep} ${yFor(p.score)}`).join(' ');
+    const dots = points.map((p, i) =>
+      `<circle cx="${pad + i * xStep}" cy="${yFor(p.score)}" r="3" fill="${_hipBand(p.score)?.color || 'var(--neon-amber)'}"/>`
+    ).join('');
+    const first = points[0], last = points[points.length - 1];
+    const delta = last.score - first.score;
+    const deltaTxt = delta > 0 ? `+${delta}` : String(delta);
+    const deltaColor = delta > 0 ? 'var(--accent-green,#5cb87a)'
+                     : delta < 0 ? '#d46a6a'
+                     : 'var(--text-faint)';
+    const formatDate = (ts) => new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    host.style.display = '';
+    host.innerHTML = `
+      <div style="font-size:0.66rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">your trajectory · ${points.length} score${points.length === 1 ? '' : 's'} over time</div>
+      <div style="display:flex;gap:14px;align-items:center;padding:10px 12px;background:var(--bg-deep);border-left:2px solid var(--neon-cyan)">
+        <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="flex:0 0 auto">
+          <path d="${path}" fill="none" stroke="var(--neon-cyan)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
+          ${dots}
+        </svg>
+        <div style="font-size:0.74rem;color:var(--text-dim);line-height:1.5">
+          <div>${formatDate(first.date)}: <strong>${first.score}/10</strong></div>
+          <div>${formatDate(last.lastDate)}: <strong style="color:${_hipBand(last.score)?.color || 'inherit'}">${last.score}/10</strong></div>
+          <div style="margin-top:4px;font-size:0.66rem;color:var(--text-faint)">change: <strong style="color:${deltaColor}">${escapeHtml(deltaTxt)}</strong> over ${points.length - 1} re-test${points.length === 2 ? '' : 's'}</div>
+        </div>
+      </div>
+    `;
+  }
+
   let _hipModalEl = null;
   function _ensureHipModal() {
     if (_hipModalEl) return _hipModalEl;
@@ -32749,6 +33134,7 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
             <br><br>
             <span style="color:var(--text-faint);font-size:0.7rem">Find a quiet spot. Read each prompt carefully. Take your time. You'll need to close your eyes for some tests.</span>
           </div>
+          <div id="hipTrajectory" style="margin-top:14px;display:none"></div>
           <div class="modal-actions" style="margin-top:18px">
             <button class="btn secondary" id="hipSkipBtn" style="flex:0 0 auto;padding:10px 18px">close</button>
             <button class="btn primary" id="hipBeginBtn">begin</button>
@@ -32796,6 +33182,10 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     modal.querySelector('#hipIntro').style.display = '';
     modal.querySelector('#hipQuestion').style.display = 'none';
     modal.querySelector('#hipResult').style.display = 'none';
+    // P1.1 trajectory — render previous scores so the user sees how their
+    // susceptibility has shifted with practice. Best-effort; silently
+    // empty when there's nothing to show.
+    _renderHipTrajectory(modal.querySelector('#hipTrajectory')).catch(() => {});
     modal.classList.add('visible');
 
     const answers = {};       // qid → numeric value
@@ -32880,12 +33270,30 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     result.querySelector('#hipSaveBtn').onclick = () => {
       const score = result.dataset.score;
       const inp = $('pfSusceptibility');
+      const prevRaw = inp?._lastSavedScore;
       if (inp) {
         inp.value = String(score);
         inp.dispatchEvent(new Event('change', { bubbles: true }));
+        inp._lastSavedScore = String(score);
       }
       _refreshSusceptibilityDisplay();
       if (typeof saveProfile === 'function') saveProfile();
+      // S4 — Structural change-log entry. The HIP brief is a discrete
+      // event the DiffBouncer-driven log can't see (hidden numeric input,
+      // not text-typed). Emit a `structural` entry so the activity timeline
+      // and "what AI sees" view both surface susceptibility shifts.
+      try {
+        const band = _hipBand(score);
+        const summary = prevRaw && prevRaw !== String(score)
+          ? `HIP brief: ${prevRaw} → ${score}/10 (${band?.label || 'unknown'})`
+          : `HIP brief: ${score}/10 (${band?.label || 'unknown'})`;
+        commitChangeLogEntry(
+          'pfSusceptibility',
+          'structural',
+          { added: [summary], removed: [] },
+          { trigger: 'hip-brief' }
+        );
+      } catch (e) { console.warn('[hip change log]', e); }
       close();
       if (typeof notify !== 'undefined') {
         const band = _hipBand(score);
@@ -33161,6 +33569,9 @@ You're back. Move gently. The story can wait until you've put your feet down.`,
 
   function openSosModal() { _ensureSosModal().classList.add('visible'); }
   $('sosBtn')?.addEventListener('click', openSosModal);
+  // Step-1 "Quick Modes" card — same handler as the (now-removed) sidebar
+  // button. Card lives in #aiQuickModesDetails.
+  $('sosCard')?.addEventListener('click', openSosModal);
 
   // ====================================================================
   // MEDITATION TIMER MODE (SE1.3)
@@ -33396,6 +33807,9 @@ You're back. Move gently. The story can wait until you've put your feet down.`,
 
   function openMeditationModal() { _ensureMedModal().classList.add('visible'); }
   $('meditationBtn')?.addEventListener('click', openMeditationModal);
+  // Step-1 "Quick Modes" card — same handler as the (now-removed) sidebar
+  // button. Card lives in #aiQuickModesDetails.
+  $('meditationCard')?.addEventListener('click', openMeditationModal);
 
   // ====================================================================
   // POWER NAP MODE (SE1.1)
@@ -35200,6 +35614,332 @@ Begin:`;
   }
 
   // ====================================================================
+  // COMMAND PALETTE (UX1.3 — Cmd-K)
+  // ====================================================================
+  // A keyboard-first launcher that fuzzy-searches across:
+  //   • app actions (start session, open profile, take HIP brief, …)
+  //   • presets (every PRESETS entry, jumps + applies)
+  //   • personas (every persona, selects + scrolls into view)
+  //   • methods (every METHOD, selects + scrolls into view)
+  //   • settings (open options, narrator, cloud, …)
+  //
+  // Opens with Cmd-K (Mac) / Ctrl-K (others), Esc closes, ↑↓ navigates,
+  // Enter executes the highlighted item. Modal is built lazily on first
+  // open so there's no DOM cost until the user actually invokes it.
+  //
+  // Fuzzy match is a small substring-with-word-boundary score — good
+  // enough for ≤200 items without a full Levenshtein library. Items
+  // matching the query get a score; top 12 render. Tied scores keep
+  // their natural order (actions first, then presets, personas, methods,
+  // then settings) so the experience is predictable.
+  // ====================================================================
+
+  /** Predefined app-action items. Each `run` is fired on Enter. */
+  function _buildPaletteActionList() {
+    return [
+      { kind: 'action', label: 'Start a session',           hint: 'open the wizard at Step 1', keywords: 'start begin new session wizard',
+        run: () => { try { goToStep?.(1); } catch {} window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+      { kind: 'action', label: 'Open profile',              hint: 'jump to the profile section', keywords: 'profile preferences personal',
+        run: () => { try { $('profileForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {} } },
+      { kind: 'action', label: 'Onboarding quiz',           hint: '1-min profile setup', keywords: 'onboard quiz personalize new',
+        run: () => { try { openOnboardingQuiz?.(); } catch {} } },
+      { kind: 'action', label: 'Take HIP susceptibility brief', hint: '~3-min self-administered test', keywords: 'hip susceptibility brief stanford spiegel',
+        run: () => { try { openHipBrief?.(); } catch {} } },
+      { kind: 'action', label: 'SOS quick-reset',           hint: '~90-second emergency session', keywords: 'sos panic emergency reset crisis quick',
+        run: () => { try { $('sosCard')?.click(); } catch {} } },
+      { kind: 'action', label: 'Meditation timer',          hint: 'silent timer with optional bells', keywords: 'meditation timer silent bell',
+        run: () => { try { $('meditationCard')?.click(); } catch {} } },
+      { kind: 'action', label: 'Power Nap',                 hint: 'AI-generated nap with structured wake', keywords: 'power nap sleep rest',
+        run: () => { try { _ensurePowerNapModal?.()?.classList?.add('visible'); } catch {} } },
+      { kind: 'action', label: 'Sleep Story',               hint: 'themed bedtime story, no induction', keywords: 'sleep story bedtime',
+        run: () => { try { _ensureSleepStoryModal?.()?.classList?.add('visible'); } catch {} } },
+      { kind: 'action', label: 'View session history',      hint: 'jump to the history section', keywords: 'history sessions past previous',
+        run: () => {
+          const det = $('sessionHistoryDetails');
+          if (det && !det.open) det.open = true;
+          $('sessionHistoryList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } },
+      { kind: 'action', label: 'Compare two sessions',      hint: 'enter compare mode in history', keywords: 'compare sessions delta history',
+        run: () => {
+          const det = $('sessionHistoryDetails');
+          if (det && !det.open) det.open = true;
+          state._historyCompareMode = true;
+          state._historyCompareSel = [];
+          document.body.classList.add('history-compare-mode');
+          if (typeof renderSessionHistory === 'function') renderSessionHistory();
+          $('sessionHistoryList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } },
+      { kind: 'action', label: 'Clear history filters',     hint: 'reset all chip filters', keywords: 'clear filter history reset',
+        run: () => {
+          state._historyFilter = { mode: null, persona: null, method: null, moodBand: null, tag: null };
+          if (typeof renderSessionHistory === 'function') renderSessionHistory();
+        } },
+      { kind: 'action', label: 'Open AI/TTS options',       hint: 'API keys, narrator, providers', keywords: 'options settings ai tts elevenlabs openai narrator voice',
+        run: () => { try { $('optionsBtn')?.click(); } catch {} } },
+      { kind: 'action', label: 'Test premium narrator',     hint: 'preview the configured TTS voice', keywords: 'test voice tts narrator preview elevenlabs',
+        run: () => { try { $('optionsBtn')?.click(); setTimeout(() => $('extTtsTestBtn')?.click(), 250); } catch {} } },
+      { kind: 'action', label: 'Toggle sidebar (mobile)',   hint: 'show/hide the side panel', keywords: 'sidebar toggle mobile',
+        run: () => { try { $('sidebar')?.classList?.toggle('open'); } catch {} } },
+      { kind: 'action', label: 'Crisis resources',          hint: 'show helpline numbers', keywords: 'crisis help suicide emergency',
+        run: () => { try { $('crisisLink')?.click(); } catch {} } },
+      { kind: 'action', label: 'View activity timeline',    hint: 'profile changes + AI calls + sessions', keywords: 'activity timeline log changes diff',
+        run: () => {
+          const det = $('sessionHistoryDetails');
+          if (det && !det.open) det.open = true;
+          if (typeof renderChangeLog === 'function') renderChangeLog();
+          $('profileDiffPanel')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+        } },
+    ];
+  }
+
+  /** Pull dynamic items from datasets — presets, personas, methods. */
+  function _buildPaletteDynamicList() {
+    const items = [];
+    try {
+      if (Array.isArray(PRESETS)) {
+        for (const p of PRESETS) {
+          items.push({
+            kind: 'preset', label: `Preset: ${p.name}`, hint: p.desc || '', keywords: `preset ${p.id} ${p.name} ${p.desc || ''}`,
+            run: () => {
+              try {
+                document.querySelector(`#presetGrid .preset-card[data-preset-id="${p.id}"]`)?.click();
+              } catch {}
+            },
+          });
+        }
+      }
+    } catch {}
+    try {
+      if (Array.isArray(BUILTIN_PERSONAS)) {
+        for (const persona of BUILTIN_PERSONAS) {
+          items.push({
+            kind: 'persona', label: `Persona: ${persona.name}`, hint: persona.tagline || '', keywords: `persona guide ${persona.id} ${persona.name} ${persona.tagline || ''}`,
+            run: () => {
+              try {
+                state.selectedPersonaId = persona.id;
+                if (typeof renderPersonaGrid === 'function') renderPersonaGrid();
+                if (typeof renderPersonaDetail === 'function') renderPersonaDetail();
+                document.querySelector(`#personaGrid .card[data-persona-id="${persona.id}"]`)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+              } catch {}
+            },
+          });
+        }
+      }
+    } catch {}
+    try {
+      if (Array.isArray(METHODS)) {
+        for (const method of METHODS) {
+          items.push({
+            kind: 'method', label: `Method: ${method.name}`, hint: method.tagline || '', keywords: `method induction ${method.id} ${method.name} ${method.tagline || ''} ${(method.tags || []).join(' ')}`,
+            run: () => {
+              try {
+                state.selectedMethodId = method.id;
+                if (typeof renderMethodGrid === 'function') renderMethodGrid();
+                if (typeof renderMethodDetail === 'function') renderMethodDetail();
+                document.querySelector(`#methodGrid .card[data-method-id="${method.id}"]`)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+              } catch {}
+            },
+          });
+        }
+      }
+    } catch {}
+    return items;
+  }
+
+  /** Combined item pool, rebuilt on each open so dynamic items reflect
+   *  current state (e.g. user-added custom personas). */
+  function _buildPaletteItems() {
+    return [..._buildPaletteActionList(), ..._buildPaletteDynamicList()];
+  }
+
+  /** Lightweight scoring — query is split on whitespace; each token must
+   *  appear (case-insensitive) somewhere in `label + keywords`. Bonus
+   *  points when the token matches a word boundary in `label`. */
+  function _scorePaletteItem(item, tokens) {
+    if (!tokens.length) return 1; // empty query → all items keep natural order
+    const haystackLabel = (item.label || '').toLowerCase();
+    const haystackAll   = (haystackLabel + ' ' + (item.keywords || '').toLowerCase());
+    let score = 0;
+    for (const t of tokens) {
+      const pos = haystackAll.indexOf(t);
+      if (pos < 0) return 0; // any miss = exclude
+      score += 1;
+      // Word-boundary bonus on label
+      const labelPos = haystackLabel.indexOf(t);
+      if (labelPos === 0) score += 3;
+      else if (labelPos > 0 && /\s/.test(haystackLabel[labelPos - 1])) score += 2;
+      else if (labelPos > 0) score += 1;
+    }
+    return score;
+  }
+
+  let _paletteEl = null;
+  let _paletteState = { items: [], filtered: [], cursor: 0, query: '' };
+
+  function _ensurePaletteModal() {
+    if (_paletteEl) return _paletteEl;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'commandPaletteModal';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:560px;padding:0;background:var(--bg-deep);border:1px solid var(--neon-cyan);box-shadow:0 0 24px rgba(0,212,230,0.18)">
+        <div style="padding:14px 16px 10px;border-bottom:1px solid var(--glass-border);display:flex;align-items:center;gap:10px">
+          <span style="font-size:0.74rem;color:var(--text-faint);letter-spacing:0.08em;text-transform:uppercase;flex:0 0 auto">⌘K</span>
+          <input type="text" id="commandPaletteInput" autocomplete="off" autocapitalize="off" spellcheck="false"
+                 placeholder="search actions, presets, personas, methods…"
+                 style="flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:0.92rem;padding:4px 0;font-family:var(--font-body)">
+          <span id="commandPaletteCount" style="font-size:0.62rem;color:var(--text-faint);flex:0 0 auto"></span>
+        </div>
+        <div id="commandPaletteList" style="max-height:50vh;overflow-y:auto;padding:6px 0"></div>
+        <div style="padding:8px 16px;border-top:1px solid var(--glass-border);font-size:0.62rem;color:var(--text-faint);display:flex;justify-content:space-between">
+          <span>↑↓ navigate · enter to run · esc to close</span>
+          <span id="commandPaletteShortcut">⌘K</span>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _paletteEl = wrap;
+    // Detect platform for shortcut display
+    try {
+      const isMac = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent || '');
+      const sc = wrap.querySelector('#commandPaletteShortcut');
+      if (sc) sc.textContent = isMac ? '⌘K' : 'Ctrl+K';
+    } catch {}
+    // Click-outside-to-close
+    wrap.addEventListener('click', e => { if (e.target === wrap) closeCommandPalette(); });
+    // Input + key handlers
+    const input = wrap.querySelector('#commandPaletteInput');
+    input.addEventListener('input', () => {
+      _paletteState.query  = input.value || '';
+      _paletteState.cursor = 0;
+      _renderPaletteList();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); closeCommandPalette(); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); _movePaletteCursor(1); return; }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); _movePaletteCursor(-1); return; }
+      if (e.key === 'Enter')     { e.preventDefault(); _runPaletteCursor(); return; }
+    });
+    // Click-to-run on list items via event delegation
+    wrap.querySelector('#commandPaletteList').addEventListener('click', (e) => {
+      const row = e.target.closest?.('.cp-row');
+      if (!row) return;
+      const idx = Number(row.dataset.idx);
+      if (Number.isFinite(idx) && _paletteState.filtered[idx]) {
+        _paletteState.cursor = idx;
+        _runPaletteCursor();
+      }
+    });
+    return wrap;
+  }
+
+  function _movePaletteCursor(delta) {
+    const n = _paletteState.filtered.length;
+    if (!n) return;
+    _paletteState.cursor = ((_paletteState.cursor + delta) % n + n) % n;
+    _renderPaletteList(true);
+  }
+
+  function _runPaletteCursor() {
+    const item = _paletteState.filtered[_paletteState.cursor];
+    if (!item) return;
+    closeCommandPalette();
+    try { item.run(); } catch (e) { console.warn('[command palette] run failed:', e); }
+  }
+
+  function _renderPaletteList(skipScore = false) {
+    if (!_paletteEl) return;
+    const list = _paletteEl.querySelector('#commandPaletteList');
+    const count = _paletteEl.querySelector('#commandPaletteCount');
+    if (!list) return;
+    if (!skipScore) {
+      // Recompute filter
+      const q = (_paletteState.query || '').trim().toLowerCase();
+      const tokens = q ? q.split(/\s+/) : [];
+      const scored = _paletteState.items
+        .map(item => ({ item, score: _scorePaletteItem(item, tokens) }))
+        .filter(x => x.score > 0)
+        .sort((a, b) => b.score - a.score);
+      _paletteState.filtered = scored.slice(0, 12).map(x => x.item);
+    }
+    if (count) {
+      count.textContent = _paletteState.filtered.length
+        ? `${_paletteState.filtered.length} match${_paletteState.filtered.length === 1 ? '' : 'es'}`
+        : '';
+    }
+    if (!_paletteState.filtered.length) {
+      list.innerHTML = `<div style="padding:24px 16px;text-align:center;color:var(--text-faint);font-size:0.78rem">no matches</div>`;
+      return;
+    }
+    list.innerHTML = _paletteState.filtered.map((item, i) => {
+      const active = i === _paletteState.cursor;
+      const kindBadge = {
+        action: 'rgba(0,212,230,0.15)',
+        preset: 'rgba(201,168,85,0.14)',
+        persona:'rgba(140,100,200,0.14)',
+        method: 'rgba(120,200,150,0.14)',
+      }[item.kind] || 'rgba(255,255,255,0.05)';
+      return `
+        <div class="cp-row" data-idx="${i}" style="
+            padding:8px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;
+            background:${active ? 'rgba(0,212,230,0.10)' : 'transparent'};
+            border-left:2px solid ${active ? 'var(--neon-cyan)' : 'transparent'};
+            transition:background 0.08s">
+          <span style="display:inline-block;font-size:0.55rem;text-transform:uppercase;letter-spacing:0.08em;padding:1px 6px;background:${kindBadge};color:var(--text-dim);min-width:46px;text-align:center;flex:0 0 auto">${escapeHtml(item.kind)}</span>
+          <span style="flex:1;min-width:0">
+            <div style="font-size:0.82rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.label)}</div>
+            ${item.hint ? `<div style="font-size:0.66rem;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.hint)}</div>` : ''}
+          </span>
+        </div>
+      `;
+    }).join('');
+    // Scroll active row into view if needed
+    if (skipScore) {
+      const active = list.querySelector(`.cp-row[data-idx="${_paletteState.cursor}"]`);
+      active?.scrollIntoView?.({ block: 'nearest' });
+    }
+  }
+
+  function openCommandPalette() {
+    const modal = _ensurePaletteModal();
+    _paletteState.items    = _buildPaletteItems();
+    _paletteState.query    = '';
+    _paletteState.cursor   = 0;
+    _paletteState.filtered = _paletteState.items.slice(0, 12);
+    const input = modal.querySelector('#commandPaletteInput');
+    if (input) { input.value = ''; }
+    _renderPaletteList(true);
+    modal.classList.add('visible');
+    // Focus on next tick — fixes Safari's "the modal isn't visible yet"
+    // race when called from the global keydown listener.
+    setTimeout(() => { try { input?.focus(); } catch {} }, 16);
+  }
+
+  function closeCommandPalette() {
+    if (_paletteEl) _paletteEl.classList.remove('visible');
+  }
+
+  // Global keyboard shortcut. We bind on capture phase so the palette
+  // can open even when focus is in an input — but with a guard so we
+  // never override the OS-level Cmd-K (e.g. Slack). The combo we care
+  // about is plain Cmd-K / Ctrl-K with no other modifiers. Esc closes
+  // when the palette is visible.
+  document.addEventListener('keydown', (e) => {
+    const isMac = /Mac|iPhone|iPad/i.test(navigator.platform || '');
+    const meta = isMac ? e.metaKey : e.ctrlKey;
+    if (meta && !e.shiftKey && !e.altKey && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      if (_paletteEl?.classList?.contains('visible')) closeCommandPalette();
+      else openCommandPalette();
+      return;
+    }
+    if (e.key === 'Escape' && _paletteEl?.classList?.contains('visible')) {
+      e.preventDefault();
+      closeCommandPalette();
+    }
+  }, true);
+
+  // ====================================================================
   // VIBRATION HAPTICS (breathing feedback for supported devices)
   // ====================================================================
   function vibrateBreath() {
@@ -36478,7 +37218,7 @@ Begin:`;
 
     // Rising-score sparkline
     renderSparkline();
-
+    renderHipSparkline();
     // Practice-unlock method gating
     applyMethodGating();
     // Advanced bg control gating — disable orientation/strength/steps on the

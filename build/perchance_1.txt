@@ -80,6 +80,14 @@ dynamicImport = {import:dynamic-import-plugin}
 // Comments plugin — used by the in-app community channel modal. Iframe-based,
 // so it's lazy until the user clicks "💬 community comments" in the sidebar.
 commentsPlugin = {import:comments-plugin}
+commentOptions
+	adminPasswordHash = 7e5035ae0a7e5464be5feb05720363f48056b9d8aab1039f0fe557e60b2ab6c8
+  adminFlair = Mod
+  deleteButtonIcon = ❌
+  rateLimits = 1 per minute
+  bannedWords =   
+  bannedUsers
+
 
 // ══════════════════════════════════════════════════════════════════════════
 // IMPORTING HNE AS A PERCHANCE PLUGIN
