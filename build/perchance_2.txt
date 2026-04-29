@@ -978,6 +978,62 @@ padding: 24px;
     background: linear-gradient(135deg, rgba(0,212,230,0.28), rgba(201,168,85,0.16));
     box-shadow: 0 0 22px rgba(0,212,230,0.32);
   }
+
+  /* ============ SOS QUICK RESET (E1.2) ============
+     Distinctive amber/coral styling — visually flagged as emergency-relevant
+     so it's easy to find when needed. Permanent sidebar element. Opens a
+     modal with 4 cards (panic, racing, sleep, spiral). */
+  .sos-btn {
+    background: linear-gradient(135deg, rgba(255,140,90,0.22), rgba(212,80,80,0.18));
+    border: 1px solid #d46a6a;
+    color: #ffd9c8;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    transition: all 0.2s;
+  }
+  .sos-btn:hover {
+    background: linear-gradient(135deg, rgba(255,140,90,0.34), rgba(212,80,80,0.30));
+    color: #fff;
+    box-shadow: 0 0 18px rgba(212,106,106,0.35);
+  }
+  .sos-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 12px 0 6px;
+  }
+  .sos-card {
+    background: var(--glass); border: 1px solid var(--glass-border);
+    padding: 14px 12px; cursor: pointer;
+    transition: all 0.18s; text-align: center;
+    position: relative; min-height: 96px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .sos-card:hover {
+    border-color: #d46a6a; transform: translateY(-1px);
+    box-shadow: 0 0 14px rgba(212,106,106,0.2);
+  }
+  .sos-card .sos-icon { font-size: 1.6rem; margin-bottom: 4px; }
+  .sos-card .sos-name { font-size: 0.82rem; color: var(--text); font-weight: 600; }
+  .sos-card .sos-desc { font-size: 0.66rem; color: var(--text-faint); margin-top: 4px; line-height: 1.3; }
+
+  /* ============ MEDITATION TIMER (SE1.3) ============
+     Modal: pick duration, optional soundscape, optional bell intervals.
+     No narrator — just a timer + soundscape + visualizer. */
+  .meditation-btn:hover {
+    border-color: var(--neon-amber);
+  }
+  .med-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .med-row > label { flex: 0 0 110px; font-size: 0.78rem; color: var(--text-dim); }
+  .med-row > select { flex: 1; padding: 6px 10px; background: var(--bg-deep); color: var(--text); border: 1px solid var(--glass-border); }
+  .med-status {
+    text-align: center; padding: 30px 20px;
+    font-family: var(--font-mono, monospace);
+    font-size: 2.4rem; color: var(--text); letter-spacing: 0.06em;
+  }
+  .med-status .med-time { font-size: 3.2rem; color: var(--neon-cyan); display: block; margin-bottom: 6px; }
+  .med-status .med-label { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-faint); }
+
   .oq-question { margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--glass-border); }
   .oq-question:last-of-type { border-bottom: none; }
   .oq-question-text { font-size: 0.9rem; color: var(--text); margin-bottom: 10px; line-height: 1.45; font-weight: 500; }
@@ -2684,6 +2740,20 @@ padding: 5px 15px; cursor: pointer;
     font-size: 0.56rem; letter-spacing: 0.1em; text-transform: uppercase;
     font-weight: 700; margin-top: 4px; opacity: 0.85;
   }
+  /* Onboarding-quiz suggested-preset highlight (UX1.6 follow-up). Subtle
+     amber glow + visible badge. One-shot — class disappears as soon as
+     localStorage hint is consumed. */
+  .preset-card.preset-hinted {
+    box-shadow: 0 0 0 1px var(--neon-amber), 0 0 16px rgba(201,168,85,0.18);
+    background: rgba(201,168,85,0.04);
+  }
+  .preset-card .preset-hint-badge {
+    position: absolute; top: 4px; right: 4px;
+    background: var(--neon-amber); color: var(--bg);
+    font-size: 0.54rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 2px 6px;
+  }
   /* Intention color stripes — left border + label color */
   .preset-card.intent-sleep { border-left: 3px solid var(--neon-purple); }
   .preset-card.intent-sleep .preset-intent-label { color: var(--neon-purple); }
@@ -3843,6 +3913,22 @@ padding: 6px 10px; font-size: 1.1rem;
   <div class="app-layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-inner">
+        <!-- E1.2 — SOS Quick Reset. Always-visible top button for
+             emergency calming sessions (panic, racing thoughts, can't
+             sleep, urge-spiral). Pre-built static scripts; no AI call;
+             no wizard. ~90s each. Opt-in per click. -->
+        <button class="btn sos-btn" id="sosBtn"
+                style="width:100%;font-size:0.78rem;padding:9px;margin-bottom:8px"
+                title="Quick emergency-calming session, ~90 seconds, no setup">
+          🆘 quick reset
+        </button>
+        <!-- SE1.3 — Meditation Timer. Bare-bones timer with optional
+             soundscape and bell intervals. No narrator. -->
+        <button class="btn secondary meditation-btn" id="meditationBtn"
+                style="width:100%;font-size:0.74rem;padding:8px;margin-bottom:10px"
+                title="Silent meditation timer with optional soundscape and bells">
+          🧘 meditation timer
+        </button>
         <!-- Onboarding quiz — first-run personalization. Pre-fills the
              profile in 60 seconds so the AI/Director have something to
              work with from session 1. Hides itself permanently after
@@ -26205,6 +26291,8 @@ Start immediately:`;
         _personalSymbolBlobUrl = null;
       }
     } catch {}
+    // (E1.2 _sosKind cleanup happens later, after the session record has
+    // been built and persisted — see end of finishSession.)
     // Clear lock-screen media session so it doesn't linger post-session
     setMediaSession(false);
     document.body.classList.remove('in-session'); document.body.classList.remove('controls-hidden'); clearTimeout(_controlsTimer);
@@ -26303,6 +26391,9 @@ Start immediately:`;
       // user can see they ran an unbalanced shape — supports learning when
       // the validator's complaints actually reflect their experience.
       startedUnsafe: state._startedUnsafe === true,
+      // E1.2 — SOS sessions are tagged so they're distinguishable in
+      // history filtering and stats. Null for normal sessions.
+      ...(state._sosKind ? { sosKind: state._sosKind, mode: 'sos' } : {}),
       workflowVersion: 11,
       stepsTotal: 6,
     };
@@ -26644,6 +26735,11 @@ Start immediately:`;
     // Reset post-session state controls
     const moodFeedback = $('moodFeedback');
     if (moodFeedback) moodFeedback.textContent = '';
+
+    // E1.2 — Clear the SOS-kind tag now that the session record has been
+    // built + saved with it. Future sessions must not inherit the flag.
+    state._sosKind = null;
+    state._sosLaunchedAt = null;
   }
 
   // Persona-specific re-alert scripts
@@ -30103,13 +30199,54 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     const grid = $('presetGrid');
     if (!grid) return;
     grid.innerHTML = '';
+    // Onboarding-quiz hint consumption (UX1.6 follow-up). If Q1 of the
+    // onboarding quiz set a hint, map it to the matching preset id and
+    // surface a "✨ suggested" badge on that card. One-shot — the key is
+    // cleared as soon as renderPresets runs so the hint doesn't persist
+    // across sessions. Mapping is conservative; 'curious' has no preset.
+    let hintPresetId = null;
+    try {
+      const hint = (typeof ONBOARDING_QUIZ_HINT_KEY !== 'undefined')
+        ? localStorage.getItem(ONBOARDING_QUIZ_HINT_KEY)
+        : null;
+      if (hint) {
+        const HINT_TO_PRESET = {
+          sleep:      'sleep',
+          calm:       'anxiety',     // 'Anxiety Relief' is the closest match
+          focus:      'focus',
+          confidence: 'confidence',
+          pain:       'pain',
+          // 'curious' deliberately maps to nothing — explorer chooses freely
+        };
+        hintPresetId = HINT_TO_PRESET[hint] || null;
+        // One-shot: clear the key whether or not we found a preset, so a
+        // returning user doesn't keep getting the suggestion forever.
+        localStorage.removeItem(ONBOARDING_QUIZ_HINT_KEY);
+      }
+    } catch {}
+    let hintCardEl = null;
     PRESETS.forEach(p => {
       const card = document.createElement('div');
       card.className = `preset-card intent-${p.intention || 'trance'}`;
-      card.innerHTML = `<div class="preset-icon">${p.icon}</div><div class="preset-name">${escapeHtml(p.name)}</div><div class="preset-desc">${escapeHtml(p.desc)}</div><div class="preset-intent-label">${escapeHtml(p.intention || 'trance')}</div>`;
+      const isHinted = hintPresetId && p.id === hintPresetId;
+      const hintBadge = isHinted
+        ? `<div class="preset-hint-badge" title="Suggested based on your onboarding answers">✨ suggested</div>`
+        : '';
+      card.innerHTML = `${hintBadge}<div class="preset-icon">${p.icon}</div><div class="preset-name">${escapeHtml(p.name)}</div><div class="preset-desc">${escapeHtml(p.desc)}</div><div class="preset-intent-label">${escapeHtml(p.intention || 'trance')}</div>`;
+      if (isHinted) {
+        card.classList.add('preset-hinted');
+        hintCardEl = card;
+      }
       card.addEventListener('click', () => applyPreset(p));
       grid.appendChild(card);
     });
+    // Scroll the suggested card into view shortly after layout. RAF gives
+    // the grid time to lay out; the smooth-scroll keeps it gentle.
+    if (hintCardEl) {
+      requestAnimationFrame(() => {
+        try { hintCardEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {}
+      });
+    }
   }
 
   function applyPreset(p) {
@@ -31484,6 +31621,505 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   // Wire the sidebar button. Visibility check runs after profile load so
   // the heuristic for "user already filled profile" sees populated values.
   $('onboardingQuizBtn')?.addEventListener('click', openOnboardingQuiz);
+
+  // ====================================================================
+  // SOS QUICK RESET SESSIONS (E1.2)
+  // ====================================================================
+  // Pre-built static scripts for emergency calming. Four scenarios cover
+  // the most common acute-distress patterns: panic spike, racing-thought
+  // loop, lying-awake-at-night, and catastrophizing/doom-spiral. Each
+  // ~90-120 seconds when narrated. No AI generation — instant launch.
+  //
+  // Tagged in session record via state._sosKind so they're distinguishable
+  // in history. Count toward streak and stats normally — they ARE practice.
+  //
+  // §0a alignment: zero AI calls, fully local, no UI TTS. The scripts use
+  // proper phase markers (===SETTLING=== ===WORK=== ===LIGHTENER=== ===WAKE===
+  // ===REINTRODUCTION===) so they pass the existing safety gate without
+  // needing a bypass path.
+  // ====================================================================
+
+  const SOS_SESSIONS = [
+    {
+      kind: 'panic',
+      icon: '🌊',
+      name: 'Panic',
+      desc: 'Acute panic / overwhelm',
+      // Maps to 5-4-3-2-1 grounding technique — strongly evidence-based
+      // for acute panic. No deepener (we don't take a panicking person
+      // INTO trance — we use grounded body-attention to bring them back).
+      persona: 'therapist', method: 'breath-478', length: 'micro',
+      soundscape: 'rain', vizOverride: 'breathing', intention: 'release',
+      script: `===SETTLING===
+Right where you are. Both feet on the floor, or however your body is right now.
+You don't have to fix anything. You just have to be here for the next ninety seconds.
+Slow breath in. [PAUSE 3]
+And out — slow. [PAUSE 4]
+
+===WORK===
+Look around. Find five things you can see. Just name them quietly to yourself. [PAUSE 6]
+Now four things you can touch. The chair. Your clothes. The floor. Your own hands. [PAUSE 5]
+Three things you can hear. The room. The space outside. Your own breath. [PAUSE 5]
+Two things you can smell — or just two things you remember smelling. [PAUSE 4]
+And one thing you can taste. Or just the inside of your mouth. [PAUSE 3]
+You're here. You're in this room. The wave is moving through you, but it's not who you are.
+This will pass. You don't have to hurry it. You just have to be here while it passes. [PAUSE 5]
+
+===LIGHTENER===
+A little easier. A little more here. Notice the floor under you, holding you up.
+
+===WAKE===
+Take one slow breath in [PAUSE 2] and let it out. [PAUSE 3]
+Eyes open whenever you're ready.
+
+===REINTRODUCTION===
+You're back. Move slowly for a minute. Drink some water if you can. You did this.`,
+    },
+    {
+      kind: 'racing',
+      icon: '🌀',
+      name: 'Racing',
+      desc: 'Racing thoughts loop',
+      // Maps to "leaves on a stream" / observer-mind technique. Light
+      // induction → defuse from thoughts → return to neutral.
+      persona: 'therapist', method: 'ericksonian', length: 'short',
+      soundscape: 'underwater', vizOverride: 'smoke', intention: 'release',
+      script: `===SETTLING===
+Just for ninety seconds — let me hold the wheel.
+You don't have to think your way out of this. [PAUSE 3]
+Settle into wherever you are. Soft eyes, or closed if that feels right.
+
+===WORK===
+Picture a slow stream in front of you. The water is moving. Calm. Steady.
+And on the surface — leaves. Dozens of them. Each leaf carries one of your thoughts. [PAUSE 5]
+You don't have to grab any of them. You don't have to push them away.
+You just watch. Each thought floats up, drifts past, and continues on. [PAUSE 6]
+Notice how some leaves are bright and urgent. Others quieter. They all keep moving.
+Your job is just to notice. The thoughts will sort themselves. [PAUSE 8]
+The water doesn't get tired. The leaves keep coming, and that's fine. They keep going, and that's fine too.
+Underneath the surface, the water is still. That's where you are. [PAUSE 5]
+
+===LIGHTENER===
+Just a little quieter now. The stream still moves, but you can hear yourself again.
+
+===WAKE===
+Take a deeper breath. [PAUSE 2] Eyes open when you're ready.
+
+===REINTRODUCTION===
+You're back. The thoughts are still around — but you don't have to follow each one.`,
+    },
+    {
+      kind: 'sleep',
+      icon: '🌙',
+      name: "Can't Sleep",
+      desc: 'Lying awake at night',
+      // Sleep-intention => safety gate exempts the wake/reintro phases.
+      // Designed to fade out — user drifts off rather than re-alerts.
+      persona: 'therapist', method: 'progressive', length: 'short',
+      soundscape: 'ocean', vizOverride: 'aurora', intention: 'sleep',
+      script: `===SETTLING===
+Without moving, just notice the weight of your head on the pillow. [PAUSE 4]
+The mattress is holding you. You don't have to do anything to deserve that.
+Slow breath in. [PAUSE 3] And out, slow as honey. [PAUSE 5]
+
+===WORK===
+Imagine each muscle softening, melting downward into the mattress. [PAUSE 4]
+Your forehead, smooth. Your jaw, loose. Your shoulders, dropping a quarter-inch lower than you thought they could. [PAUSE 5]
+The way ice softens into water — that slow. [PAUSE 4]
+Your arms heavy. Your hips heavy. Your legs heavy.
+The room is safe. The night is taking care of itself without you. [PAUSE 6]
+You don't have to make sleep happen. Your body knows how to do this. It has done it ten thousand times before.
+Just let it. [PAUSE 8]
+And if your mind wanders, that's fine — let it wander. The body is already moving toward sleep without needing the mind's help. [PAUSE 8]
+Each breath, a little deeper. Each breath, a little further from the day. [PAUSE 10]
+Drifting. Heavy. Warm. [PAUSE 12]`,
+    },
+    {
+      kind: 'spiral',
+      icon: '🪨',
+      name: 'Spiral',
+      desc: 'Catastrophizing / doom',
+      // Body-listening technique — bypasses the verbal storyline and goes
+      // somatic. Effective for catastrophizing because the spiral lives
+      // in language; the body has a quieter signal.
+      persona: 'bodyworker', method: 'body-awareness', length: 'micro',
+      soundscape: 'bowls', vizOverride: 'mandala', intention: 'release',
+      script: `===SETTLING===
+Just for ninety seconds, set the story aside. The story will still be there afterward — and you'll meet it with more of yourself. [PAUSE 4]
+Settle in. Soft eyes.
+
+===WORK===
+The catastrophizing — where does it land in your body? Not the thought. The feeling. [PAUSE 5]
+Throat? Chest? Belly? Somewhere else? [PAUSE 4]
+You don't have to be sure. Just guess. Place a hand there, gently. [PAUSE 5]
+And just listen. Not to fix anything. Not to make it leave. Just to listen. [PAUSE 8]
+The body has a quieter voice than the mind. When you stop talking over it, it tells you what it actually needs. Sometimes it's water. Sometimes it's sleep. Sometimes it's just being noticed. [PAUSE 6]
+Stay here. Hand on the place. Breathing into it. [PAUSE 8]
+The story will keep. The body, right now — that's what's true. [PAUSE 4]
+
+===LIGHTENER===
+A little softer. A little more here. The hand stays as long as you want.
+
+===WAKE===
+Take one slow breath in. [PAUSE 2] And out. [PAUSE 3]
+Eyes open when you're ready.
+
+===REINTRODUCTION===
+You're back. Move gently. The story can wait until you've put your feet down.`,
+    },
+  ];
+
+  let _sosModalEl = null;
+  function _ensureSosModal() {
+    if (_sosModalEl) return _sosModalEl;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'sosModal';
+    const cards = SOS_SESSIONS.map(s =>
+      `<div class="sos-card" data-kind="${escapeHtml(s.kind)}">
+         <div class="sos-icon">${s.icon}</div>
+         <div class="sos-name">${escapeHtml(s.name)}</div>
+         <div class="sos-desc">${escapeHtml(s.desc)}</div>
+       </div>`
+    ).join('');
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:520px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <h2 style="margin:0;font-size:1.05rem">Quick Reset</h2>
+          <button class="btn secondary" id="sosCloseBtn" style="padding:4px 12px;font-size:0.74rem">close</button>
+        </div>
+        <div class="oq-intro" style="border-left-color:#d46a6a;background:rgba(212,106,106,0.05)">
+          A short, pre-built session for acute distress. Each one runs ~90 seconds with no setup. Pick whichever fits — they all start the same way: a soft breath and being right where you are.
+        </div>
+        <div class="sos-grid">${cards}</div>
+        <div style="font-size:0.66rem;color:var(--text-faint);text-align:center;margin-top:12px">
+          If you're in immediate danger or considering harm, please reach out — these sessions are not a substitute for crisis support.
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _sosModalEl = wrap;
+    // Card click → launch SOS session
+    wrap.querySelectorAll('.sos-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const kind = card.dataset.kind;
+        const sos = SOS_SESSIONS.find(s => s.kind === kind);
+        if (sos) {
+          wrap.classList.remove('visible');
+          launchSosSession(sos);
+        }
+      });
+    });
+    $('sosCloseBtn')?.addEventListener('click', () => wrap.classList.remove('visible'));
+    wrap.addEventListener('click', (e) => {
+      if (e.target === wrap) wrap.classList.remove('visible');
+    });
+    return wrap;
+  }
+
+  /**
+   * Launch an SOS session. Bypasses the wizard entirely:
+   * 1. Set the static script into state.fullScript + #scriptText
+   * 2. Apply the SOS-bundled persona/method/length/soundscape/viz
+   * 3. Tag state._sosKind so the post-session record marks it
+   * 4. Mark all wizard steps complete
+   * 5. Call startSession() — the script has proper phase markers so the
+   *    safety gate passes; the existing setup pipeline does the rest
+   */
+  function launchSosSession(sos) {
+    if (!sos) return;
+    // Cooldown still applies — emergency-end protection is real safety.
+    if (state._cooldownUntil && Date.now() < state._cooldownUntil) {
+      const remaining = (typeof getEmergencyCooldownRemaining === 'function')
+        ? getEmergencyCooldownRemaining() : null;
+      notify.warn(remaining
+        ? `Please wait ${remaining}s before starting another session.`
+        : 'Please wait a moment before starting another session.');
+      return;
+    }
+    try {
+      // Apply SOS-bundled config so getPersona() / getMethod() resolve
+      // sensibly during startSession setup.
+      state.selectedPersonaId = sos.persona;
+      state.selectedMethodId  = sos.method;
+      state.length            = sos.length;
+      state.soundscape        = sos.soundscape;
+      state.droneEnabled      = sos.soundscape !== 'none';
+      state.intentionType     = sos.intention;
+      if (sos.vizOverride) state.vizOverride = sos.vizOverride;
+      state._phaseExtras      = []; // no posthypnotic mission/goal extras for SOS
+      state._sosKind          = sos.kind;
+      state._sosLaunchedAt    = Date.now();
+      // Sync any DOM controls so a later wizard visit reflects what ran.
+      const lengthSel = $('lengthSelect');     if (lengthSel) lengthSel.value = sos.length;
+      const ssSelect  = $('soundscapeSelect'); if (ssSelect)  ssSelect.value  = sos.soundscape;
+      const vizSel    = $('vizSelect');        if (vizSel && sos.vizOverride) vizSel.value = sos.vizOverride;
+      const intSel    = $('intentionType');    if (intSel)    intSel.value    = sos.intention;
+      // Populate the script + parsed-script state. #scriptText is what
+      // startSession reads; state.fullScript / parsedScript follow for
+      // post-session diagnostics and history.
+      const scriptText = sos.script;
+      const stEl = $('scriptText');            if (stEl) stEl.value = scriptText;
+      state.fullScript   = scriptText;
+      state.parsedScript = parseScript(scriptText);
+      state.generatedPhaseOrder = state.parsedScript?.ordered || [];
+      state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: false };
+      // Close sidebar on mobile so the session starts unobstructed.
+      $('sidebar')?.classList.remove('open');
+      $('sidebarOverlay')?.classList.remove('open');
+      // Refresh derived UI panels — ensures Step-6 visibility if user
+      // returns to the wizard, and updates anything reading getPersona().
+      if (typeof renderPersonaGrid   === 'function') renderPersonaGrid();
+      if (typeof renderPersonaDetail === 'function') renderPersonaDetail();
+      if (typeof renderMethodGrid    === 'function') renderMethodGrid();
+      if (typeof renderMethodDetail  === 'function') renderMethodDetail();
+      if (typeof updateIntentionHint === 'function') updateIntentionHint();
+      if (typeof showScript          === 'function') showScript();
+      // Fire it.
+      startSession();
+    } catch (e) {
+      console.error('[sos] launch failed:', e);
+      notify.error('Could not start the SOS session — try again or use the wizard.');
+    }
+  }
+
+  function openSosModal() { _ensureSosModal().classList.add('visible'); }
+  $('sosBtn')?.addEventListener('click', openSosModal);
+
+  // ====================================================================
+  // MEDITATION TIMER MODE (SE1.3)
+  // ====================================================================
+  // Minimal mode: pick duration, optional soundscape, optional bell at
+  // intervals. No narrator, no AI, no script. Just a timer + visualizer
+  // + (optional) soundscape. Records as a session with mode='meditation'
+  // so it counts toward streak/stats but is identifiable.
+  // ====================================================================
+
+  const MEDITATION_DURATIONS = [
+    { value: 5,  label: '5 minutes' },
+    { value: 10, label: '10 minutes' },
+    { value: 15, label: '15 minutes' },
+    { value: 20, label: '20 minutes' },
+    { value: 30, label: '30 minutes' },
+    { value: 45, label: '45 minutes' },
+  ];
+  const MEDITATION_BELL_INTERVALS = [
+    { value: 0,  label: 'no interval bell' },
+    { value: 1,  label: 'every minute' },
+    { value: 5,  label: 'every 5 minutes' },
+    { value: 10, label: 'every 10 minutes' },
+  ];
+  const MEDITATION_SOUNDSCAPES = [
+    { value: 'none',      label: 'silence' },
+    { value: 'rain',      label: 'rain' },
+    { value: 'ocean',     label: 'ocean' },
+    { value: 'forest',    label: 'forest' },
+    { value: 'brown',     label: 'brown noise' },
+    { value: 'pink',      label: 'pink noise' },
+    { value: 'fire',      label: 'fire crackle' },
+    { value: 'underwater', label: 'underwater' },
+    { value: 'bowls',     label: 'singing bowls' },
+    { value: 'drone',     label: 'drone' },
+  ];
+
+  let _medModalEl  = null;
+  let _medRunning  = false;
+  let _medInterval = null;
+  let _medStartedAt = 0;
+  let _medDurationMs = 0;
+  let _medBellEveryMs = 0;
+  let _medLastBellAt = 0;
+  let _medBell = null;
+  function _ensureMedModal() {
+    if (_medModalEl) return _medModalEl;
+    const opts = (arr, sel) => arr.map(o =>
+      `<option value="${escapeHtml(String(o.value))}"${o.value === sel ? ' selected' : ''}>${escapeHtml(o.label)}</option>`
+    ).join('');
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-backdrop';
+    wrap.id = 'medModal';
+    wrap.innerHTML = `
+      <div class="modal" style="max-width:480px">
+        <div id="medSetup">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+            <h2 style="margin:0;font-size:1.05rem">Meditation Timer</h2>
+            <button class="btn secondary" id="medCloseBtn" style="padding:4px 12px;font-size:0.74rem">close</button>
+          </div>
+          <div class="oq-intro" style="border-left-color:var(--neon-amber);background:rgba(201,168,85,0.04)">
+            Silent timer with optional soundscape and interval bells. No narrator. Visualizer runs the same as a regular session.
+          </div>
+          <div class="med-row">
+            <label for="medDuration">Duration</label>
+            <select id="medDuration">${opts(MEDITATION_DURATIONS, 10)}</select>
+          </div>
+          <div class="med-row">
+            <label for="medSoundscape">Soundscape</label>
+            <select id="medSoundscape">${opts(MEDITATION_SOUNDSCAPES, 'none')}</select>
+          </div>
+          <div class="med-row">
+            <label for="medBell">Interval bell</label>
+            <select id="medBell">${opts(MEDITATION_BELL_INTERVALS, 0)}</select>
+          </div>
+          <div class="modal-actions" style="margin-top:18px">
+            <button class="btn primary" id="medStartBtn">begin</button>
+          </div>
+        </div>
+        <div id="medActive" style="display:none">
+          <div class="med-status">
+            <span class="med-time" id="medTimeRemaining">00:00</span>
+            <span class="med-label" id="medPhaseLabel">running</span>
+          </div>
+          <div class="modal-actions">
+            <button class="btn secondary" id="medCancelBtn">end</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    _medModalEl = wrap;
+    $('medCloseBtn')?.addEventListener('click', () => wrap.classList.remove('visible'));
+    wrap.addEventListener('click', (e) => {
+      if (e.target === wrap && !_medRunning) wrap.classList.remove('visible');
+    });
+    $('medStartBtn')?.addEventListener('click', startMeditationTimer);
+    $('medCancelBtn')?.addEventListener('click', endMeditationTimer);
+    return wrap;
+  }
+
+  function _formatMedTime(ms) {
+    const totalSec = Math.max(0, Math.round(ms / 1000));
+    const mm = Math.floor(totalSec / 60);
+    const ss = totalSec % 60;
+    return `${mm.toString().padStart(2,'0')}:${ss.toString().padStart(2,'0')}`;
+  }
+
+  // Cheap WebAudio bell — single sine ping with quick attack/decay envelope.
+  // Lazy-instantiates the AudioContext on first ring; reused thereafter.
+  // Falls back silently if AudioContext is unavailable.
+  function _ringMedBell() {
+    try {
+      if (!_medBell) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        _medBell = { ctx: new Ctx() };
+      }
+      const ctx = _medBell.ctx;
+      const t0 = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, t0);     // ~A5
+      osc.frequency.exponentialRampToValueAtTime(440, t0 + 1.6);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.5);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 2.6);
+    } catch (e) { console.warn('[med-bell]', e); }
+  }
+
+  async function startMeditationTimer() {
+    const dur = parseInt($('medDuration')?.value || '10', 10);
+    const ss  = $('medSoundscape')?.value || 'none';
+    const bellMin = parseInt($('medBell')?.value || '0', 10);
+    if (!Number.isFinite(dur) || dur <= 0) return;
+    _medDurationMs   = dur * 60 * 1000;
+    _medBellEveryMs  = bellMin > 0 ? bellMin * 60 * 1000 : 0;
+    _medStartedAt    = Date.now();
+    _medLastBellAt   = _medStartedAt;
+    _medRunning      = true;
+    state._medMode   = true;
+    state._medStartedAt = _medStartedAt;
+    state._medDurationMs = _medDurationMs;
+    // Swap modal contents to "running" view
+    $('medSetup').style.display  = 'none';
+    $('medActive').style.display = '';
+    $('medTimeRemaining').textContent = _formatMedTime(_medDurationMs);
+    // Start soundscape if requested. Reuses the existing drone module —
+    // no narration, no phases.
+    try {
+      if (ss && ss !== 'none' && typeof drone !== 'undefined' && drone.start) {
+        state.soundscape = ss;
+        state.droneEnabled = true;
+        await drone.start(ss);
+      }
+    } catch (e) { console.warn('[med] soundscape start failed:', e); }
+    // Tick every 200ms — refresh the time display, ring bells at intervals,
+    // auto-end at duration.
+    _medInterval = setInterval(() => {
+      if (!_medRunning) return;
+      const now = Date.now();
+      const elapsed = now - _medStartedAt;
+      const remaining = _medDurationMs - elapsed;
+      const tEl = $('medTimeRemaining');
+      if (tEl) tEl.textContent = _formatMedTime(Math.max(0, remaining));
+      // Bell logic — ring at the configured interval, NOT at t=0.
+      if (_medBellEveryMs > 0 && elapsed >= _medBellEveryMs && (now - _medLastBellAt) >= _medBellEveryMs - 500) {
+        _ringMedBell();
+        _medLastBellAt = now;
+      }
+      if (remaining <= 0) {
+        // Final bell, then end.
+        _ringMedBell();
+        endMeditationTimer(true);
+      }
+    }, 200);
+    notify.info(`Meditation timer started — ${dur} minutes.`);
+  }
+
+  async function endMeditationTimer(completed = false) {
+    if (!_medRunning) {
+      // Modal might be open with the setup view; just hide.
+      _medModalEl?.classList.remove('visible');
+      return;
+    }
+    _medRunning = false;
+    state._medMode = false;
+    if (_medInterval) { clearInterval(_medInterval); _medInterval = null; }
+    try { if (typeof drone !== 'undefined' && drone.stop) await drone.stop(); } catch {}
+    // Record as a session entry so streak/stats reflect the practice.
+    try {
+      const elapsedMs = Date.now() - _medStartedAt;
+      const minutes   = Math.max(1, Math.round(elapsedMs / 60000));
+      const record = {
+        date: _medStartedAt,
+        guide:  'silent',
+        method: 'meditation',
+        length: 'custom',
+        completed: completed,
+        mode: 'meditation',
+        durationMin: minutes,
+        soundscape: state.soundscape || 'none',
+        intention: 'trance',
+      };
+      const history = (await idbGet('stillness_history_v1')) || [];
+      history.unshift(record);
+      while (history.length > 500) history.pop();
+      // _writeHistoryCompact is defined in the main app — fall through to
+      // direct idbSet if for some reason it isn't.
+      if (typeof _writeHistoryCompact === 'function') await _writeHistoryCompact(history);
+      else await idbSet('stillness_history_v1', history);
+      sdLog('meditation timer recorded', { minutes, completed });
+    } catch (e) { console.warn('[med] record failed:', e); }
+    // Reset the modal back to setup view for next time.
+    if (_medModalEl) {
+      _medModalEl.classList.remove('visible');
+      const setupEl  = _medModalEl.querySelector('#medSetup');
+      const activeEl = _medModalEl.querySelector('#medActive');
+      if (setupEl)  setupEl.style.display  = '';
+      if (activeEl) activeEl.style.display = 'none';
+    }
+    // Refresh sidebar stats so the new session shows up.
+    if (typeof renderSidebarStats === 'function') {
+      try { renderSidebarStats(); } catch {}
+    }
+    if (completed) notify.success('Meditation complete.');
+    else notify.info('Meditation ended.');
+  }
+
+  function openMeditationModal() { _ensureMedModal().classList.add('visible'); }
+  $('meditationBtn')?.addEventListener('click', openMeditationModal);
 
   // ====================================================================
   // GLOSSARY TOOLTIPS (UX1.4)
