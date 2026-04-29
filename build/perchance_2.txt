@@ -4083,24 +4083,31 @@ padding: 6px 10px; font-size: 1.1rem;
         </div>
       </div>
 
-      <div class="app-intro-paths-label">Three ways to start</div>
+      <div class="app-intro-paths-label">Four ways to start</div>
       <div class="app-intro-paths">
         <div class="app-intro-path">
           <div class="app-intro-path-num">1</div>
           <div class="app-intro-path-body">
-            <div class="app-intro-path-title">In a hurry? Use a Quick-Start Preset</div>
-            <div class="app-intro-path-desc">Tap the <strong>Quick-Start Presets</strong> panel on Step 1 — one click sets your guide, method, intention, soundscape, and length. Generate, then begin.</div>
+            <div class="app-intro-path-title">Describe it in your own words — ✨ SmartAssist</div>
+            <div class="app-intro-path-desc">At the top of Step 1, the <strong>SmartAssist</strong> textarea takes plain English (<em>"30-min sleep session, releasing work stress"</em>) and the AI fills the entire wizard for you. Review what it picked, then begin.</div>
           </div>
         </div>
         <div class="app-intro-path">
           <div class="app-intro-path-num">2</div>
           <div class="app-intro-path-body">
-            <div class="app-intro-path-title">Want full control? Walk the 6-step wizard</div>
-            <div class="app-intro-path-desc">Pick a guide → method → intention → affirmations → settings → generate. Settings auto-save. Drop into any step from the navigation below.</div>
+            <div class="app-intro-path-title">In a hurry? Use a Quick-Start Preset or Quick Mode</div>
+            <div class="app-intro-path-desc">Tap a <strong>Quick-Start Preset</strong> on Step 1 — one click sets your guide, method, intention, soundscape, and length. Or use the <strong>Quick Modes</strong> dropdown for one-tap SOS reset, meditation timer, power nap, or sleep story — bypasses the wizard entirely.</div>
           </div>
         </div>
         <div class="app-intro-path">
           <div class="app-intro-path-num">3</div>
+          <div class="app-intro-path-body">
+            <div class="app-intro-path-title">Want full control? Walk the 6-step wizard</div>
+            <div class="app-intro-path-desc">Pick a guide → method → intention → affirmations → settings → generate. Settings auto-save. Drop into any step from the navigation below. Power-user shortcut: press <strong>Cmd-K</strong> (or <strong>Ctrl-K</strong>) anywhere to open the command palette.</div>
+          </div>
+        </div>
+        <div class="app-intro-path">
+          <div class="app-intro-path-num">4</div>
           <div class="app-intro-path-body">
             <div class="app-intro-path-title">Already have a script? Skip straight to playback</div>
             <div class="app-intro-path-desc">Use <strong>"use my own script"</strong> in the wizard footer to paste your own text and jump to Step 6. Saved scripts live in your library on Step 6.</div>
@@ -4110,7 +4117,7 @@ padding: 6px 10px; font-size: 1.1rem;
 
       <div class="app-intro-foot">
         <span>Privacy: local-first by default · </span>
-        <span>Built-in: 25+ guides, 37+ induction methods, 12 soundscapes, 25+ visualizers · </span>
+        <span>Built-in: 25+ guides, 37+ induction methods, 12 soundscapes, 25+ visualizers, 4 Quick Modes, 20 presets, 3+ multi-day programs, ElevenLabs / OpenAI premium narration · </span>
         <span>Tour the app any time from the <strong>?</strong> in the sidebar.</span>
       </div>
     </div>
@@ -4474,6 +4481,16 @@ padding: 6px 10px; font-size: 1.1rem;
             <button class="btn secondary" id="backupBtn" style="flex:1;font-size:0.72rem;padding:6px">export .gz</button>
             <label class="btn secondary" style="flex:1;font-size:0.72rem;padding:6px;text-align:center;cursor:pointer">import .gz<input type="file" id="restoreInput" accept=".gz,.json" style="display:none"></label>
           </div>
+          <!-- Round 24 — Human-readable history exports. Complement the
+               .gz roundtrip with formats that open in spreadsheets / file
+               browsers, for users who want to analyze their own data
+               outside HNE. ZIP unpacks each session as a .txt (script)
+               + sidecar .json (full record); CSV is a flat table. -->
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn secondary" id="exportHistoryZipBtn" style="flex:1;font-size:0.72rem;padding:6px" title="Bundle session history as a ZIP — script files + metadata">📦 history .zip</button>
+            <button class="btn secondary" id="exportHistoryCsvBtn" style="flex:1;font-size:0.72rem;padding:6px" title="Flat CSV of session metadata — opens in spreadsheets">📊 history .csv</button>
+          </div>
+          <div class="sublabel" style="font-size:0.58rem;margin-top:4px;color:var(--text-faint)">Both exports stay on your device. Use .gz for full backup-and-restore round-trip.</div>
           <!-- Cloud backup row — only visible when signed in. The whole
                row hides via CSS when body has cloud-signed-out class. -->
           <div class="cloud-upload-affordance" style="display:flex;gap:6px;margin-top:6px">
@@ -4486,6 +4503,10 @@ padding: 6px 10px; font-size: 1.1rem;
           <button class="sidebar-settings-btn" id="openOptionsBtn">⚙ options</button>
           <button class="sidebar-settings-btn" id="viewMemoriesBtn" style="display:none">🧠 view / edit memories</button>
           <button class="sidebar-settings-btn" id="sidebarSettingsBtn">💛 help &amp; safety resources</button>
+          <!-- Round 24 — bug-report-plugin: opt-in user-initiated bug
+               reports. Aligns with §0a: NEVER silent telemetry; only
+               fires when the user actively clicks the button. -->
+          <button class="sidebar-settings-btn" id="reportBugBtn">🐛 report a bug</button>
         </div>
       </div>
     </aside>
@@ -4534,8 +4555,30 @@ padding: 6px 10px; font-size: 1.1rem;
       <div class="step-header">
         <h2 class="step-title">Choose Your Guide</h2>
         <span class="step-chip step-required">Required — pick one card</span>
-        <p class="step-subtitle">The voice that will lead you through this session. Different guides suit different temperaments. The presets and programs below are <em>optional shortcuts</em> — they pre-fill multiple steps for you.</p>
+        <p class="step-subtitle">The voice that will lead you through this session. Different guides suit different temperaments. <strong>✨ SmartAssist</strong>, presets, and programs below are <em>optional shortcuts</em> — they pre-fill multiple steps for you.</p>
       </div>
+
+      <!-- Round 24 — SmartAssist (natural-language wizard skip).
+           Describe what you want in plain English; the AI fills in
+           method, intention, length, soundscape, persona, and (when
+           applicable) a preset hint. Bypasses 6 wizard steps in one
+           shot. AI prompt + parsing live in JS — see _runSmartAssist. -->
+      <details class="presets-collapsible" id="smartAssistDetails" style="margin-bottom:12px">
+        <summary>
+          <span class="presets-chevron">▸</span>
+          <span class="presets-title">✨ SmartAssist <span style="font-weight:normal;color:var(--text-faint);font-size:0.7rem;text-transform:none;letter-spacing:0">(describe in your own words)</span></span>
+          <span class="presets-hint">tap to expand · AI fills the wizard for you</span>
+        </summary>
+        <div class="sublabel" style="margin-top:8px;margin-bottom:8px">Type what you want — the AI picks guide, method, intention, length, and soundscape for you. Examples: <em>"30-minute sleep session, releasing work stress"</em> · <em>"5-min focus reset before a presentation"</em> · <em>"deep grounding for after panic"</em>.</div>
+        <textarea id="smartAssistInput" rows="2" maxlength="400"
+                  placeholder="e.g. a 20-minute sleep session for restless mind, gentle ericksonian voice, ocean soundscape"
+                  style="width:100%;padding:8px 10px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-family:var(--font-body);font-size:0.82rem;resize:vertical;line-height:1.45"></textarea>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+          <button class="btn primary" id="smartAssistRunBtn" type="button" style="font-size:0.78rem;padding:7px 14px">✨ configure my session</button>
+          <span id="smartAssistStatus" style="font-size:0.66rem;color:var(--text-faint);flex:1"></span>
+        </div>
+        <div id="smartAssistResult" style="display:none;margin-top:8px;padding:8px 10px;background:var(--bg-deep);border-left:2px solid var(--neon-cyan);font-size:0.74rem;color:var(--text-dim);line-height:1.5"></div>
+      </details>
 
       <!-- Presets & Programs — above the guide grid. Collapsed by default
            for new users so the page doesn't open with a wall of cards;
@@ -4648,7 +4691,7 @@ padding: 6px 10px; font-size: 1.1rem;
       <div class="step-header">
         <h2 class="step-title">Set Your Intention</h2>
         <span class="step-chip step-required">Required — pick a type and describe</span>
-        <p class="step-subtitle">What you want from this session. Choose the type of change, describe it roughly, then let the AI craft a technically-sound hypnotic suggestion.</p>
+        <p class="step-subtitle">What you want from this session. Choose the type of change, describe it roughly, then let the AI craft a technically-sound hypnotic suggestion. The AI sees your profile only when <strong>Smart Director</strong> is on, and per-category share toggles in the profile let you scope what reaches it.</p>
       </div>
 
       <div class="field-group">
@@ -4795,7 +4838,7 @@ I return to myself easily"></textarea>
       <div class="step-header">
         <h2 class="step-title">Configure the Session</h2>
         <span class="step-chip step-defaults">Defaults set — adjust if you want</span>
-        <p class="step-subtitle">Every option here has a sensible default. Change only what you care about — voice, soundscape, length, visuals, recording, and so on.</p>
+        <p class="step-subtitle">Every option here has a sensible default. Change only what you care about — voice (free Web Speech / offline AI / your-key ElevenLabs / your-key OpenAI), soundscape, length, visuals, recording, and so on.</p>
       </div>
 
       <!-- Config presets — save the current bundle of length / voice /
@@ -5305,7 +5348,7 @@ I return to myself easily"></textarea>
       <div class="step-header">
         <h2 class="step-title">Generate Your Session</h2>
         <span class="step-chip step-required">Required — click generate, then begin</span>
-        <p class="step-subtitle">Review your choices, jump back if needed, generate the full script, then begin.</p>
+        <p class="step-subtitle">Review your choices, jump back if needed, generate the full script, then begin. After your session, history is exportable as <strong>.gz</strong> (full backup), <strong>.zip</strong> (readable script files + metadata), or <strong>.csv</strong> (spreadsheet-friendly) from the sidebar.</p>
       </div>
 
       <div class="summary-grid">
@@ -20047,6 +20090,53 @@ ${messages}
   // same phase is a no-op. Survives mid-session viz swaps because the
   // setupVisual child-preserve filters now whitelist .personal-symbol-overlay.
   let _personalSymbolBlobUrl = null;
+
+  // Round 24 — Favicon swap during sessions (favicon-plugin from
+  // perchance_1.txt). Caches the original favicon href so we can restore
+  // on session end. The personal symbol (if cached) becomes the favicon
+  // for the duration of playback, giving the tab visual identity that
+  // matches the user's session even when they're in another tab.
+  let _originalFaviconHref = null;
+  function _getOrCreateFaviconLink() {
+    let link = document.querySelector('link[rel~="icon"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    return link;
+  }
+  async function _setSessionFavicon() {
+    const suggestion = state.craftedSuggestion;
+    if (!suggestion) return;
+    if (typeof suggestionSymbolGet !== 'function' || typeof _suggestionHash !== 'function') return;
+    let url;
+    try {
+      const hash = _suggestionHash(suggestion);
+      url = await suggestionSymbolGet(hash);
+    } catch { return; }
+    if (!url) return;
+    const link = _getOrCreateFaviconLink();
+    if (_originalFaviconHref == null) _originalFaviconHref = link.href || '';
+    link.href = url;
+    // If the favicon-plugin (root.faviconPlugin) is loaded, prefer its
+    // setter — it handles cross-browser quirks better than direct DOM.
+    try {
+      if (typeof root !== 'undefined' && root.faviconPlugin?.set) root.faviconPlugin.set(url);
+    } catch {}
+  }
+  function _resetSessionFavicon() {
+    if (_originalFaviconHref == null) return;
+    const link = _getOrCreateFaviconLink();
+    link.href = _originalFaviconHref;
+    try {
+      if (typeof root !== 'undefined' && root.faviconPlugin?.set && _originalFaviconHref) {
+        root.faviconPlugin.set(_originalFaviconHref);
+      }
+    } catch {}
+    _originalFaviconHref = null;
+  }
+
   async function _updatePersonalSymbolOverlay(phase) {
     const stage = $('stage');
     if (!stage) return;
@@ -25931,6 +26021,241 @@ Start immediately:`;
     }
   }
 
+  // ====================================================================
+  // HUMAN-READABLE HISTORY EXPORTS (Round 24 — Batch 1K)
+  // ====================================================================
+  // Two complementary surfaces alongside the existing .gz round-trip:
+  //
+  //   • .zip — bundles each session as a .txt (the script) + sidecar
+  //            .json (full record) + top-level README.md. Opens cleanly
+  //            in any file browser; users can read their own history
+  //            without HNE.
+  //
+  //   • .csv — flat one-row-per-session table of the metadata fields
+  //            most useful for charting (date, mood, depth, etc.).
+  //            Opens in spreadsheets — users can plot trends.
+  //
+  // Both are pure outputs — neither modifies state nor uploads. ZIP is
+  // built with a tiny store-only writer so we don't need a new dep.
+  // (The CompressionStream API the existing .gz path uses doesn't write
+  // ZIP archive structure — different format. Store-only is fine
+  // because session scripts are text; gzip wouldn't help much anyway.)
+  // ====================================================================
+
+  /** CRC-32 for ZIP central directory entries. PKZIP specification.
+   *  Polynomial 0xEDB88320. Pre-computed table for speed. */
+  const _CRC32_TABLE = (() => {
+    const t = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let c = i;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[i] = c >>> 0;
+    }
+    return t;
+  })();
+  function _crc32(bytes) {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) {
+      crc = _CRC32_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  /** Build a store-only (no compression) ZIP archive from an array of
+   *  { name: string, data: Uint8Array } entries. Returns a Blob.
+   *  Spec: APPNOTE.TXT, sections 4.3.7 (local file header), 4.3.12
+   *  (central directory header), 4.3.16 (end of central directory).
+   *  Limit: 4GB total (uses 32-bit offsets — Zip64 not needed for our
+   *  workload, where session scripts are typically <50KB each). */
+  function _buildStoreOnlyZip(entries) {
+    const enc = new TextEncoder();
+    const localParts  = [];
+    const centralParts = [];
+    let offset = 0;
+    for (const ent of entries) {
+      const nameBytes = enc.encode(ent.name);
+      const data = ent.data;
+      const crc = _crc32(data);
+      const size = data.length;
+      // Local file header (30 bytes + name)
+      const local = new Uint8Array(30 + nameBytes.length);
+      const lv = new DataView(local.buffer);
+      lv.setUint32(0, 0x04034b50, true);  // signature
+      lv.setUint16(4, 20, true);          // version needed
+      lv.setUint16(6, 0, true);           // flags
+      lv.setUint16(8, 0, true);           // method (0 = store)
+      lv.setUint16(10, 0, true);          // mtime
+      lv.setUint16(12, 0, true);          // mdate
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, size, true);       // compressed size
+      lv.setUint32(22, size, true);       // uncompressed size
+      lv.setUint16(26, nameBytes.length, true);
+      lv.setUint16(28, 0, true);          // extra field length
+      local.set(nameBytes, 30);
+      localParts.push(local, data);
+      // Central directory entry (46 bytes + name)
+      const central = new Uint8Array(46 + nameBytes.length);
+      const cv = new DataView(central.buffer);
+      cv.setUint32(0, 0x02014b50, true);  // signature
+      cv.setUint16(4, 20, true);          // version made by
+      cv.setUint16(6, 20, true);          // version needed
+      cv.setUint16(8, 0, true);           // flags
+      cv.setUint16(10, 0, true);          // method
+      cv.setUint16(12, 0, true);          // mtime
+      cv.setUint16(14, 0, true);          // mdate
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, size, true);
+      cv.setUint32(24, size, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint16(30, 0, true);          // extra
+      cv.setUint16(32, 0, true);          // comment length
+      cv.setUint16(34, 0, true);          // disk number
+      cv.setUint16(36, 0, true);          // internal attrs
+      cv.setUint32(38, 0, true);          // external attrs
+      cv.setUint32(42, offset, true);     // local header offset
+      central.set(nameBytes, 46);
+      centralParts.push(central);
+      offset += local.length + data.length;
+    }
+    const centralStart = offset;
+    let centralLen = 0;
+    for (const c of centralParts) centralLen += c.length;
+    // End of central directory (22 bytes)
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true);                       // disk
+    ev.setUint16(6, 0, true);                       // disk with central
+    ev.setUint16(8, entries.length, true);          // entries on this disk
+    ev.setUint16(10, entries.length, true);         // total entries
+    ev.setUint32(12, centralLen, true);
+    ev.setUint32(16, centralStart, true);
+    ev.setUint16(20, 0, true);                      // comment length
+    return new Blob([...localParts, ...centralParts, eocd], { type: 'application/zip' });
+  }
+
+  /** Sanitize a filename component for use in a ZIP archive. Strips
+   *  characters illegal on Windows + directory separators. */
+  function _zipSafeFilename(s, fallback) {
+    let out = String(s ?? '').replace(/[\/\\:*?"<>|\x00-\x1f]/g, '_').trim();
+    if (!out) out = fallback || 'session';
+    return out.slice(0, 60); // bound length to keep paths sane
+  }
+
+  async function exportHistoryZip() {
+    markFeatureUsed?.(FEAT.BACKUP);
+    const history = (await idbGet('stillness_history_v1')) || [];
+    if (!Array.isArray(history) || history.length === 0) {
+      notify.warn('No session history yet — nothing to export.');
+      return;
+    }
+    const enc = new TextEncoder();
+    const entries = [];
+    // README.md at the root for context
+    const exportDate = new Date().toISOString();
+    const readme =
+      `# HNE — Session History Export\n\n` +
+      `Exported: ${exportDate}\n` +
+      `Total sessions: ${history.length}\n\n` +
+      `Each session has two files in the \`sessions/\` folder:\n\n` +
+      `- \`<id>__<persona>__<method>.txt\` — the full session script as plain text\n` +
+      `- \`<id>__<persona>__<method>.json\` — the complete session record (mood,\n` +
+      `  depth, ratings, settings, intention, tags, etc.)\n\n` +
+      `This export is human-browsable. To do a full backup-and-restore round-trip\n` +
+      `(profile, settings, custom personas, saved scripts, etc.) use the \`.gz\`\n` +
+      `export instead — that's the canonical format for HNE import.\n\n` +
+      `All data stays on your device — HNE never transmitted it anywhere.\n`;
+    entries.push({ name: 'README.md', data: enc.encode(readme) });
+    // Per-session files
+    for (let i = 0; i < history.length; i++) {
+      const rec = history[i];
+      if (!rec || typeof rec !== 'object') continue;
+      const idPart = _zipSafeFilename(rec.id || ('session-' + (i + 1)), 'session');
+      const personaPart = _zipSafeFilename(rec.guide || rec.persona || 'unknown', 'persona');
+      const methodPart  = _zipSafeFilename(rec.method || 'method', 'method');
+      const stem = `${idPart}__${personaPart}__${methodPart}`;
+      // Script file (plain text)
+      const script = String(rec.script || rec.fullScript || '').trim();
+      if (script) {
+        entries.push({ name: `sessions/${stem}.txt`, data: enc.encode(script) });
+      }
+      // Sidecar JSON — strip any blob URLs / large transient fields
+      const sidecar = { ...rec };
+      delete sidecar.bgImage;            // can be a giant data URL
+      delete sidecar._fullScript;        // duplicate of script
+      try {
+        entries.push({
+          name: `sessions/${stem}.json`,
+          data: enc.encode(JSON.stringify(sidecar, null, 2))
+        });
+      } catch (e) {
+        console.warn('[history zip] skipping non-serializable session', rec.id, e);
+      }
+    }
+    const blob = _buildStoreOnlyZip(entries);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `hne-history-${exportDate.slice(0, 10)}.zip`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    notify.success(`History exported (${history.length} session${history.length === 1 ? '' : 's'}).`);
+  }
+
+  /** Escape a value for safe insertion as a CSV cell. RFC-4180. */
+  function _csvCell(v) {
+    if (v == null) return '';
+    let s = (typeof v === 'object') ? JSON.stringify(v) : String(v);
+    if (/[",\n\r]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  async function exportHistoryCsv() {
+    markFeatureUsed?.(FEAT.BACKUP);
+    const history = (await idbGet('stillness_history_v1')) || [];
+    if (!Array.isArray(history) || history.length === 0) {
+      notify.warn('No session history yet — nothing to export.');
+      return;
+    }
+    // Curated columns — most useful for charting/analysis. We deliberately
+    // skip the script body (use ZIP for that) and the bg image (huge).
+    const cols = [
+      { key: 'id',           label: 'id' },
+      { key: 'date',         label: 'date_iso',
+        get: r => r.date ? new Date(r.date).toISOString() : '' },
+      { key: 'guide',        label: 'persona' },
+      { key: 'method',       label: 'method' },
+      { key: 'intention',    label: 'intention' },
+      { key: 'intentionType',label: 'intentionType' },
+      { key: 'length',       label: 'length' },
+      { key: 'soundscape',   label: 'soundscape' },
+      { key: 'durationSec',  label: 'duration_sec' },
+      { key: 'preMood',      label: 'pre_mood' },
+      { key: 'postMood',     label: 'post_mood' },
+      { key: 'preDepth',     label: 'pre_depth' },
+      { key: 'postDepth',    label: 'post_depth' },
+      { key: 'rating',       label: 'rating' },
+      { key: 'completed',    label: 'completed' },
+      { key: 'tags',         label: 'tags',
+        get: r => Array.isArray(r.tags) ? r.tags.join('|') : (r.tags || '') },
+      { key: 'susceptibilityAtSessionStart', label: 'hip_score_at_start' },
+      { key: 'workflowVersion', label: 'workflow_version' },
+    ];
+    const lines = [];
+    lines.push(cols.map(c => _csvCell(c.label)).join(','));
+    for (const rec of history) {
+      lines.push(cols.map(c => _csvCell(c.get ? c.get(rec) : rec[c.key])).join(','));
+    }
+    // BOM for Excel UTF-8 friendliness
+    const csv = '\uFEFF' + lines.join('\r\n') + '\r\n';
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `hne-history-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    notify.success(`CSV exported (${history.length} session${history.length === 1 ? '' : 's'}).`);
+  }
+
   async function importBackup(file) {
     try {
       let text;
@@ -26368,6 +26693,11 @@ Start immediately:`;
     switchScreen('session-screen');
     document.body.classList.add('in-session');
     showSessionControls(); // start auto-hide timer
+    // Round 24 — Favicon swap: surface the user's personal symbol (if any)
+    // as the browser tab favicon while a session is playing. Reverts on
+    // session end. Pure visual polish — silently no-op when there's no
+    // cached symbol or the favicon plugin isn't available.
+    try { _setSessionFavicon(); } catch (e) { console.warn('[favicon set]', e); }
     // First-session entry — show grouped warning if capabilities are missing.
     // Idempotent (warnMissingCapabilities sets _capsWarnedOnce true on first call).
     warnMissingCapabilities();
@@ -27897,6 +28227,8 @@ Start immediately:`;
     // N1.1 — Drop the sentence pre-buffer cache so blobs from this
     // session don't pin memory across the post-session screen.
     try { _clearPremiumTtsPrefetch(); } catch {}
+    // Round 24 — Restore the original favicon now that the session is over.
+    try { _resetSessionFavicon(); } catch {}
     // (E1.2 _sosKind cleanup happens later, after the session record has
     // been built and persisted — see end of finishSession.)
     // Clear lock-screen media session so it doesn't linger post-session
@@ -28730,6 +29062,7 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
   _wirePresetCollapse('quickStartPresetsDetails', 'stillness_presets_open_v1');
   _wirePresetCollapse('structuredProgramsDetails', 'stillness_programs_open_v1');
   _wirePresetCollapse('aiQuickModesDetails',       'stillness_ai_modes_open_v1');
+  _wirePresetCollapse('smartAssistDetails',        'stillness_smart_assist_open_v1');
   $('methodFilterTabs').addEventListener('click', async e => {
     if (!e.target.dataset.filter) return;
     const cat = e.target.dataset.filter;
@@ -30668,6 +31001,19 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
 
   // Backup/restore
   $('backupBtn')?.addEventListener('click', exportBackup);
+  // Round 24 — Human-readable history exports.
+  $('exportHistoryZipBtn')?.addEventListener('click', () => {
+    exportHistoryZip().catch(e => {
+      console.warn('[history zip]', e);
+      notify.warn('History ZIP export failed — see console.');
+    });
+  });
+  $('exportHistoryCsvBtn')?.addEventListener('click', () => {
+    exportHistoryCsv().catch(e => {
+      console.warn('[history csv]', e);
+      notify.warn('History CSV export failed — see console.');
+    });
+  });
   $('cloudBackupUploadBtn')?.addEventListener('click', async () => {
     if (!state.cloudUser) {
       notify.warn('Sign in to back up to cloud (top of sidebar).');
@@ -32599,22 +32945,26 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   // ====================================================================
   const TOUR_KEY = 'stillness_tour_v2';
   const TOUR_STEPS = [
-    { icon: '🌀', title: 'Welcome to the Hypnosis Engine', body: 'A complete browser-based hypnosis studio. Generate guided sessions with AI-written narration, ambient soundscapes, hypnotic visuals — all running locally. No data leaves your device unless you explicitly opt in. This 16-step tour shows you what\'s in the box.' },
-    { icon: '⚡', title: 'Three ways to start', body: 'In a hurry: tap a <strong>Quick-Start Preset</strong> on Step 1 — one click sets guide, method, intention, soundscape, and length. For full control: walk the 6-step wizard. Already have a script: tap <strong>"use my own script"</strong> in the wizard footer to skip straight to the player.' },
-    { icon: '👤', title: 'Step 1 — Choose a Guide', body: '25+ built-in personas across four temperaments — contemplative, showman, somatic, authoritarian. Each has a distinct voice and therapeutic style. You can also <strong>create custom personas</strong> three ways: write the voice yourself, import from a .txt URL, or use the new <strong>✨ Guide Builder</strong> at the bottom of Step 1 — describe your idea and AI designs name + tagline + voice + image accents in a four-step pipeline you can selectively re-roll.' },
-    { icon: '🔮', title: 'Step 2 — Choose a Method', body: '37+ induction techniques from gentle progressive relaxation to dramatic shock inductions. Rapid and advanced methods unlock after 3 and 7 completed sessions — building experience safely. Locked methods show a 🔒 with a tooltip explaining why.' },
-    { icon: '🎯', title: 'Step 3 — Set an Intention', body: 'Describe what you want from the session in your own words. The AI uses your profile (about you, goals, pronouns) plus your intention to craft a precise hypnotic suggestion. Tap <strong>why-this-session</strong> chips to add context like "anxious", "before sleep", or "processing emotion". Profile data is only sent when <strong>Smart Director</strong> is on.' },
+    { icon: '🌀', title: 'Welcome to the Hypnosis Engine', body: 'A complete browser-based hypnosis studio. Generate guided sessions with AI-written narration, ambient soundscapes, hypnotic visuals — all running locally. No data leaves your device unless you explicitly opt in. This tour shows you what\'s in the box.' },
+    { icon: '⚡', title: 'Four ways to start', body: 'In a hurry: tap a <strong>Quick-Start Preset</strong> on Step 1 — one click sets guide, method, intention, soundscape, and length. Even faster: type plain English into <strong>✨ SmartAssist</strong> at the top of Step 1 and the AI fills the wizard for you. For full control: walk the 6-step wizard. Already have a script: tap <strong>"use my own script"</strong> in the wizard footer to skip to the player.' },
+    { icon: '🚨', title: 'Quick Modes — when you need something now', body: 'Above the wizard, the <strong>Quick Modes</strong> dropdown surfaces four one-tap session types: <strong>SOS</strong> (~90s static reset for acute panic / overwhelm), <strong>Meditation Timer</strong> (silent timer with bells), <strong>Power Nap</strong> (15/20/25 min with structured wake), and <strong>Sleep Story</strong> (9 themed bedtime narratives, no induction language). All bypass the wizard for moments when setup friction is the wrong answer.' },
+    { icon: '👤', title: 'Step 1 — Choose a Guide', body: '25+ built-in personas across four temperaments — contemplative, showman, somatic, authoritarian. Each has a distinct voice and therapeutic style. You can also <strong>create custom personas</strong> three ways: write the voice yourself, import from a .txt URL, or use the <strong>✨ Guide Builder</strong> at the bottom of Step 1 — describe your idea and AI designs name + tagline + voice + image accents in a four-step pipeline you can selectively re-roll.' },
+    { icon: '🔮', title: 'Step 2 — Choose a Method', body: '37+ induction techniques from gentle progressive relaxation to dramatic shock inductions. Rapid and advanced methods unlock after 3 and 7 completed sessions — building experience safely. Locked methods show a 🔒 with a tooltip explaining why. The Director may filter the list further based on your profile (posture, co-presence, health notes, susceptibility).' },
+    { icon: '🎯', title: 'Step 3 — Set an Intention', body: 'Describe what you want from the session in your own words. The AI uses your profile (about you, goals, pronouns) plus your intention to craft a precise hypnotic suggestion. Tap <strong>why-this-session</strong> chips to add context like "anxious", "before sleep", or "processing emotion". Profile data is only sent when <strong>Smart Director</strong> is on — and now per-category share toggles let you opt out of sharing Practice Context, Life Context, Style, Susceptibility, or Anchors with the AI while the local Director still uses them.' },
     { icon: '💬', title: 'Step 4 — Affirmations (optional)', body: 'Add your own affirmations to be woven verbatim into the script — or click <strong>✨ generate from profile</strong> to have the AI draft a few based on who you are. Pick how strongly they appear: woven through, dedicated moments, or light touch.' },
     { icon: '⚙', title: 'Step 5 — Configure', body: 'Soundscapes (12 recipes incl. <strong>phase-locked binaural</strong> + <strong>isochronic</strong>), 25+ visualizers (incl. <strong>40Hz gamma flicker</strong>), voice + ducking, conversational <em>"how are you?"</em> check-in (slider or free text), and advanced toggles: <strong>Smart Director</strong>, <strong>2D calibration pad</strong> (intensity × pace), <strong>Reactive Rules</strong>, <strong>Session Modes</strong>, <strong>Safety Limits</strong>, <strong>Adaptive Playback Dynamics</strong>, per-session <strong>Webcam awareness</strong>. Settings auto-save.' },
+    { icon: '🎙', title: 'Premium narrator voices (optional)', body: 'Step 5\'s voice picker now supports <strong>ElevenLabs</strong> and <strong>OpenAI</strong> as opt-in narrator backends — paste your own API key (session-only, never persisted) for studio-grade narration with natural pacing. Sentences pre-buffer in the background as you listen, so playback feels fluid even on slower connections. The free Web Speech default and the <strong>offline AI voice</strong> (~80MB one-time download) are still there if you prefer.' },
     { icon: '🖼', title: 'Step 5 — Background images', body: 'Step 5 includes an AI image generator for session backgrounds. Type a prompt and tap <strong>✨ enhance</strong> to have AI engineer it (short / medium / long verbosity). Pick from 19 <strong>style preset chips</strong> — atmospheric, nature, abstract, or rendering-style modifiers. Use <strong>+1 image</strong> / <strong>+5 images</strong> to queue generations; <strong>show gallery</strong> reveals your cached pool.' },
     { icon: '▶', title: 'Step 6 — Generate, save, begin', body: 'Each script phase generates individually with live status dots — click any dot to retry that phase. <strong>⏱ auto-tempo</strong> rebuilds pause timings. Above the editor, the <strong>Saved Scripts</strong> library lets you store and reload scripts you want to reuse — tap <strong>💾 save</strong> on the actions bar to keep the current script for later.' },
-    { icon: '📅', title: 'Multi-day Programs', body: 'Step 1 also surfaces <strong>Structured Programs</strong> — multi-day arcs (Self-Hypnosis Foundation, Stress Reset, etc.) with pre-built day-by-day progression. After completing a program day, the post-session screen offers to <strong>pre-generate tomorrow\'s session</strong> in the background — opt in once and the next day launches instantly.' },
-    { icon: '📊', title: 'Your sidebar', body: 'The left sidebar tracks stats, streak (with grace day), activity heatmap, pattern callouts, weekly digest, and your full <strong>Session History</strong> (with the unified <strong>activity timeline</strong> showing profile edits, AI calls, and sessions in one feed). Every session stores its complete script — click ▶ to replay any past session. The 📦 <strong>export bundle</strong> on post-session packages script + metadata as a .zip.' },
-    { icon: '🎵', title: 'During a session', body: '<strong>Space</strong> pauses everything. <strong>Escape</strong> triggers an emergency re-alert in your guide\'s voice. <strong>← back to script</strong> returns and lets you edit mid-session. The ⚙ panel adjusts audio and visuals live. With Reactive Rules on, the engine may nudge you if you go silent for too long, or duck the soundscape during work phases.' },
-    { icon: '🔒', title: 'Privacy by default', body: 'Everything stays in your browser. <strong>Remote backup &amp; processing</strong> is OFF by default — no data leaves your device, and intrusive UI (like "page may be stuck" warnings) stays silent too. Turn it on in Options if you want cross-device features. <strong>Debug mode</strong> in Options surfaces dev affordances; a red badge appears whenever it\'s on.' },
-    { icon: '☁', title: 'Optional cloud account', body: 'At the top of the sidebar, <strong>sign in / create account</strong> gives you a community-shared cloud space (PerDB) for cross-device sync of your scripts, personas, and settings. Each upload is opt-in — nothing syncs automatically. The 💬 <strong>community comments</strong> button next to it opens a public channel; everyone using HNE sees the same messages, so be kind. <span style="color:var(--text-faint)">Cloud is community-shared infrastructure, not Anthropic-managed.</span>' },
-    { icon: '🎙', title: 'High-quality narrator voices', body: 'In Step 5, below the voice picker, <strong>"find more free high-quality voices for your device ↗"</strong> opens an OS-detected guide showing how to install free Premium / Enhanced / Neural voices on iOS, macOS, Windows, Android, and Linux. Or enable the <strong>offline AI voice</strong> right above it — runs entirely in your browser, ~80MB one-time download.' },
-    { icon: '✨', title: 'You\'re ready', body: 'Pick a guide and method, or tap a preset. Your first session takes about 2 minutes to set up. Backup your data anytime from the sidebar — <strong>Restore</strong> your data anytime, on any device, with the same backup. Crisis resources live behind the <strong>help &amp; safety</strong> link in the footer.' },
+    { icon: '📅', title: 'Multi-day Programs', body: 'Step 1 also surfaces <strong>Structured Programs</strong> — multi-day arcs (7-Day Sleep, 14-Day Calm, 10-Day Confidence, etc.) with pre-built day-by-day progression. After completing a program day, the post-session screen offers to <strong>pre-generate tomorrow\'s session</strong> in the background — opt in once and the next day launches instantly.' },
+    { icon: '📈', title: 'HIP susceptibility brief', body: 'A 4-question Stanford-HIP-inspired self-administered brief (Eye-Roll, Hand Levitation, Suggestion Response, Imaginative Vividness) gives you a 0-10 hypnotic susceptibility score. Banded low/medium/high to right-size method recommendations — high-susceptibility users get richer trance methods, low-susceptibility users get a method-block on advanced phenomena that need deeper trance. The sidebar shows your <strong>HIP trajectory sparkline</strong> over time as you re-take it.' },
+    { icon: '⌘', title: 'Command palette (Cmd / Ctrl + K)', body: 'Press <strong>Cmd-K</strong> (Mac) or <strong>Ctrl-K</strong> (Windows / Linux) anywhere to open a fuzzy-match command palette: jump to any wizard step, launch any preset/program/Quick Mode, open any sidebar section, run common actions. Power-user fast-path that becomes muscle memory after a few uses.' },
+    { icon: '📊', title: 'Your sidebar', body: 'The left sidebar tracks stats, streak (with grace day), activity heatmap, HIP trajectory sparkline, pattern callouts, weekly digest, and your full <strong>Session History</strong> (with filter chips by mode/persona/method/mood-band/tag, custom session tags, and side-by-side comparison). The unified <strong>activity timeline</strong> shows profile edits, AI calls, and sessions in one feed. Every session stores its complete script — click ▶ to replay any past session. The new <strong>Director audit</strong> panel records every recommendation + every adaptive-weight rating mutation so you can debug exactly why the engine picked what it did.' },
+    { icon: '🎵', title: 'During a session', body: '<strong>Space</strong> pauses everything. <strong>Escape</strong> triggers an emergency re-alert in your guide\'s voice. <strong>← back to script</strong> returns and lets you edit mid-session. The ⚙ panel adjusts audio and visuals live. With Reactive Rules on, the engine may nudge you if you go silent for too long, or duck the soundscape during work phases. Your <strong>personal symbol</strong> (when set) appears on the work-phase backdrop and as the browser-tab favicon — a quiet reminder that this is your session, not just any session.' },
+    { icon: '🔒', title: 'Privacy by default', body: 'Everything stays in your browser. <strong>Remote backup &amp; processing</strong> is OFF by default — no data leaves your device, and intrusive UI (like "page may be stuck" warnings) stays silent too. Turn it on in Options if you want cross-device features. <strong>Debug mode</strong> in Options surfaces dev affordances; a red badge appears whenever it\'s on. Profile share toggles are per-field AND per-category, so you can be precise about what reaches an AI provider.' },
+    { icon: '☁', title: 'Optional cloud account', body: 'At the top of the sidebar, <strong>sign in / create account</strong> gives you a community-shared cloud space (PerDB) for cross-device sync of your scripts, personas, and settings. Each upload is opt-in — nothing syncs automatically. The 💬 <strong>community comments</strong> button next to it opens a public channel with slash commands (<code>/preset</code>, <code>/program</code>, <code>/method</code>, <code>/persona</code>, <code>/tip</code>) so share-link messages stay readable. <span style="color:var(--text-faint)">Cloud is community-shared infrastructure, not Anthropic-managed.</span>' },
+    { icon: '💾', title: 'Backup & export', body: 'Three export formats live in the sidebar\'s <strong>backup</strong> section: <strong>.gz</strong> for full backup-and-restore round-trip (profile, settings, custom personas, saved scripts, history, memories), <strong>.zip</strong> bundles each session as a readable .txt + sidecar .json + README, and <strong>.csv</strong> is a flat one-row-per-session table for charting in spreadsheets. <strong>Restore</strong> any device with the same .gz backup. The 🐛 <strong>report a bug</strong> button at the bottom of the sidebar is a user-initiated action — HNE never sends crash telemetry on its own.' },
+    { icon: '✨', title: 'You\'re ready', body: 'Pick a guide and method, type into SmartAssist, or tap a preset. Your first session takes about 2 minutes to set up. Backup your data anytime from the sidebar. Crisis resources live behind the <strong>💛 help &amp; safety</strong> link near the footer. The tour can be replayed any time from the <strong>?</strong> in the sidebar.' },
   ];
 
   function shouldShowTour() { try { return !localStorage.getItem(TOUR_KEY); } catch { return false; } }
@@ -33375,6 +33725,220 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     const modal = _ensureOnboardingModal();
     modal.classList.add('visible');
   }
+
+  // ====================================================================
+  // SMARTASSIST — natural-language wizard skip (Round 24)
+  // ====================================================================
+  // User describes a session in plain English; AI returns a JSON config
+  // that fills persona / method / intention / length / soundscape.
+  // Inspired by illusiongen-v2-de's SmartAssist pattern (research notes
+  // 2026-04-29). Reuses the existing AI provider plumbing — Perchance
+  // free tier first, user-key Anthropic/OpenAI as opt-in fallback. Uses
+  // startWith: '{' + stopSequences to constrain output to clean JSON.
+  //
+  // §0a alignment: zero new infrastructure, no telemetry. The user
+  // command + available-options tables are sent; the user's profile is
+  // only included when Smart Director is on (same gate as wizard AI).
+  // ====================================================================
+
+  /** Build the SmartAssist instruction prompt. Includes available
+   *  options + current state + user command. Pure function, no side
+   *  effects, easy to test. */
+  function _buildSmartAssistPrompt(userCommand) {
+    // Snapshot available options from the actual catalogs so the AI
+    // can't pick something we don't ship. Trimmed labels to keep the
+    // prompt token-efficient — IDs + a short tag for orientation only.
+    const personaList = (typeof BUILTIN_PERSONAS !== 'undefined' && Array.isArray(BUILTIN_PERSONAS))
+      ? BUILTIN_PERSONAS.map(p => `${p.id}:${p.tagline?.slice(0,40) || p.name}`).join(' | ')
+      : '(unavailable)';
+    const methodList = (typeof METHODS !== 'undefined' && Array.isArray(METHODS))
+      ? METHODS.map(m => `${m.id}:${m.tagline?.slice(0,40) || m.name}`).join(' | ')
+      : '(unavailable)';
+    const intentions = 'emotional | trigger | behavior | release | perception | anchor | trance | performance | focus | creativity | pain | sleep | energy | convincer | novelty | time | amnesia | identity | surrender | conditioning';
+    const lengths    = 'micro (1-2 min) | quick (3-5 min) | short (8-12 min) | medium (15-25 min) | long (30-45 min) | extended (50-70 min) | marathon (75-120 min)';
+    const sounds     = 'none | rain | ocean | underwater | forest | cave | fire | bowls | drone | brown | white | heartbeat | train | city | temple';
+    const presetIds  = (typeof PRESETS !== 'undefined' && Array.isArray(PRESETS))
+      ? PRESETS.map(p => p.id).join(', ')
+      : '(unavailable)';
+
+    return [
+      'You are SmartAssist, the session configurator inside the Hypnosis Narration Engine app.',
+      'The user will describe what kind of hypnosis or meditation session they want, in their own words.',
+      'Your job is to translate that into a structured JSON config that fills the wizard fields.',
+      '',
+      'Available options:',
+      '- persona (id:tagline): ' + personaList,
+      '- method  (id:tagline): ' + methodList,
+      '- intention: ' + intentions,
+      '- length:    ' + lengths,
+      '- soundscape: ' + sounds,
+      '- preset (optional shortcut, mutually exclusive with the others if used): ' + presetIds,
+      '',
+      'Rules:',
+      '1. Output ONLY a valid JSON object. No prose, no markdown, no code fences.',
+      '2. Include ONLY fields the user clearly indicated. Omit fields you have to guess at — leaving a field absent means "use the user\'s current setting".',
+      '3. If the user\'s description maps cleanly onto one of the named presets, you may set "preset" to that id. The preset will pre-fill persona/method/length/soundscape automatically; do not also set those fields when you set preset.',
+      '4. "intentionText" should be a single concise sentence (≤120 chars) restating the user\'s goal in their own voice. Always include it when an intention is set.',
+      '5. Use the IDs exactly as listed — case-sensitive, no synonyms.',
+      '6. Be smart about hints: "before sleep" → intention sleep; "racing mind" → release/anxiety direction; "20 minutes" → length medium; "ericksonian" → persona/method matching that style.',
+      '',
+      'Optional fields in your JSON output:',
+      '  preset: <preset-id>',
+      '  persona: <persona-id>',
+      '  method: <method-id>',
+      '  intention: <intention-id>',
+      '  intentionText: <≤120 char restatement of the goal>',
+      '  length: <length-id>',
+      '  soundscape: <soundscape-id>',
+      '',
+      'Example output:',
+      '{"persona":"therapist","method":"progressive","intention":"sleep","intentionText":"drift off after a stressful work day","length":"long","soundscape":"ocean"}',
+      '',
+      'User command: ' + JSON.stringify(String(userCommand || '').slice(0, 400)),
+      '',
+      'Respond with ONLY the JSON object, starting with {.',
+    ].join('\n');
+  }
+
+  /** Apply a parsed SmartAssist config to the wizard. Returns a list
+   *  of human-readable change descriptions for the result panel. */
+  function _applySmartAssistConfig(cfg) {
+    const changes = [];
+    if (!cfg || typeof cfg !== 'object') return changes;
+    // Preset path — mutually exclusive with the per-field set.
+    if (cfg.preset && typeof PRESETS !== 'undefined') {
+      const preset = PRESETS.find(p => p.id === cfg.preset);
+      if (preset) {
+        try {
+          // Reuse the preset card click handler so all the side-effects
+          // of preset selection (persona/method/length/soundscape, viz
+          // override, etc.) fire identically.
+          document.querySelector(`#presetGrid .preset-card[data-preset-id="${preset.id}"]`)?.click();
+          changes.push(`Applied preset: <strong>${escapeHtml(preset.name)}</strong>`);
+          // Don't return early — intentionText below may still apply if AI included it
+        } catch (e) { console.warn('[smartassist preset]', e); }
+      }
+    }
+    // Per-field path
+    if (cfg.persona && typeof BUILTIN_PERSONAS !== 'undefined' && BUILTIN_PERSONAS.find(p => p.id === cfg.persona)) {
+      state.selectedPersonaId = cfg.persona;
+      try { renderPersonaGrid?.(); renderPersonaDetail?.(); } catch {}
+      changes.push(`Persona: <strong>${escapeHtml(cfg.persona)}</strong>`);
+    }
+    if (cfg.method && typeof METHODS !== 'undefined' && METHODS.find(m => m.id === cfg.method)) {
+      state.selectedMethodId = cfg.method;
+      try { renderMethodGrid?.(); renderMethodDetail?.(); } catch {}
+      changes.push(`Method: <strong>${escapeHtml(cfg.method)}</strong>`);
+    }
+    if (cfg.intention && $('intentionType')) {
+      const opt = [...$('intentionType').options].find(o => o.value === cfg.intention);
+      if (opt) {
+        $('intentionType').value = cfg.intention;
+        $('intentionType').dispatchEvent(new Event('change', { bubbles: true }));
+        changes.push(`Intention type: <strong>${escapeHtml(cfg.intention)}</strong>`);
+      }
+    }
+    if (cfg.intentionText && $('intentionInput')) {
+      $('intentionInput').value = String(cfg.intentionText).slice(0, 240);
+      $('intentionInput').dispatchEvent(new Event('input', { bubbles: true }));
+      changes.push(`Intention: <em>"${escapeHtml(String(cfg.intentionText).slice(0, 80))}${cfg.intentionText.length > 80 ? '…' : ''}"</em>`);
+    }
+    if (cfg.length && $('lengthSelect')) {
+      const opt = [...$('lengthSelect').options].find(o => o.value === cfg.length);
+      if (opt) {
+        state.length = cfg.length;
+        $('lengthSelect').value = cfg.length;
+        $('lengthSelect').dispatchEvent(new Event('change', { bubbles: true }));
+        changes.push(`Length: <strong>${escapeHtml(cfg.length)}</strong>`);
+      }
+    }
+    if (cfg.soundscape && $('soundscapeSelect')) {
+      const opt = [...$('soundscapeSelect').options].find(o => o.value === cfg.soundscape);
+      if (opt) {
+        state.soundscape = cfg.soundscape;
+        state.droneEnabled = cfg.soundscape !== 'none';
+        $('soundscapeSelect').value = cfg.soundscape;
+        $('soundscapeSelect').dispatchEvent(new Event('change', { bubbles: true }));
+        changes.push(`Soundscape: <strong>${escapeHtml(cfg.soundscape)}</strong>`);
+      }
+    }
+    return changes;
+  }
+
+  /** Run SmartAssist end-to-end: build prompt, call AI, parse, apply. */
+  async function _runSmartAssist() {
+    const input  = $('smartAssistInput');
+    const status = $('smartAssistStatus');
+    const result = $('smartAssistResult');
+    const btn    = $('smartAssistRunBtn');
+    if (!input || !btn) return;
+    const userCommand = (input.value || '').trim();
+    if (!userCommand) {
+      if (status) status.textContent = 'Type a description first.';
+      return;
+    }
+    if (typeof root === 'undefined' || !root.aiTextPlugin) {
+      if (status) status.textContent = 'AI provider not available.';
+      return;
+    }
+    btn.disabled = true;
+    if (status) status.textContent = '✨ thinking…';
+    if (result) result.style.display = 'none';
+
+    const instruction = _buildSmartAssistPrompt(userCommand);
+    try { logAICall('perchance', 'smart-assist', instruction); } catch {}
+
+    try {
+      const data = await root.aiTextPlugin({
+        instruction,
+        startWith: '{',
+        stopSequences: ['\n\n\n', '\n\n}\n', '```'],
+        hideStartWith: true,
+      });
+      if (!data || data.stopReason === 'error') throw new Error('AI returned an error.');
+      let text = (data.generatedText || '').trim();
+      if (!text) throw new Error('AI returned empty output.');
+      // The startWith: '{' option strips the opening brace from the response,
+      // so we have to re-attach it. Then trim everything after the matching
+      // closing brace to defend against trailing chatter.
+      if (!text.startsWith('{')) text = '{' + text;
+      const lb = text.lastIndexOf('}');
+      if (lb > -1) text = text.substring(0, lb + 1);
+      const cfg = JSON.parse(text);
+      const changes = _applySmartAssistConfig(cfg);
+      if (status) status.textContent = '';
+      if (result) {
+        if (!changes.length) {
+          result.innerHTML = '<span style="color:var(--text-faint)">No fields were updated. Try being more specific (mention length, mood, or style).</span>';
+        } else {
+          result.innerHTML = '<div style="font-size:0.62rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Applied:</div>' +
+                             changes.map(c => `<div>· ${c}</div>`).join('');
+        }
+        result.style.display = '';
+      }
+      try { notify.success('Session configured — review and tap "begin" when ready.'); } catch {}
+    } catch (e) {
+      console.warn('[smartassist] failed:', e);
+      if (status) status.textContent = '';
+      if (result) {
+        result.innerHTML = '<span style="color:#d46a6a">Couldn\'t configure that. Try rephrasing — e.g. <em>"20-minute sleep session, ericksonian voice"</em>.</span>';
+        result.style.display = '';
+      }
+      try { notify.warn('SmartAssist failed: ' + (e?.message || 'unknown error')); } catch {}
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // Wire the run button + Enter-key submit in the textarea.
+  $('smartAssistRunBtn')?.addEventListener('click', () => { _runSmartAssist(); });
+  $('smartAssistInput')?.addEventListener('keydown', e => {
+    // Cmd/Ctrl+Enter submits without a newline; plain Enter inserts a newline.
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      _runSmartAssist();
+    }
+  });
 
   // Wire the sidebar button. Visibility check runs after profile load so
   // the heuristic for "user already filled profile" sees populated values.
@@ -36682,6 +37246,26 @@ Begin:`;
 
   $('sidebarSettingsBtn')?.addEventListener('click', () => {
     $('crisisLink')?.click();
+  });
+
+  // Round 24 — Bug report. Hands off to the bug-report-plugin (loaded
+  // via root.bugReportPlugin in perchance_1.txt) when present; otherwise
+  // shows a graceful fallback that points the user to the GitHub /
+  // Perchance forum thread. Never sends data without user click.
+  $('reportBugBtn')?.addEventListener('click', () => {
+    try {
+      if (typeof root !== 'undefined' && root.bugReportPlugin?.show) {
+        root.bugReportPlugin.show();
+        return;
+      }
+    } catch (e) { console.warn('[bug-report]', e); }
+    // Fallback path — plugin not available or threw.
+    alertModal('Report a bug',
+      'The in-app bug reporter is not available right now. To report bugs:\n\n' +
+      '• Use the thumbs-down button on any specific response, OR\n' +
+      '• Open the project page on Perchance and use the comments thread, OR\n' +
+      '• Check the README for the GitHub issue tracker.\n\n' +
+      'Thanks for helping make HNE better.');
   });
 
   $('remoteProcessingOptIn')?.addEventListener('change', e => {

@@ -124,6 +124,17 @@ textToImagePlugin = {import:text-to-image-plugin}
 fullscreenButtonPlugin = {import:fullscreen-button-plugin}
 uploadPlugin = {import:upload-plugin}
 dynamicImport = {import:dynamic-import-plugin}
+// Round 24 — favicon-plugin lets us swap the browser tab icon during
+// sessions. The HTML-pane code uses this to surface the user's personal
+// symbol (set in profile) as the favicon while a session is playing,
+// then reverts on session end. Falls back to a no-op if the plugin
+// isn't available — pure visual polish, never load-bearing.
+faviconPlugin = {import:favicon-plugin}
+// Round 24 — bug-report-plugin gives users an opt-in button to send a
+// bug report (with screenshot + state dump). User-initiated only; never
+// silent telemetry — aligns with §0a's "no crash/error telemetry"
+// constraint by being an explicit user action.
+bugReportPlugin = {import:bug-report-plugin}
 // Comments plugin — used by the in-app community channel modal. Iframe-based,
 // so it's lazy until the user clicks "💬 community comments" in the sidebar.
 commentsPlugin = {import:comments-plugin}
@@ -134,6 +145,21 @@ commentOptions
   rateLimits = 1 per minute
   bannedWords =   
   bannedUsers
+  // Round 24 — slash commands for power users in the community channel.
+  // Each command outputs whatever's after it, possibly with prefix/suffix
+  // text. Keeps the channel readable when many users post share-links —
+  // a "/preset sleep" message is unambiguous, while raw URLs blend in.
+  slashCommands
+    preset
+      output = 🌙 sharing a preset: [this.input]
+    program
+      output = 📅 sharing a multi-day program: [this.input]
+    method
+      output = 🔮 method tip: [this.input]
+    persona
+      output = 👤 persona suggestion: [this.input]
+    tip
+      output = 💡 tip: [this.input]
 
 
 // ══════════════════════════════════════════════════════════════════════════
