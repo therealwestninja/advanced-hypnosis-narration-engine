@@ -247,6 +247,7 @@
   .prompt-head-row .field-label { margin: 0; }
   .enhance-controls {
     display: flex; align-items: center; gap: 6px;
+    flex-wrap: wrap;
   }
   .enhance-controls select {
     width: auto; font-size: 0.7rem; padding: 3px 6px;
@@ -265,6 +266,18 @@
     box-shadow: 0 0 8px rgba(0,229,255,0.4);
   }
   .btn-mini:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* "🎲 idea" button — sibling to ✨ enhance, slightly different palette
+     so the user reads them as distinct actions. Magenta echoes the
+     "negative" accent already used elsewhere. */
+  .btn-mini.alt {
+    color: var(--magenta);
+    border-color: var(--magenta);
+  }
+  .btn-mini.alt:hover:not(:disabled) {
+    background: var(--magenta); color: #000;
+    box-shadow: 0 0 8px rgba(255,45,149,0.4);
+  }
 
   /* ═══ ADVANCED-CONTROLS NOTE ═══
      Shown to free-Perchance users explaining that orientation / prompt
@@ -306,6 +319,170 @@
     color: var(--amber); border-color: var(--amber);
     background: rgba(255,179,0,0.08);
     box-shadow: 0 0 8px rgba(255,140,0,0.3);
+  }
+
+  /* ═══ BULK SELECT MODE ═══
+     A toggle in the gallery toolbar reveals checkboxes on each item.
+     A floating action bar appears at the bottom of the gallery panel
+     showing the selection count + bulk-action buttons. The selection
+     state is in JS only — never persisted (it's a transient UI mode). */
+  .bulk-bar {
+    display: none;
+    align-items: center; gap: 8px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .bulk-bar.visible { display: flex; }
+  .bulk-bar .bulk-count {
+    color: var(--accent);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    margin-right: auto;
+    font-weight: 600;
+  }
+  .bulk-bar .bulk-count.zero {
+    color: var(--text-faint);
+    font-weight: 400;
+  }
+
+  /* Item-level select checkbox — only visible when bulk mode is on.
+     Sits in the top-left, distinct from the download button which we
+     hide while bulk mode is active so the corner doesn't get crowded. */
+  .gallery.bulk-mode .gallery-item .item-btn.dl { display: none; }
+  .gallery-item .item-checkbox {
+    position: absolute;
+    top: 4px; left: 4px;
+    width: 22px; height: 22px;
+    background: rgba(0,0,0,0.75);
+    color: var(--accent);
+    border: 1px solid rgba(255,255,255,0.2);
+    text-align: center;
+    line-height: 20px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    z-index: 3;
+    display: none; /* shown only in bulk mode */
+    user-select: none;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .gallery.bulk-mode .gallery-item .item-checkbox { display: block; }
+  .gallery-item .item-checkbox:hover {
+    background: rgba(0,0,0,0.9);
+    border-color: var(--accent);
+  }
+  .gallery-item.selected .item-checkbox {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+  .gallery-item.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0,229,255,0.4), 0 0 14px rgba(0,229,255,0.25);
+  }
+  /* In bulk mode: clicking an item toggles its selection rather than
+     opening the lightbox. The cursor reflects this. */
+  .gallery.bulk-mode .gallery-item { cursor: copy; }
+
+  /* ═══ MUSIC CONTROLS ═══
+     Optional background-music block under the slideshow settings.
+     Shows a file input + volume slider. When a track is loaded we
+     replace the input with a track-info row + remove button. */
+  .music-row {
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+  .music-row .music-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--amber);
+    flex-shrink: 0;
+  }
+  .music-row .music-info {
+    flex: 1 1 auto;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .music-row .music-info.empty {
+    color: var(--text-faint);
+    font-style: italic;
+  }
+  .music-row .music-vol {
+    display: flex; align-items: center; gap: 6px;
+    flex-shrink: 0;
+  }
+  .music-row .music-vol input[type=range] { width: 100px; }
+  .music-row .music-vol .vol-val {
+    color: var(--accent);
+    font-size: 0.7rem;
+    min-width: 30px;
+    text-align: right;
+    font-family: ui-monospace, 'SF Mono', monospace;
+  }
+  .music-row label.file-pick {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 5px 12px;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
+  }
+  .music-row label.file-pick:hover {
+    color: var(--amber); border-color: var(--amber);
+    background: rgba(255,179,0,0.06);
+  }
+  .music-row label.file-pick input[type=file] {
+    display: none;
+  }
+  .music-row .music-loop {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--text-dim);
+    font-size: 0.74rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .music-row .music-loop input[type=checkbox] {
+    width: 14px; height: 14px;
+    accent-color: var(--amber);
+    cursor: pointer;
+  }
+  /* Stack vertically on narrow screens so volume + loop don't get squeezed. */
+  @media (max-width: 600px) {
+    .music-row { flex-direction: column; align-items: stretch; }
+    .music-row .music-vol { justify-content: space-between; }
+    .music-row .music-info { width: 100%; }
+  }
+
+  /* ═══ ADVANCED SECTION (reset to defaults) ═══ */
+  .advanced-section {
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--border);
+    display: flex; flex-wrap: wrap;
+    gap: 8px; align-items: center;
+  }
+  .advanced-section .advanced-label {
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-right: auto;
   }
 
   .gallery {
@@ -458,7 +635,12 @@
     color: var(--text-dim); font-size: 0.78rem; line-height: 1.45;
     background: var(--bg-soft); border: 1px solid var(--border);
     padding: 8px 10px;
-    max-height: 80px; overflow-y: auto;
+    /* Show up to ~6 lines before scrolling; was 80px (≈3 lines) which
+       silently chopped most enhanced prompts. User can still scroll
+       within the box for very long prompts. */
+    max-height: 160px; overflow-y: auto;
+    white-space: pre-wrap; word-wrap: break-word;
+    user-select: text;
   }
   .preview-prompt:empty { display: none; }
   .preview-actions {
@@ -619,6 +801,11 @@
     overflow: hidden;
   }
   #player.active { display: block; }
+  /* When the user-interface overlay is visible we restore the cursor.
+     Tied to a class so cursor visibility tracks idle-detection rather
+     than just CSS :hover (which is unreliable when the cursor isn't
+     moving but the controls have just been pinned by a keypress). */
+  #player.ui-visible { cursor: default; }
   /* When a 3D-flip transition is running, the player gets perspective
      so the rotateX / rotateY transforms on slides actually look like
      cards flipping rather than instant snaps. The class is added at
@@ -635,6 +822,35 @@
     will-change: opacity, transform, filter, clip-path;
   }
   #player .slide.show { opacity: 1; }
+
+  /* ─── Image fit modes ─────────────────────────────────────────────
+     Default = cover (full-bleed crop). When the user selects another
+     fit mode we change how the foreground is sized AND optionally
+     paint a blurred copy of the same image as a backdrop so portrait
+     images on landscape screens don't reveal solid black bars. The
+     blurred backdrop reads its image from the --slide-img CSS var
+     which setSlideBg() keeps in sync alongside backgroundImage. */
+  #player.fit-contain .slide {
+    background-size: contain;
+    background-color: #000;
+  }
+  #player.fit-blur .slide {
+    background-size: contain;
+    background-color: transparent;
+  }
+  #player.fit-blur .slide::before {
+    content: '';
+    position: absolute;
+    inset: -6%; /* over-bleed so the blur edges don't reveal hard borders */
+    background-image: var(--slide-img, none);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: blur(36px) brightness(0.55) saturate(1.2);
+    z-index: -1;
+    pointer-events: none;
+  }
+
   #player .blackout {
     position: absolute; inset: 0;
     background: #000;
@@ -644,21 +860,221 @@
     z-index: 5;
   }
   #player .blackout.show { opacity: 1; }
-  #player .hint-overlay {
+
+  /* ─── Player progress bar ────────────────────────────────────────
+     Sits at the very top edge of the screen during playback. The
+     `--progress-dur` CSS variable carries the per-slide interval so
+     the bar can drive itself with a CSS transition rather than a
+     requestAnimationFrame loop — cheap and visually precise. The
+     `paused` modifier freezes the animation without resetting it. */
+  #player .progress-track {
     position: absolute;
-    bottom: 20px; left: 50%; transform: translateX(-50%);
-    color: rgba(255,255,255,0.5);
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.08);
+    z-index: 12;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.3s;
-    text-shadow: 0 0 6px rgba(0,0,0,0.8);
-    z-index: 10;
+    transition: opacity 0.25s ease;
   }
-  #player:hover { cursor: default; }
-  #player:hover .hint-overlay { opacity: 1; }
+  #player.show-progress .progress-track { opacity: 1; }
+  #player .progress-fill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--amber) 0%, var(--amber-hot) 100%);
+    box-shadow: 0 0 8px rgba(255,179,0,0.4);
+    transition: width var(--progress-dur, 8s) linear;
+  }
+  #player.progress-paused .progress-fill {
+    transition: none;
+  }
+
+  /* ─── Slide info overlay (optional, toggle in settings) ──────────
+     Bottom-left card showing seed / index / prompt during playback.
+     Transparent when controls overlay is hidden, opaque when shown,
+     so it doesn't compete with the slideshow's mood. */
+  #player .info-overlay {
+    position: absolute;
+    bottom: 70px; left: 18px;
+    max-width: min(92vw, 460px);
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.85);
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    pointer-events: none;
+    z-index: 11;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  #player.show-info .info-overlay { opacity: 0.92; }
+  #player .info-overlay .info-meta {
+    color: rgba(255,255,255,0.55);
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    margin-bottom: 3px;
+  }
+  #player .info-overlay .info-prompt {
+    color: rgba(255,255,255,0.92);
+    font-size: 0.78rem;
+    /* Cap to 4 lines so a giant prompt doesn't take over the screen. */
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ─── Player controls overlay ────────────────────────────────────
+     Bottom strip with prev / play-pause / next / shortcuts / exit.
+     Shown on mouse move + auto-hides 3s after idle (player JS owns
+     the timer). Click events on the controls don't bubble to the
+     player backdrop's pause/exit handlers. */
+  #player .controls {
+    position: absolute;
+    bottom: 18px; left: 50%; transform: translateX(-50%) translateY(8px);
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(0,0,0,0.65);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 6px;
+    z-index: 13;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 6px 30px rgba(0,0,0,0.5);
+  }
+  #player.ui-visible .controls {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
+  #player .ctrl-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: rgba(255,255,255,0.85);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    width: 38px; height: 38px;
+    line-height: 36px; padding: 0;
+    cursor: pointer;
+    text-align: center;
+    transition: color 0.12s, background 0.12s, border-color 0.12s;
+  }
+  #player .ctrl-btn:hover {
+    color: var(--amber);
+    background: rgba(255,179,0,0.1);
+    border-color: rgba(255,179,0,0.3);
+  }
+  #player .ctrl-btn.primary {
+    width: 50px; height: 38px;
+    color: var(--amber);
+    font-size: 1rem;
+  }
+  #player .ctrl-btn.exit {
+    color: rgba(255,255,255,0.6);
+    margin-left: 4px;
+    border-left: 1px solid rgba(255,255,255,0.12);
+    border-radius: 0;
+  }
+  #player .ctrl-btn.exit:hover {
+    color: var(--danger);
+    background: rgba(224,80,80,0.1);
+    border-color: transparent;
+    border-left-color: rgba(255,255,255,0.12);
+  }
+  #player .ctrl-status {
+    color: rgba(255,255,255,0.55);
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0 10px;
+    min-width: 64px;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  /* Pause indicator centered on the slide when player is paused */
+  #player .pause-indicator {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0.7);
+    width: 110px; height: 110px;
+    line-height: 110px;
+    text-align: center;
+    color: rgba(255,255,255,0.85);
+    background: rgba(0,0,0,0.5);
+    font-size: 2.4rem;
+    pointer-events: none;
+    z-index: 12;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50%;
+  }
+  #player.paused .pause-indicator {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  /* Shortcuts help modal (player-scoped; toggled with ?) */
+  #player .shortcuts-modal {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 14;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  #player .shortcuts-modal.visible { display: flex; }
+  #player .shortcuts-card {
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 22px 26px;
+    max-width: 460px;
+    width: 100%;
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+  #player .shortcuts-card h3 {
+    margin: 0 0 14px;
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--amber);
+  }
+  #player .shortcuts-card .sc-row {
+    display: flex; justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.05);
+  }
+  #player .shortcuts-card .sc-row:last-child { border-bottom: none; }
+  #player .shortcuts-card kbd {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 0.76rem;
+    padding: 2px 8px;
+    margin: 0 2px;
+  }
+  #player .shortcuts-card .sc-hint {
+    margin-top: 14px;
+    font-size: 0.72rem;
+    color: var(--text-faint);
+    text-align: center;
+  }
 
   /* Segmented toggle — Sequential / Random */
   .segmented {
@@ -811,6 +1227,7 @@
               <option value="medium" selected>medium</option>
               <option value="long">long</option>
             </select>
+            <button type="button" class="btn-mini alt" id="ideaBtn" title="Insert a random curated starter prompt">🎲 idea</button>
             <button type="button" class="btn-mini" id="enhanceBtn" title="Rewrite your prompt as an optimized AI image prompt">✨ enhance</button>
           </div>
         </div>
@@ -882,6 +1299,7 @@
         <option value="seed">By seed</option>
       </select>
       <button type="button" class="fav-filter" id="favFilter" aria-pressed="false" title="show only favorited images">★ favorites only</button>
+      <button type="button" class="fav-filter" id="bulkToggle" aria-pressed="false" title="enter bulk-select mode (multi-delete / favorite / download)">☑ select</button>
       <span class="spacer"></span>
       <button class="btn ghost tiny" id="downloadAll">⬇ all</button>
       <button class="btn ghost tiny" id="clearAll">🗑 clear</button>
@@ -890,6 +1308,20 @@
     <div class="gallery" id="gallery">
       <div class="gallery-empty">No images yet. Generate some above.</div>
     </div>
+
+    <!-- Bulk-select action bar — visible only when bulk mode is on. The
+         action buttons operate on the currently-selected items; if zero
+         are selected they're disabled. Cancel exits bulk mode. -->
+    <div class="bulk-bar" id="bulkBar" role="toolbar" aria-label="bulk actions">
+      <span class="bulk-count zero" id="bulkCount">0 selected</span>
+      <button class="btn ghost tiny" id="bulkSelectAll">select all</button>
+      <button class="btn ghost tiny" id="bulkSelectNone">clear</button>
+      <button class="btn ghost tiny" id="bulkFavorite" disabled title="toggle favorite on selected">★ favorite</button>
+      <button class="btn ghost tiny" id="bulkDownload" disabled title="download selected">⬇ download</button>
+      <button class="btn ghost tiny" id="bulkDelete" disabled title="delete selected">🗑 delete</button>
+      <button class="btn ghost tiny" id="bulkCancel" title="exit bulk mode">✕ exit</button>
+    </div>
+
     <div class="gallery-info" id="galleryInfo"></div>
   </div>
 
@@ -929,10 +1361,74 @@
       <input type="checkbox" id="autoGen">
       Keep generating new images while playing (uses current prompt)
     </label>
+    <label class="checkbox-row">
+      <input type="checkbox" id="favOnlyPlay">
+      Play favorites only (skip the rest of the gallery)
+    </label>
+    <label class="checkbox-row">
+      <input type="checkbox" id="showInfoOverlay">
+      Show prompt &amp; seed during playback
+    </label>
+    <label class="checkbox-row">
+      <input type="checkbox" id="showProgressBar" checked>
+      Show progress bar at top of screen
+    </label>
+
+    <!-- Image fit + Ken-Burns style -->
+    <div class="slide-row" style="margin-top:14px;">
+      <div>
+        <label class="field-label">Image fit</label>
+        <select id="imageFit" title="how images are sized when their aspect ratio doesn't match the screen">
+          <option value="cover" selected>Cover (crop edges)</option>
+          <option value="contain">Contain (letterbox)</option>
+          <option value="blur">Blurred fill (soft frame)</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Idle hide controls <span class="control-val"><span id="idleHideVal">3</span>s</span></label>
+        <input type="range" id="idleHide" min="1" max="10" step="1" value="3" title="seconds before player controls auto-hide">
+      </div>
+    </div>
+
+    <!-- ═══ BACKGROUND MUSIC ═══
+         Optional audio track that plays during the slideshow. Stored
+         as a Blob in IndexedDB so it survives page reloads. Volume,
+         loop preference, and current track meta are part of settings. -->
+    <div class="music-row" id="musicRow">
+      <span class="music-label">♪ Music</span>
+      <span class="music-info empty" id="musicInfo">No track loaded</span>
+      <label class="file-pick" id="musicPick">
+        + add track
+        <input type="file" id="musicFile" accept="audio/*">
+      </label>
+      <button class="btn ghost tiny" id="musicRemove" style="display:none;" title="remove music track">✕</button>
+      <label class="music-loop" title="loop the track if it ends before the slideshow does">
+        <input type="checkbox" id="musicLoop" checked>
+        loop
+      </label>
+      <div class="music-vol">
+        <span style="color:var(--text-faint);font-size:0.7rem;">vol</span>
+        <input type="range" id="musicVol" min="0" max="100" step="1" value="60">
+        <span class="vol-val" id="musicVolVal">60%</span>
+      </div>
+    </div>
+
     <div style="margin-top:16px;">
       <button class="btn big" id="playBtn">▶ Play Fullscreen</button>
     </div>
-    <div class="hint">Press ESC or click anywhere to exit fullscreen. The player transitions through whatever images are in the gallery.</div>
+    <div class="hint">
+      <kbd style="font:inherit;border:1px solid var(--border);padding:1px 5px;color:var(--text-dim);">space</kbd> pause &nbsp;·&nbsp;
+      <kbd style="font:inherit;border:1px solid var(--border);padding:1px 5px;color:var(--text-dim);">← →</kbd> navigate &nbsp;·&nbsp;
+      <kbd style="font:inherit;border:1px solid var(--border);padding:1px 5px;color:var(--text-dim);">?</kbd> shortcuts &nbsp;·&nbsp;
+      <kbd style="font:inherit;border:1px solid var(--border);padding:1px 5px;color:var(--text-dim);">Esc</kbd> exit
+    </div>
+
+    <!-- ═══ ADVANCED ═══ — reset to defaults sits at the bottom so it's
+         out of the casual-flow but discoverable for power users. -->
+    <div class="advanced-section">
+      <span class="advanced-label">Advanced</span>
+      <button class="btn ghost tiny" id="resetSettings" title="reset prompts, controls and slideshow settings to defaults (gallery is kept)">↺ reset settings</button>
+    </div>
   </div>
 
   <footer class="footer">
@@ -949,8 +1445,53 @@
   <div class="slide" id="slideA"></div>
   <div class="slide" id="slideB"></div>
   <div class="blackout" id="blackout"></div>
-  <div class="hint-overlay">click or press ESC to exit</div>
+
+  <!-- Progress bar across the top of the screen -->
+  <div class="progress-track" id="progressTrack">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <!-- Info overlay (only visible when "Show prompt during playback" is on) -->
+  <div class="info-overlay" id="infoOverlay">
+    <div class="info-meta" id="infoMeta"></div>
+    <div class="info-prompt" id="infoPrompt"></div>
+  </div>
+
+  <!-- Pause indicator (centered, only when paused) -->
+  <div class="pause-indicator" aria-hidden="true">⏸</div>
+
+  <!-- Player controls overlay — auto-hides after idle, shown on mouse move -->
+  <div class="controls" id="playerControls" role="toolbar" aria-label="slideshow controls">
+    <button class="ctrl-btn" id="pcPrev" title="previous (←)" aria-label="previous">⏮</button>
+    <button class="ctrl-btn primary" id="pcPlay" title="pause / resume (space)" aria-label="pause">⏸</button>
+    <button class="ctrl-btn" id="pcNext" title="next (→)" aria-label="next">⏭</button>
+    <span class="ctrl-status" id="pcStatus">1 / 1</span>
+    <button class="ctrl-btn" id="pcShortcuts" title="show shortcuts (?)" aria-label="show shortcuts">?</button>
+    <button class="ctrl-btn exit" id="pcExit" title="exit slideshow (Esc)" aria-label="exit">✕</button>
+  </div>
+
+  <!-- Shortcuts help modal (player-scoped) — toggled by `?` or the help btn -->
+  <div class="shortcuts-modal" id="shortcutsModal">
+    <div class="shortcuts-card">
+      <h3>Keyboard shortcuts</h3>
+      <div class="sc-row"><span>Pause / resume</span><span><kbd>Space</kbd></span></div>
+      <div class="sc-row"><span>Previous slide</span><span><kbd>←</kbd></span></div>
+      <div class="sc-row"><span>Next slide</span><span><kbd>→</kbd></span></div>
+      <div class="sc-row"><span>Toggle info overlay</span><span><kbd>I</kbd></span></div>
+      <div class="sc-row"><span>Toggle progress bar</span><span><kbd>P</kbd></span></div>
+      <div class="sc-row"><span>Toggle music mute</span><span><kbd>M</kbd></span></div>
+      <div class="sc-row"><span>Cycle fit modes</span><span><kbd>F</kbd></span></div>
+      <div class="sc-row"><span>Show / hide this list</span><span><kbd>?</kbd></span></div>
+      <div class="sc-row"><span>Exit slideshow</span><span><kbd>Esc</kbd></span></div>
+      <div class="sc-hint">click anywhere outside the controls to pause &amp; resume</div>
+    </div>
+  </div>
 </div>
+
+<!-- Hidden audio element for background music. Volume, src and loop are
+     controlled from JS; lives outside the player so it doesn't get torn
+     down on player exit (we just pause it). -->
+<audio id="musicPlayer" preload="auto" style="display:none;"></audio>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
@@ -970,6 +1511,9 @@
     <div class="preview-actions">
       <button class="preview-nav" id="lightboxPrev" aria-label="previous image" title="previous (←)">‹ prev</button>
       <button class="preview-action" id="lightboxFavorite" aria-label="favorite" title="favorite (f)">☆ favorite</button>
+      <button class="preview-action" id="lightboxCopyPrompt" aria-label="copy prompt to clipboard" title="copy prompt (c)">📋 copy prompt</button>
+      <button class="preview-action" id="lightboxUsePrompt" aria-label="use this prompt" title="put this image's prompt back in the prompt box (u)">↩ use prompt</button>
+      <button class="preview-action" id="lightboxReroll" aria-label="generate a variation" title="queue a new image with this prompt (r)">🔄 reroll</button>
       <button class="preview-action danger" id="lightboxDelete" aria-label="delete" title="delete (Delete)">🗑 delete</button>
       <button class="preview-nav" id="lightboxNext" aria-label="next image" title="next (→)">next ›</button>
     </div>
@@ -1247,6 +1791,16 @@
       gallerySort:        'newest',
       favOnly:            false,
       enhanceLength:      'medium',
+      // ── New player / playback options ─────────────────────────────
+      imageFit:           'cover',     // 'cover' | 'contain' | 'blur'
+      favOnlyPlay:        false,       // play favorites only
+      showInfoOverlay:    false,       // show prompt/seed during playback
+      showProgressBar:    true,        // top-edge progress bar
+      idleHide:           3,           // seconds before player controls hide
+      // ── Music ─────────────────────────────────────────────────────
+      musicLoop:          true,
+      musicVol:           60,
+      musicName:          '',          // remembered filename only; blob is at key 'music'
     };
   }
 
@@ -1299,6 +1853,39 @@
       $('favFilter').classList.toggle('active', favOnly);
       $('favFilter').setAttribute('aria-pressed', favOnly ? 'true' : 'false');
     }
+
+    // ── Player / playback options ──────────────────────────────────
+    if ($('imageFit')) $('imageFit').value = ['cover','contain','blur'].includes(s.imageFit) ? s.imageFit : 'cover';
+    if ($('favOnlyPlay'))     $('favOnlyPlay').checked = !!s.favOnlyPlay;
+    if ($('showInfoOverlay')) $('showInfoOverlay').checked = !!s.showInfoOverlay;
+    if ($('showProgressBar')) $('showProgressBar').checked = s.showProgressBar !== false; // default-on
+    if ($('idleHide')) {
+      const v = Math.max(1, Math.min(10, Number(s.idleHide) || 3));
+      $('idleHide').value = v;
+      if ($('idleHideVal')) $('idleHideVal').textContent = v;
+    }
+    // Apply fit class to the player so a refresh during a stopped player
+    // shows the right CSS state if the user immediately replays.
+    applyPlayerFitClass();
+
+    // ── Music ──────────────────────────────────────────────────────
+    if ($('musicLoop')) $('musicLoop').checked = s.musicLoop !== false;
+    if ($('musicVol')) {
+      const v = Math.max(0, Math.min(100, Number(s.musicVol) || 60));
+      $('musicVol').value = v;
+      if ($('musicVolVal')) $('musicVolVal').textContent = `${v}%`;
+    }
+    // Restore the music track if a blob is in IDB. The blob lives outside
+    // the settings payload (under its own key) so we don't trigger a
+    // full settings rewrite when the user only adjusts volume.
+    try {
+      const blob = await idbGet(MUSIC_KEY);
+      if (blob && blob instanceof Blob) {
+        await applyMusicBlob(blob, s.musicName || 'untitled track');
+      } else {
+        updateMusicUI(null);
+      }
+    } catch (e) { console.warn('[music] restore failed:', e); }
   }
 
   let _saveTimer = null;
@@ -1320,6 +1907,16 @@
         gallerySort:        gallerySort,
         favOnly:            favOnly,
         enhanceLength:      $('enhanceLength')?.value || 'medium',
+        // ── New player / playback options ─────────────────────────
+        imageFit:           $('imageFit')?.value || 'cover',
+        favOnlyPlay:        $('favOnlyPlay')?.checked === true,
+        showInfoOverlay:    $('showInfoOverlay')?.checked === true,
+        showProgressBar:    $('showProgressBar')?.checked !== false, // default-on
+        idleHide:           Number($('idleHide')?.value) || 3,
+        // ── Music ──────────────────────────────────────────────────
+        musicLoop:          $('musicLoop')?.checked !== false,
+        musicVol:           Number($('musicVol')?.value) || 60,
+        musicName:          _musicName || '',
       };
       idbSet(SETTINGS_KEY, payload);
     }, delay);
@@ -1333,6 +1930,366 @@
         await navigator.storage.persist();
       }
     } catch {}
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Slide background helper — sets backgroundImage AND a CSS variable so
+  // the blur-fill backdrop layer (a ::before pseudo-element) can read
+  // the same image. Centralised so transitions can keep their existing
+  // `style.backgroundImage = ...` writes — we just call this helper
+  // instead and the var stays in sync automatically.
+  // ══════════════════════════════════════════════════════════════════════
+  function setSlideBg(el, url) {
+    if (!el) return;
+    el.style.backgroundImage = `url("${url}")`;
+    // CSS-var must wrap the URL again — the var is consumed by
+    // background-image inside the ::before, which expects the same form.
+    el.style.setProperty('--slide-img', `url("${url}")`);
+  }
+  function clearSlideBg(el) {
+    if (!el) return;
+    el.style.backgroundImage = '';
+    el.style.removeProperty('--slide-img');
+  }
+
+  // Apply the chosen image-fit class to the #player. Called on settings
+  // load AND whenever the user changes the dropdown — the player can
+  // be inactive at that moment, the class just lives there until next
+  // playback.
+  function applyPlayerFitClass() {
+    const player = $('player');
+    if (!player) return;
+    const fit = $('imageFit')?.value || 'cover';
+    player.classList.remove('fit-cover', 'fit-contain', 'fit-blur');
+    player.classList.add(`fit-${fit}`);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Background music — Blob persisted in IndexedDB at MUSIC_KEY. The
+  // <audio> element lives outside the player, so the same instance is
+  // reused across play/exit cycles. We pause it instead of unloading
+  // so the user keeps their position when they re-enter playback.
+  // ══════════════════════════════════════════════════════════════════════
+  const MUSIC_KEY = 'music';        // stores the audio Blob
+  let _musicName = '';              // remembered filename, persisted in settings
+  let _musicObjectUrl = null;       // current blob: URL on the audio element
+
+  function _getAudio() { return $('musicPlayer'); }
+
+  async function applyMusicBlob(blob, name) {
+    const audio = _getAudio();
+    if (!audio) return;
+    // Revoke any prior object URL — leaks add up across reloads.
+    if (_musicObjectUrl) {
+      try { URL.revokeObjectURL(_musicObjectUrl); } catch {}
+      _musicObjectUrl = null;
+    }
+    _musicObjectUrl = URL.createObjectURL(blob);
+    audio.src = _musicObjectUrl;
+    audio.loop = $('musicLoop')?.checked !== false;
+    audio.volume = ($('musicVol') ? Number($('musicVol').value) : 60) / 100;
+    _musicName = name || 'track';
+    updateMusicUI(name);
+  }
+
+  function updateMusicUI(name) {
+    const info = $('musicInfo');
+    const remove = $('musicRemove');
+    if (!info) return;
+    if (name) {
+      info.textContent = '♫ ' + name;
+      info.classList.remove('empty');
+      if (remove) remove.style.display = '';
+    } else {
+      info.textContent = 'No track loaded';
+      info.classList.add('empty');
+      if (remove) remove.style.display = 'none';
+    }
+  }
+
+  async function handleMusicPick(file) {
+    if (!file) return;
+    // Cap at ~25 MB — IDB can hold more but huge files thrash storage
+    // and slow down the rest of the app. Most loop-able tracks are <8 MB.
+    const MAX_BYTES = 25 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      toast(`Track is too large (${(file.size / 1048576).toFixed(1)} MB). Limit is 25 MB.`, 'err');
+      return;
+    }
+    try {
+      await idbSet(MUSIC_KEY, file);
+      _musicName = file.name || 'track';
+      await applyMusicBlob(file, _musicName);
+      saveSettings(0);
+      toast(`Music loaded: ${file.name}`);
+    } catch (e) {
+      console.error('[music] save failed:', e);
+      toast('Failed to save music. Storage may be full.', 'err');
+    }
+  }
+
+  async function clearMusic() {
+    try {
+      const audio = _getAudio();
+      if (audio) {
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load(); // release the buffer
+      }
+      if (_musicObjectUrl) {
+        try { URL.revokeObjectURL(_musicObjectUrl); } catch {}
+        _musicObjectUrl = null;
+      }
+      await idbDel(MUSIC_KEY);
+      _musicName = '';
+      updateMusicUI(null);
+      saveSettings(0);
+      toast('Music removed.');
+    } catch (e) {
+      console.warn('[music] remove failed:', e);
+    }
+  }
+
+  /** Start music playback — best-effort, returns silently if no track is
+   *  loaded or the browser refuses (autoplay policy etc.). The player
+   *  calls this from inside a user gesture so it should always succeed. */
+  async function startMusic() {
+    const audio = _getAudio();
+    if (!audio || !_musicObjectUrl) return;
+    audio.loop = $('musicLoop')?.checked !== false;
+    audio.volume = (Number($('musicVol').value) || 0) / 100;
+    try {
+      await audio.play();
+    } catch (e) {
+      // Browser blocked autoplay. Most likely benign — user can press
+      // M to unmute or click play again. Don't toast on every restart.
+      console.warn('[music] play blocked:', e?.message || e);
+    }
+  }
+  function pauseMusic() {
+    const audio = _getAudio();
+    if (audio && !audio.paused) audio.pause();
+  }
+  function stopMusic() {
+    const audio = _getAudio();
+    if (!audio) return;
+    audio.pause();
+    try { audio.currentTime = 0; } catch {}
+  }
+  function toggleMusicMute() {
+    const audio = _getAudio();
+    if (!audio) return;
+    audio.muted = !audio.muted;
+    toast(audio.muted ? 'Music muted' : 'Music on', audio.muted ? 'warn' : 'info');
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Random prompt ideas — curated atmospheric starters. Picking one
+  // replaces the prompt textarea (with confirm if non-empty).
+  //
+  // These are intentionally short evocative seeds — the user can then
+  // press ✨ enhance to expand them into a full prompt if they want.
+  // ══════════════════════════════════════════════════════════════════════
+  const PROMPT_IDEAS = [
+    'rain-soaked neon alley, reflective puddles, late-night solitude',
+    'misty forest at dawn, shafts of golden light through tall pines',
+    'abandoned cathedral overgrown with vines, broken stained glass, soft sun',
+    'underwater shipwreck, drifting fish, soft blue caustic light',
+    'snowy cabin glow, warm windows, deep evening blue, falling snow',
+    'desert dunes at sunset, long shadows, soft pastel sky',
+    'cyberpunk rooftop garden, distant skyline, drone lights',
+    'hidden mountain shrine wrapped in mist, prayer flags swaying',
+    'stormy sea cliffs, waves crashing, dramatic backlit clouds',
+    'lantern-lit night market, food steam, blurred crowd',
+    'aurora borealis over a frozen lake, mirror reflections',
+    'ancient library, dust motes in sunbeam, leather-bound books',
+    'art-deco hotel lobby, brass and emerald, soft jazz mood',
+    'floating islands with waterfalls, distant airships, dreamlike',
+    'cherry blossom path at twilight, paper lanterns, gentle breeze',
+    'bioluminescent jungle at night, glowing flora, soft fog',
+    'lighthouse on a rugged cliff, wild seas, low golden sun',
+    'kyoto bamboo grove, light filtering through, footsteps muted',
+    'fishing village at dawn, pastel boats, wooden piers, calm water',
+    'dragon perched on a moonlit cliff, soft glow, distant clouds',
+    'ice cave with luminous blue walls, drifting steam',
+    'starlit observatory on a mountain, swirling galaxy above',
+    'rural train station at autumn dusk, single warm lamp',
+    'moss-covered ruins in soft afternoon mist, faint stone carvings',
+    'art-nouveau ballroom, candle chandeliers, slow waltzing couples',
+    'tea house overlooking a koi pond, gentle rain, soft greens',
+    'high-altitude monastery above the clouds, golden hour, prayer wheels',
+    'autumn maples around a silent lake, scattered fallen leaves',
+    'city skyline at golden hour seen from a quiet park bench',
+    'enchanted glade with fireflies, soft bioluminescence, mossy log',
+    'old victorian conservatory, exotic plants, low slanted sunlight',
+    'medieval marketplace at noon, banners, smoke, distant cathedral',
+    'space station orbiting a ringed planet, soft cabin light, vast view',
+    'submerged temple, golden light from above, slow drifting fish',
+    'nordic fjord, mirrored water, dramatic mountains, drifting fog',
+    'ancient watchtower at sunrise, golden mist rolling over hills',
+    'haunted greenhouse, broken glass, twisting overgrowth, soft moon',
+    'rooftop hammock under a starry desert sky, gentle warm breeze',
+    'old apothecary shop, copper and amber bottles, warm lamplight',
+    'snow-covered Japanese garden, wooden bridge, silent stillness',
+  ];
+
+  function _ideaShuffleIndex() {
+    return Math.floor(Math.random() * PROMPT_IDEAS.length);
+  }
+  let _lastIdeaIdx = -1;
+  function pickIdea() {
+    // Avoid repeating the immediately-previous suggestion if possible.
+    if (PROMPT_IDEAS.length < 2) return PROMPT_IDEAS[0] || '';
+    let idx = _ideaShuffleIndex();
+    if (idx === _lastIdeaIdx) idx = (idx + 1) % PROMPT_IDEAS.length;
+    _lastIdeaIdx = idx;
+    return PROMPT_IDEAS[idx];
+  }
+
+  async function runIdea() {
+    const ta = $('promptPos');
+    if (!ta) return;
+    const cur = (ta.value || '').trim();
+    if (cur) {
+      const ok = confirm('Replace your current prompt with a random idea?');
+      if (!ok) return;
+    }
+    const idea = pickIdea();
+    ta.value = idea;
+    saveSettings(0);
+    // Smooth scroll to the prompt + brief flash so the new value is
+    // unmistakable when the user is way down the page.
+    ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    ta.focus({ preventScroll: true });
+    ta.style.boxShadow = '0 0 14px rgba(255,45,149,0.6)';
+    setTimeout(() => { ta.style.boxShadow = ''; }, 700);
+    toast('🎲 New prompt idea — try ✨ enhance to expand it.');
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Bulk select mode — transient UI state. Selection is a Set of ids
+  // so the same item can't be in there twice and we can do O(1) lookups.
+  // The mode is exited automatically after a delete-all, since holding
+  // a stale view with deleted items is confusing.
+  // ══════════════════════════════════════════════════════════════════════
+  let bulkMode = false;
+  let bulkSelected = new Set();
+
+  function setBulkMode(on) {
+    bulkMode = !!on;
+    bulkSelected.clear();
+    const grid = $('gallery');
+    const bar = $('bulkBar');
+    const toggle = $('bulkToggle');
+    if (grid) grid.classList.toggle('bulk-mode', bulkMode);
+    if (bar) bar.classList.toggle('visible', bulkMode);
+    if (toggle) {
+      toggle.classList.toggle('active', bulkMode);
+      toggle.setAttribute('aria-pressed', bulkMode ? 'true' : 'false');
+    }
+    updateBulkBar();
+    renderGallery();
+  }
+
+  function updateBulkBar() {
+    const count = $('bulkCount');
+    if (count) {
+      const n = bulkSelected.size;
+      count.textContent = `${n} selected`;
+      count.classList.toggle('zero', n === 0);
+    }
+    for (const id of ['bulkFavorite', 'bulkDownload', 'bulkDelete']) {
+      const btn = $(id);
+      if (btn) btn.disabled = bulkSelected.size === 0;
+    }
+  }
+
+  function toggleBulkSelect(id) {
+    if (bulkSelected.has(id)) bulkSelected.delete(id);
+    else bulkSelected.add(id);
+    // Reflect in the DOM without a full re-render
+    const item = document.querySelector(`.gallery-item[data-id="${id}"]`);
+    if (item) {
+      item.classList.toggle('selected', bulkSelected.has(id));
+      const cb = item.querySelector('.item-checkbox');
+      if (cb) cb.textContent = bulkSelected.has(id) ? '✓' : '';
+    }
+    updateBulkBar();
+  }
+
+  async function bulkSelectAll() {
+    const m = await getManifest();
+    const view = sortManifest(m, gallerySort, favOnly);
+    bulkSelected = new Set(view.map(e => e.id));
+    updateBulkBar();
+    renderGallery();
+  }
+  function bulkSelectNone() {
+    bulkSelected.clear();
+    updateBulkBar();
+    renderGallery();
+  }
+  async function bulkActFavorite() {
+    if (bulkSelected.size === 0) return;
+    const m = await getManifest();
+    // If most are unfavorited → favorite all; otherwise → unfavorite all.
+    // This makes the button toggle intuitively rather than alternating
+    // by the existing state of each item (which would be inconsistent).
+    const selected = m.filter(e => bulkSelected.has(e.id));
+    const favCount = selected.filter(e => e.favorited === true).length;
+    const setTo = favCount < selected.length / 2; // become favorite if most aren't
+    for (const e of m) {
+      if (bulkSelected.has(e.id)) e.favorited = setTo;
+    }
+    await idbSet(MANIFEST_KEY, m);
+    toast(`${selected.length} ${setTo ? 'favorited' : 'unfavorited'}.`);
+    renderGallery();
+  }
+  async function bulkActDownload() {
+    if (bulkSelected.size === 0) return;
+    const ids = Array.from(bulkSelected);
+    toast(`Downloading ${ids.length} image${ids.length === 1 ? '' : 's'}…`);
+    for (const id of ids) {
+      await cacheDownload(id);
+      await sleep(250); // pace so the browser doesn't queue-block downloads
+    }
+  }
+  async function bulkActDelete() {
+    if (bulkSelected.size === 0) return;
+    const n = bulkSelected.size;
+    if (!confirm(`Delete ${n} selected image${n === 1 ? '' : 's'}? This can't be undone.`)) return;
+    for (const id of bulkSelected) {
+      try { await cacheDelete(id); } catch (e) { console.warn('[bulk-del]', id, e); }
+    }
+    toast(`${n} image${n === 1 ? '' : 's'} deleted.`);
+    setBulkMode(false); // exit bulk mode after a destructive op
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Settings reset — wipes all UI/preference state but keeps the gallery
+  // and music. Confirmed because it'll discard the user's prompts too.
+  // ══════════════════════════════════════════════════════════════════════
+  async function resetSettings() {
+    const ok = confirm(
+      'Reset all settings to defaults?\n\n' +
+      '• Prompts will be cleared\n' +
+      '• Style chips will be deselected\n' +
+      '• Slideshow + transition settings will reset\n\n' +
+      'Your gallery, favorites, and music track will be kept.'
+    );
+    if (!ok) return;
+    try {
+      await idbDel(SETTINGS_KEY);
+    } catch (e) { console.warn('[reset] del failed:', e); }
+    activeStyleIds = [];
+    gallerySort = 'newest';
+    favOnly = false;
+    // Re-load defaults into the UI without a page refresh.
+    await loadSettings();
+    buildStyleChips();
+    renderGallery();
+    applyPlayerFitClass();
+    toast('Settings reset to defaults.');
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -1481,6 +2438,41 @@
     return Promise.all(Array.from({ length: cap }, () => generateOne()));
   }
 
+  /** Reroll — generate a new image using a SPECIFIC prompt (typically
+   *  copied from an existing gallery entry), bypassing the textarea.
+   *  Fresh seed, same prompt. Wired into the lightbox's "🔄 reroll"
+   *  button. The result lands in the gallery normally and is cap-aware. */
+  async function rerollFromPrompt(promptText, negativeText) {
+    if (typeof root === 'undefined' || !root.textToImagePlugin) {
+      toast('textToImagePlugin not loaded.', 'err');
+      return null;
+    }
+    while (activeGens >= MAX_PARALLEL) await sleep(150);
+    activeGens++;
+    _bumpQueueUI();
+    try {
+      const promptStr = (promptText || '').trim() || 'abstract dreamlike ethereal';
+      const negStr = (negativeText || '').trim() || 'text, watermark, deformed';
+      const seed = Math.floor(Math.random() * 2147483647);
+      const result = await root.textToImagePlugin({
+        prompt: promptStr,
+        negative: negStr,
+      });
+      const dataUrl = result?.dataUrl || String(result);
+      if (!dataUrl || !dataUrl.startsWith('data:')) return null;
+      const id = await cacheStore(dataUrl, promptStr, seed);
+      renderGallery();
+      return id;
+    } catch (e) {
+      console.error('rerollFromPrompt:', e);
+      toast('Reroll failed.', 'err');
+      return null;
+    } finally {
+      activeGens--;
+      _bumpQueueUI();
+    }
+  }
+
   // ══════════════════════════════════════════════════════════════════════
   // Gallery rendering — sort/filter aware, with favorites + seed badges
   // ══════════════════════════════════════════════════════════════════════
@@ -1539,8 +2531,12 @@
       const favActive = c.favorited === true ? ' active' : '';
       const favIcon = c.favorited === true ? '★' : '☆';
       const tip = c.prompt ? c.prompt.replace(/"/g, '&quot;').slice(0, 200) : 'click to view';
-      return `<div class="gallery-item${favClass}" data-id="${c.id}" data-idx="${idx}" title="${tip}">
+      const isSelected = bulkSelected.has(c.id);
+      const selectedCls = isSelected ? ' selected' : '';
+      const checkboxMark = isSelected ? '✓' : '';
+      return `<div class="gallery-item${favClass}${selectedCls}" data-id="${c.id}" data-idx="${idx}" title="${tip}">
         <img alt="" loading="lazy">
+        <button class="item-checkbox" data-id="${c.id}" title="select" aria-label="select">${checkboxMark}</button>
         <button class="item-btn del" data-id="${c.id}" title="delete" aria-label="delete">✕</button>
         <button class="item-btn dl" data-id="${c.id}" title="download" aria-label="download">⬇</button>
         <button class="item-btn fav${favActive}" data-id="${c.id}" title="${c.favorited === true ? 'unfavorite' : 'favorite'}" aria-label="favorite" aria-pressed="${c.favorited === true ? 'true' : 'false'}">${favIcon}</button>
@@ -1587,12 +2583,26 @@
         renderGallery();
       });
     });
-    // Click on the item body (not on a button) opens the lightbox at this
-    // position in the SORTED view — so the lightbox's prev/next walk in
-    // the same order the user is looking at.
+    // Per-item checkbox click — toggles bulk selection. Only meaningful
+    // in bulk mode but the button is hidden via CSS otherwise so it
+    // can't be accidentally clicked.
+    grid.querySelectorAll('.item-checkbox').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!bulkMode) return;
+        toggleBulkSelect(btn.dataset.id);
+      });
+    });
+    // Click on the item body (not on a button):
+    //   • Bulk mode  → toggle this item's selection
+    //   • Normal     → open the lightbox at this position in the SORTED view
     grid.querySelectorAll('.gallery-item').forEach(itemEl => {
       itemEl.addEventListener('click', (e) => {
         if (e.target.closest('button')) return;
+        if (bulkMode) {
+          toggleBulkSelect(itemEl.dataset.id);
+          return;
+        }
         const idx = Number(itemEl.dataset.idx);
         if (Number.isFinite(idx)) lightbox.open(view, idx);
       });
@@ -1849,8 +2859,10 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
         meta.textContent = parts.join(' · ');
       }
       if (promptEl) {
-        const p = entry.prompt || '';
-        promptEl.textContent = p.length > 240 ? p.slice(0, 237) + '…' : p;
+        // Show the full prompt — the box is scrollable now (max-height
+        // 160px, overflow-y:auto). The old 240-char truncation was a
+        // holdover from when the box was 80px tall.
+        promptEl.textContent = entry.prompt || '';
       }
       if (favBtn) {
         favBtn.classList.toggle('active', entry.favorited === true);
@@ -1976,6 +2988,74 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
         renderGallery();
       });
 
+      // ── Copy prompt to clipboard ────────────────────────────────
+      $('lightboxCopyPrompt')?.addEventListener('click', async () => {
+        const entry = self.view[self.index];
+        if (!entry) return;
+        const txt = (entry.prompt || '').trim();
+        if (!txt) { toast('No prompt recorded for this image.', 'warn'); return; }
+        try {
+          await navigator.clipboard.writeText(txt);
+          toast('Prompt copied to clipboard.');
+        } catch (e) {
+          // Clipboard API can be blocked on some browsers/contexts.
+          // Fall back to a hidden textarea + execCommand.
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = txt;
+            ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            toast('Prompt copied.');
+          } catch {
+            toast('Copy failed — clipboard access denied.', 'err');
+          }
+        }
+      });
+
+      // ── Use this prompt — drop it back into the prompt textarea ─
+      $('lightboxUsePrompt')?.addEventListener('click', () => {
+        const entry = self.view[self.index];
+        if (!entry) return;
+        const txt = (entry.prompt || '').trim();
+        if (!txt) { toast('No prompt recorded for this image.', 'warn'); return; }
+        const ta = $('promptPos');
+        if (!ta) return;
+        const cur = (ta.value || '').trim();
+        if (cur && cur !== txt) {
+          if (!confirm('Replace your current prompt with this image\'s prompt?')) return;
+        }
+        ta.value = txt;
+        saveSettings(0);
+        self.close();
+        ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        ta.focus({ preventScroll: true });
+        ta.style.boxShadow = '0 0 14px rgba(0,229,255,0.6)';
+        setTimeout(() => { ta.style.boxShadow = ''; }, 700);
+        toast('Prompt loaded — press +1 image to regenerate.');
+      });
+
+      // ── Reroll — queue a new generation using THIS prompt as a
+      //    one-shot override (doesn't change the textarea). The image
+      //    we generate is a free variation: same prompt, fresh seed. ─
+      $('lightboxReroll')?.addEventListener('click', async () => {
+        const entry = self.view[self.index];
+        if (!entry) return;
+        const txt = (entry.prompt || '').trim();
+        if (!txt) { toast('No prompt recorded — can\'t reroll.', 'warn'); return; }
+        // Headroom check first — surface the cap before queuing.
+        const m = await getManifest();
+        const inFlight = _qPending + activeGens;
+        if (m.length + inFlight >= MAX_IMAGES) {
+          toast(`Cap reached (${MAX_IMAGES}). Delete some images first.`, 'warn');
+          return;
+        }
+        rerollFromPrompt(txt, entry.negative || '');
+        toast('Reroll queued — same prompt, new seed.');
+      });
+
       // Click backdrop (not the card) closes — but only when fullscreen
       // isn't on top of us.
       modal?.addEventListener('click', (e) => {
@@ -1987,6 +3067,11 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       document.addEventListener('keydown', (e) => {
         if (self._isFullscreen()) return;
         if (!modal?.classList.contains('visible')) return;
+        // Skip shortcut handling when the user is typing in the prompt
+        // textarea inside the lightbox (currently impossible, but safe
+        // for future prompt-edit fields).
+        const tag = (e.target?.tagName || '').toUpperCase();
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
         switch (e.key) {
           case 'Escape':     e.preventDefault(); self.close(); break;
           case 'ArrowLeft':  e.preventDefault(); self.prev();  break;
@@ -1994,6 +3079,12 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
           case 'Enter':      e.preventDefault(); self.enterFullscreen(); break;
           case 'f': case 'F': e.preventDefault();
             $('lightboxFavorite')?.click(); break;
+          case 'c': case 'C': e.preventDefault();
+            $('lightboxCopyPrompt')?.click(); break;
+          case 'u': case 'U': e.preventDefault();
+            $('lightboxUsePrompt')?.click(); break;
+          case 'r': case 'R': e.preventDefault();
+            $('lightboxReroll')?.click(); break;
           case 'Delete': case 'Backspace': e.preventDefault();
             $('lightboxDelete')?.click(); break;
         }
@@ -3147,62 +4238,147 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   };
 
   // ══════════════════════════════════════════════════════════════════════
-  // Fullscreen slideshow player
+  // Fullscreen slideshow player — pause/resume + manual nav + on-screen
+  // controls + progress bar + info overlay + background music + image-fit
+  // modes + favorites-only playback + shortcuts modal.
+  //
+  // Pause / resume model:
+  //   • The main timer (scheduleNext) is captured into _timerEndsAt so we
+  //     can compute the remaining-ms when the user pauses, and re-arm a
+  //     fresh timer with that remainder on resume.
+  //   • The progress bar uses a width-driven CSS transition; pause stamps
+  //     the current width via getComputedStyle, kills the transition, and
+  //     resume re-arms a new transition for the remaining time.
+  //   • Music tracks the player one-to-one — pauseMusic on pause,
+  //     startMusic on resume, stopMusic on stop.
+  //
+  // Manual nav:
+  //   • Arrow keys / prev-next buttons unpause if needed and immediately
+  //     advance(±1). The cursor is normalised modulo order.length so we
+  //     wrap cleanly when stepping past the ends.
+  //
+  // Controls auto-hide:
+  //   • Showing the controls also un-hides the cursor and pins the
+  //     `info-overlay` open. Mouse movement OR a keypress restarts the
+  //     hide timer; whichever idleHide value is in settings.
   // ══════════════════════════════════════════════════════════════════════
   const player = {
     running: false,
+    paused: false,
     slides: [$('slideA'), $('slideB')],
     slot: 0,
-    urls: [],
-    order: [],
-    cursor: 0,
+    urls: [],          // resolved object URLs in display order
+    entries: [],       // parallel manifest entries (for info overlay)
+    order: [],         // permutation indices into urls/entries
+    cursor: 0,         // index of currently-displayed slide
     timer: null,
     autoGenTimer: null,
+    hideUITimer: null,
 
+    // pause/resume bookkeeping
+    _timerEndsAt: 0,
+    _remainingMs: 0,
+    _progStart: 0,
+    _progDur: 0,
+    _progPct: 0,
+
+    // ── Lifecycle ──────────────────────────────────────────────────
     async start() {
-      const manifest = await getManifest();
-      if (!manifest.length) { toast('Gallery is empty. Generate some images first.', 'warn'); return; }
-      // Require at least one transition enabled
+      const allEntries = await getManifest();
+      if (!allEntries.length) {
+        toast('Gallery is empty. Generate some images first.', 'warn');
+        return;
+      }
+
+      // Favorites-only playback — filter early so the empty-check below
+      // can warn the user before we ever request fullscreen.
+      const favOnlyPlay = $('favOnlyPlay')?.checked === true;
+      const manifest = favOnlyPlay
+        ? allEntries.filter(e => e.favorited === true)
+        : allEntries;
+      if (favOnlyPlay && !manifest.length) {
+        toast('No favorites in gallery — favorite some images first or turn off "Play favorites only".', 'warn');
+        return;
+      }
+
       if (!getEnabledTransitions().length) {
-        toast('Enable at least one transition effect.', 'warn'); return;
+        toast('Enable at least one transition effect.', 'warn');
+        return;
       }
 
       toast('Loading images...');
       this.urls = [];
+      this.entries = [];
       for (const e of manifest) {
         const url = await cacheGetUrl(e.id);
-        if (url) this.urls.push(url);
+        if (url) {
+          this.urls.push(url);
+          this.entries.push(e);
+        }
       }
       if (!this.urls.length) { toast('Failed to load images.', 'err'); return; }
+
       this.rebuildOrder();
       this.cursor = 0;
       this.running = true;
+      this.paused = false;
 
-      // Clean initial slide state
+      // Apply the chosen image-fit class so blur-fill / contain take
+      // effect from the very first slide.
+      applyPlayerFitClass();
+
+      // Apply the chosen progress-bar visibility (settings checkbox).
+      this._applyProgressVisibility();
+      this._applyInfoVisibility();
+
+      // Clean initial slide state — clearing inline styles AND the
+      // CSS variable so a stale --slide-img from a prior session
+      // doesn't leak into the new playback.
       this.slides.forEach(s => {
         s.classList.remove('show');
         s.style.cssText = '';
+        s.style.removeProperty('--slide-img');
       });
       $('blackout').classList.remove('show');
       $('blackout').style.background = '#000';
 
-      // Enter fullscreen on the player element
-      $('player').classList.add('active');
-      const el = $('player');
+      const playerEl = $('player');
+      playerEl.classList.add('active');
+      playerEl.classList.remove('paused');
+      playerEl.classList.remove('progress-paused');
+
+      // Update play button to ⏸ (will toggle to ▶ on pause)
+      const playBtn = $('pcPlay');
+      if (playBtn) { playBtn.textContent = '⏸'; playBtn.title = 'pause (space)'; }
+
+      // Show the UI immediately, start the idle-hide timer
+      this.showUI();
+
+      // Enter native fullscreen on the player element. If the user
+      // dismisses the prompt (Esc), the player still runs inline.
       try {
-        if (el.requestFullscreen)             await el.requestFullscreen();
-        else if (el.webkitRequestFullscreen)  el.webkitRequestFullscreen();
-      } catch { /* user dismissed fullscreen; continue inline */ }
+        if (playerEl.requestFullscreen)             await playerEl.requestFullscreen();
+        else if (playerEl.webkitRequestFullscreen)  playerEl.webkitRequestFullscreen();
+      } catch { /* user dismissed; continue inline */ }
 
       // First slide — instant cut, no transition
       this.slot = 0;
-      const first = this.urls[this.order[0]];
-      const s = this.slides[0];
-      s.style.backgroundImage = `url("${first}")`;
-      s.style.opacity = '1';
-      s.style.zIndex = '2';
-      s.classList.add('show');
+      const firstUrl = this.urls[this.order[0]];
+      const firstSlide = this.slides[0];
+      setSlideBg(firstSlide, firstUrl);
+      firstSlide.style.opacity = '1';
+      firstSlide.style.zIndex = '2';
+      firstSlide.classList.add('show');
       this.slides[1].style.zIndex = '1';
+
+      // Refresh the info overlay + status with the first entry's metadata
+      this.updateInfoOverlay();
+      this.updateStatus();
+
+      // Start music if a track is loaded — best-effort, autoplay
+      // policy might block but we're inside a user gesture so it's
+      // usually fine.
+      startMusic();
 
       const intervalSec = Number($('interval').value);
       this.scheduleNext(intervalSec);
@@ -3222,24 +4398,35 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
 
     scheduleNext(sec) {
       clearTimeout(this.timer);
+      const ms = sec * 1000;
+      this._timerEndsAt = performance.now() + ms;
+      this._remainingMs = ms;
       this.timer = setTimeout(() => {
-        if (!this.running) return;
+        if (!this.running || this.paused) return;
         this.advance();
-      }, sec * 1000);
+      }, ms);
+      this.startProgressBar(sec);
     },
 
     async advance() {
       if (!this.running) return;
       this.cursor++;
       if (this.cursor >= this.order.length) {
-        // Refresh urls at wrap in case auto-gen added images mid-play
-        const manifest = await getManifest();
+        // Refresh urls + entries at wrap in case auto-gen added images
+        // mid-play OR favourited a new one (when favOnlyPlay is on).
+        const fav = $('favOnlyPlay')?.checked === true;
+        const allEntries = await getManifest();
+        const filtered = fav ? allEntries.filter(e => e.favorited === true) : allEntries;
         const fresh = [];
-        for (const e of manifest) {
+        const freshEntries = [];
+        for (const e of filtered) {
           const u = await cacheGetUrl(e.id);
-          if (u) fresh.push(u);
+          if (u) { fresh.push(u); freshEntries.push(e); }
         }
-        if (fresh.length) this.urls = fresh;
+        if (fresh.length) {
+          this.urls = fresh;
+          this.entries = freshEntries;
+        }
         this.rebuildOrder();
         this.cursor = 0;
       }
@@ -3257,18 +4444,23 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
 
       try {
         await Promise.resolve(tx.run(oldEl, newEl, nextUrl, dur));
+        // Sync the CSS var on the new slide for blur-fill mode. The
+        // transition has already set backgroundImage; we just mirror.
+        newEl.style.setProperty('--slide-img', `url("${nextUrl}")`);
       } catch (e) {
         console.error('transition failed:', pick, e);
       }
 
       this.slot = nextSlot;
+      this.updateInfoOverlay();
+      this.updateStatus();
       this.scheduleNext(Number($('interval').value));
     },
 
     startAutoGen() {
       clearInterval(this.autoGenTimer);
       this.autoGenTimer = setInterval(async () => {
-        if (!this.running) return;
+        if (!this.running || this.paused) return;
         if (activeGens >= MAX_PARALLEL) return;
         const m = await getManifest();
         if (m.length >= MAX_IMAGES) return;
@@ -3279,18 +4471,200 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     stop() {
       if (!this.running) return;
       this.running = false;
+      this.paused = false;
       clearTimeout(this.timer);
       clearInterval(this.autoGenTimer);
+      clearTimeout(this.hideUITimer);
       this.slides.forEach(s => {
         s.classList.remove('show');
         s.style.cssText = '';
+        s.style.removeProperty('--slide-img');
       });
       $('blackout').classList.remove('show');
-      $('player').classList.remove('active');
-      $('player').classList.remove('flipping'); // a flip transition may have been mid-flight
+      const p = $('player');
+      p.classList.remove('active');
+      p.classList.remove('flipping');
+      p.classList.remove('paused');
+      p.classList.remove('progress-paused');
+      p.classList.remove('ui-visible');
+      // Reset progress bar so a re-entry starts clean
+      const fill = $('progressFill');
+      if (fill) {
+        fill.style.transition = 'none';
+        fill.style.width = '0%';
+      }
+      // Hide shortcuts modal if it was open
+      $('shortcutsModal')?.classList.remove('visible');
+      stopMusic();
       if (document.fullscreenElement)        document.exitFullscreen?.();
       else if (document.webkitFullscreenElement) document.webkitExitFullscreen?.();
       renderGallery();
+    },
+
+    // ── Pause / resume ─────────────────────────────────────────────
+    pause() {
+      if (!this.running || this.paused) return;
+      this.paused = true;
+      // Freeze the timer — capture how much time is left so resume can
+      // re-arm with that exact remainder rather than restarting the
+      // full interval.
+      this._remainingMs = Math.max(0, this._timerEndsAt - performance.now());
+      clearTimeout(this.timer);
+      this.timer = null;
+      this.pauseProgressBar();
+      pauseMusic();
+      const p = $('player');
+      p.classList.add('paused');
+      p.classList.add('progress-paused');
+      const btn = $('pcPlay');
+      if (btn) { btn.textContent = '▶'; btn.title = 'resume (space)'; btn.setAttribute('aria-label','resume'); }
+      // Pin UI while paused so the controls stay reachable
+      this.showUI(true);
+    },
+    resume() {
+      if (!this.running || !this.paused) return;
+      this.paused = false;
+      const p = $('player');
+      p.classList.remove('paused');
+      p.classList.remove('progress-paused');
+      const btn = $('pcPlay');
+      if (btn) { btn.textContent = '⏸'; btn.title = 'pause (space)'; btn.setAttribute('aria-label','pause'); }
+      startMusic();
+      this.resumeProgressBar();
+      const ms = Math.max(0, this._remainingMs);
+      this._timerEndsAt = performance.now() + ms;
+      this.timer = setTimeout(() => {
+        if (!this.running || this.paused) return;
+        this.advance();
+      }, ms);
+      this.resetIdleHide();
+    },
+    togglePause() {
+      if (!this.running) return;
+      this.paused ? this.resume() : this.pause();
+    },
+
+    // ── Manual navigation ──────────────────────────────────────────
+    manualNext() {
+      if (!this.running) return;
+      if (this.paused) this.resume();
+      clearTimeout(this.timer);
+      this.advance();
+    },
+    manualPrev() {
+      if (!this.running) return;
+      if (this.paused) this.resume();
+      const len = this.order.length;
+      if (len === 0) return;
+      // Step cursor back by 2 because advance() will increment it by 1.
+      // Modulo arithmetic keeps the index in [0, len) even when negative.
+      this.cursor = ((this.cursor - 2) % len + len) % len;
+      clearTimeout(this.timer);
+      this.advance();
+    },
+
+    // ── Controls / UI visibility ───────────────────────────────────
+    showUI(pin) {
+      const p = $('player');
+      if (!p) return;
+      p.classList.add('ui-visible');
+      if (!pin) this.resetIdleHide();
+    },
+    hideUI() {
+      // Keep UI visible while paused or while shortcuts modal is open —
+      // hiding controls behind a still image is confusing.
+      if (this.paused) return;
+      if ($('shortcutsModal')?.classList.contains('visible')) return;
+      $('player')?.classList.remove('ui-visible');
+    },
+    resetIdleHide() {
+      clearTimeout(this.hideUITimer);
+      const idle = Math.max(1, Math.min(10, Number($('idleHide')?.value) || 3));
+      this.hideUITimer = setTimeout(() => this.hideUI(), idle * 1000);
+    },
+
+    // ── Progress bar ───────────────────────────────────────────────
+    startProgressBar(durSec) {
+      const fill = $('progressFill');
+      if (!fill) return;
+      this._progStart = performance.now();
+      this._progDur = durSec * 1000;
+      this._progPct = 0;
+      fill.style.transition = 'none';
+      fill.style.width = '0%';
+      // Force reflow so the next transition doesn't get coalesced with
+      // the width-reset above into a no-op.
+      void fill.offsetWidth;
+      fill.style.transition = `width ${durSec}s linear`;
+      fill.style.width = '100%';
+    },
+    pauseProgressBar() {
+      const fill = $('progressFill');
+      if (!fill) return;
+      const elapsed = performance.now() - this._progStart;
+      const pct = Math.min(100, Math.max(0, (elapsed / this._progDur) * 100));
+      fill.style.transition = 'none';
+      fill.style.width = pct + '%';
+      void fill.offsetWidth;
+      this._progPct = pct;
+    },
+    resumeProgressBar() {
+      const fill = $('progressFill');
+      if (!fill) return;
+      const remainingMs = this._progDur * (1 - this._progPct / 100);
+      // Pretend the slide started ago by (total - remaining) so future
+      // pauses compute the right elapsed%.
+      this._progStart = performance.now() - (this._progDur - remainingMs);
+      fill.style.transition = `width ${remainingMs / 1000}s linear`;
+      fill.style.width = '100%';
+    },
+    _applyProgressVisibility() {
+      const p = $('player');
+      if (!p) return;
+      const on = $('showProgressBar')?.checked !== false;
+      p.classList.toggle('show-progress', on);
+    },
+
+    // ── Info overlay ───────────────────────────────────────────────
+    updateInfoOverlay() {
+      const meta = $('infoMeta');
+      const promptEl = $('infoPrompt');
+      if (!meta && !promptEl) return;
+      const idx = this.cursor;
+      const entry = this.entries[this.order[idx]];
+      const total = this.urls.length;
+      if (!entry) {
+        if (meta) meta.textContent = `${idx + 1} / ${total}`;
+        if (promptEl) promptEl.textContent = '';
+        return;
+      }
+      const parts = [`${idx + 1} / ${total}`];
+      if (typeof entry.seed === 'number') parts.push(`seed ${entry.seed}`);
+      if (entry.favorited === true) parts.push('★');
+      if (meta) meta.textContent = parts.join(' · ');
+      if (promptEl) promptEl.textContent = entry.prompt || '';
+    },
+    updateStatus() {
+      const status = $('pcStatus');
+      if (!status) return;
+      status.textContent = `${this.cursor + 1} / ${this.urls.length}`;
+    },
+    _applyInfoVisibility() {
+      const p = $('player');
+      if (!p) return;
+      const on = $('showInfoOverlay')?.checked === true;
+      p.classList.toggle('show-info', on);
+    },
+
+    // ── Shortcuts modal ────────────────────────────────────────────
+    toggleShortcuts() {
+      const modal = $('shortcutsModal');
+      if (!modal) return;
+      const willOpen = !modal.classList.contains('visible');
+      modal.classList.toggle('visible', willOpen);
+      // Pin the controls while open so the user has a way out
+      if (willOpen) this.showUI(true);
+      else this.resetIdleHide();
     },
   };
 
@@ -3410,15 +4784,226 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
 
   $('playBtn').addEventListener('click', () => player.start());
 
-  // Exit on click OR ESC (ESC exits fullscreen; we hook fullscreenchange too).
-  // The .ignore-click guard prevents the player from closing immediately
-  // when the user releases their click on Play Fullscreen — the click
-  // bubbles into the fullscreen player otherwise.
-  $('player').addEventListener('click', () => player.stop());
+  // ── 🎲 Random idea button ─────────────────────────────────────────
+  // Drops a curated starter prompt into promptPos (replacing or appending
+  // depending on whether the textarea is already populated).
+  $('ideaBtn')?.addEventListener('click', runIdea);
+
+  // ── Bulk select mode ──────────────────────────────────────────────
+  // Toggle button enters/exits multi-select; the bar buttons act on the
+  // current selection. Each call into bulkAct* is async so the bar may
+  // briefly remain in its previous state — that's intentional.
+  $('bulkToggle')?.addEventListener('click', () => setBulkMode(!bulkMode));
+  $('bulkSelectAll')?.addEventListener('click', bulkSelectAll);
+  $('bulkSelectNone')?.addEventListener('click', bulkSelectNone);
+  $('bulkFavorite')?.addEventListener('click', bulkActFavorite);
+  $('bulkDownload')?.addEventListener('click', bulkActDownload);
+  $('bulkDelete')?.addEventListener('click', bulkActDelete);
+  $('bulkCancel')?.addEventListener('click', () => setBulkMode(false));
+
+  // ── Slideshow display preferences ─────────────────────────────────
+  // Image fit: applied immediately so a preview while playing reflects
+  // the change without restarting the slideshow.
+  $('imageFit')?.addEventListener('change', () => {
+    applyPlayerFitClass();
+    saveSettings(0);
+  });
+  // favOnlyPlay: only consulted at next player.start() — but persist now
+  // so the choice survives reloads.
+  $('favOnlyPlay')?.addEventListener('change', () => saveSettings(0));
+  // Info overlay + progress bar: live-toggle while playing if active.
+  $('showInfoOverlay')?.addEventListener('change', () => {
+    saveSettings(0);
+    if (player.running) player._applyInfoVisibility();
+  });
+  $('showProgressBar')?.addEventListener('change', () => {
+    saveSettings(0);
+    if (player.running) player._applyProgressVisibility();
+  });
+  // Idle-hide slider: live-update the readout AND the player's idle
+  // timer if it's currently running.
+  $('idleHide')?.addEventListener('input', e => {
+    const v = Math.max(1, Math.min(10, Number(e.target.value) || 3));
+    if ($('idleHideVal')) $('idleHideVal').textContent = v;
+    saveSettings();
+    if (player.running) player.resetIdleHide();
+  });
+
+  // ── Background music ──────────────────────────────────────────────
+  // File picker → store in IDB + create object URL. Volume + loop apply
+  // live to the <audio> element if music is loaded. Remove clears blob.
+  $('musicFile')?.addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) handleMusicPick(f);
+    // Clear the input so re-picking the same file fires `change` again.
+    e.target.value = '';
+  });
+  $('musicRemove')?.addEventListener('click', async () => {
+    if (!confirm('Remove background music?')) return;
+    await clearMusic();
+  });
+  $('musicLoop')?.addEventListener('change', () => {
+    const audio = $('musicPlayer');
+    if (audio) audio.loop = $('musicLoop').checked === true;
+    saveSettings(0);
+  });
+  $('musicVol')?.addEventListener('input', e => {
+    const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+    if ($('musicVolVal')) $('musicVolVal').textContent = `${v}%`;
+    const audio = $('musicPlayer');
+    if (audio) audio.volume = v / 100;
+    saveSettings();
+  });
+
+  // ── Reset settings ────────────────────────────────────────────────
+  $('resetSettings')?.addEventListener('click', resetSettings);
+
+  // ── Player on-screen controls (overlay buttons) ───────────────────
+  // Each control stops propagation so the player-backdrop click below
+  // (which toggles pause) doesn't fire as well.
+  function _ctrl(id, fn) {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      fn();
+    });
+  }
+  _ctrl('pcPrev',      () => { player.manualPrev();   player.showUI(); });
+  _ctrl('pcPlay',      () => { player.togglePause();  player.showUI(); });
+  _ctrl('pcNext',      () => { player.manualNext();   player.showUI(); });
+  _ctrl('pcShortcuts', () => { player.toggleShortcuts(); });
+  _ctrl('pcExit',      () => { player.stop(); });
+
+  // Tapping the shortcuts modal backdrop dismisses it (but clicks on
+  // the inner card don't, so users can still highlight text).
+  $('shortcutsModal')?.addEventListener('click', e => {
+    if (e.target.id === 'shortcutsModal') player.toggleShortcuts();
+  });
+
+  // Click anywhere on the player surface (not on a control or the
+  // modal) toggles pause/resume. Mouse movement reveals the UI for
+  // `idleHide` seconds before fading it back out.
+  const playerEl = $('player');
+  if (playerEl) {
+    playerEl.addEventListener('mousemove', () => {
+      if (!player.running) return;
+      player.showUI();
+    });
+    playerEl.addEventListener('click', e => {
+      if (!player.running) return;
+      // Ignore clicks on the controls bar, shortcuts modal, info overlay
+      // and progress bar — they have their own handlers.
+      if (e.target.closest('.controls')) return;
+      if (e.target.closest('.shortcuts-modal')) return;
+      if (e.target.closest('.info-overlay')) return;
+      if (e.target.closest('.progress-track')) return;
+      player.togglePause();
+    });
+    // Touch: a single tap also toggles pause (mousemove won't fire on
+    // touch so we reveal UI here too).
+    playerEl.addEventListener('touchstart', () => {
+      if (!player.running) return;
+      player.showUI();
+    }, { passive: true });
+  }
+
+  // ── Global keyboard shortcuts (active only while the slideshow runs)
+  // Skip keystrokes inside form fields so the user can still type in
+  // the prompt textarea even though the player isn't running.
   document.addEventListener('keydown', e => {
     if (!player.running) return;
-    if (e.key === 'Escape') player.stop();
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.target && e.target.isContentEditable) return;
+
+    // ? toggles the shortcuts modal (works even with shift held since
+    // ? requires shift on US layouts). ESC: close modal first, else
+    // stop slideshow.
+    if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+      e.preventDefault();
+      player.toggleShortcuts();
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if ($('shortcutsModal')?.classList.contains('visible')) {
+        player.toggleShortcuts();
+      } else {
+        player.stop();
+      }
+      return;
+    }
+    // Don't intercept other keys while the modal is open.
+    if ($('shortcutsModal')?.classList.contains('visible')) return;
+
+    switch (e.key) {
+      case ' ':
+      case 'Spacebar': // legacy
+        e.preventDefault();
+        player.togglePause();
+        player.showUI();
+        break;
+      case 'ArrowRight':
+      case 'PageDown':
+        e.preventDefault();
+        player.manualNext();
+        player.showUI();
+        break;
+      case 'ArrowLeft':
+      case 'PageUp':
+        e.preventDefault();
+        player.manualPrev();
+        player.showUI();
+        break;
+      case 'i':
+      case 'I': {
+        const cb = $('showInfoOverlay');
+        if (cb) {
+          cb.checked = !cb.checked;
+          saveSettings(0);
+          player._applyInfoVisibility();
+          player.showUI();
+        }
+        break;
+      }
+      case 'p':
+      case 'P': {
+        const cb = $('showProgressBar');
+        if (cb) {
+          cb.checked = !cb.checked;
+          saveSettings(0);
+          player._applyProgressVisibility();
+          player.showUI();
+        }
+        break;
+      }
+      case 'm':
+      case 'M':
+        toggleMusicMute();
+        player.showUI();
+        break;
+      case 'f':
+      case 'F': {
+        // Cycle image fit modes
+        const sel = $('imageFit');
+        if (sel) {
+          const order = ['cover', 'contain', 'blur'];
+          const i = order.indexOf(sel.value);
+          sel.value = order[(i + 1) % order.length];
+          applyPlayerFitClass();
+          saveSettings(0);
+          toast(`Fit: ${sel.value}`);
+          player.showUI();
+        }
+        break;
+      }
+    }
   });
+
+  // Leaving fullscreen (via ESC, gesture, OS chrome, etc.) tears down
+  // the slideshow — keeping it running in a non-fullscreen window would
+  // be visually broken.
   document.addEventListener('fullscreenchange', () => {
     if (player.running && !document.fullscreenElement) player.stop();
   });
