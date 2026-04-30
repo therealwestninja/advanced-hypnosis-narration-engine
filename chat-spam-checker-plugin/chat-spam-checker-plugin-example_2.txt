@@ -1,0 +1,532 @@
+<!--
+  chat-spam-checker-plugin-example · HTML panel
+
+  Layout:
+    Header           — title + intro + global guard status
+    Tab bar          — one tab per channel (read from root.chatChannels)
+    Channel area     — a div per channel, only the active one is visible
+    Status sidebar   — live event log + currently-banned-users list
+
+  Brace policy:
+    All { } [ ] live inside <style> or <script> tags only.
+    Static HTML body has none. (Perchance preprocesses the parsed DOM,
+    so HTML entities don't help — script injection is required.)
+-->
+
+<style>
+  :root {
+    --bg: #0e1014;
+    --panel: #161922;
+    --panel-2: #1d2230;
+    --border: #2a3040;
+    --text: #d8def0;
+    --text-dim: #95a0bb;
+    --text-faint: #6c7591;
+    --accent: #6aa6ff;
+    --good: #62d09a;
+    --bad: #ff6b78;
+    --warn: #ffd166;
+    --code-bg: #0b0d12;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #fafbfd; --panel: #fff; --panel-2: #f3f5fa;
+      --border: #e2e6ef; --text: #1a1d24; --text-dim: #5a6478;
+      --text-faint: #8a93a8; --code-bg: #f4f6fa;
+    }
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 18px; }
+  header.app { padding: 4px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  header.app h1 { margin: 0 0 6px; font-size: 1.6rem; letter-spacing: -0.01em; }
+  header.app p { margin: 0; color: var(--text-dim); font-size: 0.9rem; max-width: 720px; }
+  header.app .pill {
+    display: inline-block; margin-top: 10px;
+    padding: 4px 10px; border-radius: 999px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    font-size: 0.78rem; color: var(--text-dim);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  header.app .pill .ok { color: var(--good); }
+  header.app .pill .warn { color: var(--warn); }
+
+  .layout { display: grid; grid-template-columns: 1fr 320px; gap: 18px; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tab {
+    padding: 8px 14px; border-radius: 8px 8px 0 0;
+    background: var(--panel); border: 1px solid var(--border);
+    border-bottom-color: transparent;
+    color: var(--text-dim); cursor: pointer; font-size: 0.9rem; font-weight: 500;
+    transition: all 0.12s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: var(--panel-2); color: var(--text); border-color: var(--accent); border-bottom-color: var(--panel-2); }
+  .tab .count {
+    display: inline-block; margin-left: 6px;
+    padding: 0 6px; border-radius: 10px;
+    background: var(--bad); color: #fff; font-size: 0.7rem; font-weight: 700;
+    min-width: 16px; text-align: center;
+  }
+  .tab.active .count { background: var(--accent); }
+  .tab .count.zero { display: none; }
+
+  .channels-host {
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 0 8px 8px 8px;
+    padding: 12px; min-height: 500px;
+  }
+  .channel-pane { display: none; }
+  .channel-pane.active { display: block; }
+  .channel-pane h3 { margin: 0 0 10px; font-size: 1rem; color: var(--text-dim); }
+
+  aside.guard {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px;
+    height: fit-content; position: sticky; top: 18px;
+  }
+  aside.guard h3 {
+    margin: 0 0 8px; font-size: 0.78rem; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600;
+  }
+  aside.guard h3:not(:first-child) { margin-top: 16px; }
+
+  .log {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px;
+    font-family: ui-monospace, monospace; font-size: 0.74rem;
+    height: 220px; overflow-y: auto;
+  }
+  .log .row { padding: 2px 0; line-height: 1.4; }
+  .log .row .t { color: var(--text-faint); }
+  .log .ev-ban  { color: var(--bad); }
+  .log .ev-spam { color: var(--warn); }
+  .log .ev-mod  { color: var(--good); }
+  .log .ev-info { color: var(--text-dim); }
+  .log .empty { color: var(--text-faint); font-style: italic; padding: 6px; }
+
+  ul.banned {
+    list-style: none; padding: 0; margin: 0;
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 6px;
+    max-height: 160px; overflow-y: auto;
+    font-family: ui-monospace, monospace; font-size: 0.74rem;
+  }
+  ul.banned li { padding: 5px 8px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  ul.banned li:last-child { border-bottom: none; }
+  ul.banned li .uid { color: var(--bad); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+  ul.banned li button {
+    background: none; border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; cursor: pointer; font-family: inherit;
+  }
+  ul.banned li button:hover { background: var(--panel-2); color: var(--text); }
+  ul.banned .empty { color: var(--text-faint); font-style: italic; padding: 6px 8px; }
+
+  .stats { font-size: 0.78rem; color: var(--text-dim); margin-top: 6px; line-height: 1.7; }
+  .stats .k { color: var(--text-faint); }
+  .stats .v { color: var(--text); font-family: ui-monospace, monospace; }
+</style>
+
+
+<div class="wrap">
+  <header class="app">
+    <h1>chat-spam-checker-plugin · example</h1>
+    <p>Five public chat channels share a single anti-spam guard. If a user posts the same (or near-identical) message into 3 or more different channels within 60 seconds, the guard automatically bans them across every channel and hides their messages. Open two browser windows in private/incognito mode and try posting the same text in different channels to see it in action.</p>
+    <span class="pill" id="statusPill">guard: <span class="warn">loading...</span></span>
+  </header>
+
+  <div class="layout">
+    <main>
+      <div class="tabs" id="tabs"></div>
+      <div class="channels-host" id="channelsHost"></div>
+    </main>
+
+    <aside class="guard">
+      <h3>spam-guard log</h3>
+      <div class="log" id="guardLog"><div class="empty">waiting for activity...</div></div>
+
+      <h3>currently banned</h3>
+      <ul class="banned" id="bannedList"><li class="empty">no users banned</li></ul>
+
+      <h3>stats</h3>
+      <div class="stats" id="statsBox">
+        <div><span class="k">tracked users:</span> <span class="v" id="stat_tracked">0</span></div>
+        <div><span class="k">total reports:</span> <span class="v" id="stat_reports">0</span></div>
+        <div><span class="k">total bans:</span> <span class="v" id="stat_bans">0</span></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+
+<script>
+(async () => {
+
+  // ════════════════════════════════════════════════════════════════════
+  // 1. READ DSL CONFIG (channels, mod whitelist, guard tuning)
+  // ════════════════════════════════════════════════════════════════════
+  // Perchance lists are accessible via .selectAll.map(item => item.evaluateItem)
+  // — see comments-plugin source for the canonical pattern. Wrapped in
+  // try/catch with hardcoded fallbacks so the page still works if the
+  // top-zone lists go missing.
+
+  function readListItems(listName, fallback) {
+    try {
+      if (!root[listName]) return fallback;
+      const items = root[listName].selectAll;
+      if (!items || !items.map) return fallback;
+      const out = items.map(it => String(it.evaluateItem || it).trim()).filter(Boolean);
+      return out.length ? out : fallback;
+    } catch (e) {
+      console.warn("[example] couldn't read root." + listName + ", using fallback:", e);
+      return fallback;
+    }
+  }
+
+  function readListConfig(listName, fallback) {
+    try {
+      if (!root[listName]) return fallback;
+      const out = {};
+      // Each "key = value" item ends up as a property on the list object,
+      // accessible via root.list.key.evaluateItem
+      for (const k of Object.keys(fallback)) {
+        try {
+          const v = root[listName][k] && root[listName][k].evaluateItem;
+          if (v !== undefined && v !== null && v !== "") {
+            out[k] = isNaN(Number(v)) ? v : Number(v);
+          } else {
+            out[k] = fallback[k];
+          }
+        } catch (e) { out[k] = fallback[k]; }
+      }
+      return out;
+    } catch (e) {
+      console.warn("[example] couldn't read root." + listName + ", using fallback:", e);
+      return fallback;
+    }
+  }
+
+  // Parse "channelName|Display Label" lines into objects.
+  const channelLines = readListItems("chatChannels", [
+    "general|💬 General",
+    "roleplay|🎭 Roleplay",
+    "help|🆘 Help",
+    "offtopic|🎲 Off-topic",
+    "share|🔗 Share",
+  ]);
+  const CHANNELS = channelLines.map(line => {
+    const parts = line.split("|");
+    return { name: parts[0].trim(), label: (parts[1] || parts[0]).trim() };
+  });
+
+  const MODERATOR_IDS = readListItems("moderatorUserIds", []);
+
+  const GUARD_CONFIG = readListConfig("spamGuardConfig", {
+    channelThreshold: 3,
+    windowMs: 60000,
+    similarityThreshold: 0.92,
+    minMessageLength: 5,
+    banDurationMs: 0,
+  });
+
+  // sharedCommentOptions is read by reference and passed straight into
+  // commentsPlugin per channel, so the comments-plugin parses it natively.
+  const sharedOpts = root.sharedCommentOptions || {};
+
+
+  // ════════════════════════════════════════════════════════════════════
+  // 2. DOM HELPERS — log, tabs, banned-list, stats
+  // ════════════════════════════════════════════════════════════════════
+  const logEl       = document.getElementById("guardLog");
+  const bannedEl    = document.getElementById("bannedList");
+  const statusPill  = document.getElementById("statusPill");
+  const statTracked = document.getElementById("stat_tracked");
+  const statReports = document.getElementById("stat_reports");
+  const statBans    = document.getElementById("stat_bans");
+
+  const escHtml = s => String(s == null ? "" : s).replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
+
+  let logEmpty = true;
+  function log(msg, cls) {
+    if (logEmpty) { logEl.innerHTML = ""; logEmpty = false; }
+    const row = document.createElement("div");
+    row.className = "row " + (cls || "ev-info");
+    const ts = new Date().toLocaleTimeString();
+    row.innerHTML = '<span class="t">[' + ts + ']</span> ' + escHtml(msg);
+    logEl.appendChild(row);
+    logEl.scrollTop = logEl.scrollHeight;
+    // cap log at 200 rows
+    while (logEl.childNodes.length > 200) logEl.removeChild(logEl.firstChild);
+  }
+
+  function refreshStats() {
+    const s = guard.stats();
+    statTracked.textContent = s.tracked;
+    statReports.textContent = s.totalReports;
+    statBans.textContent    = s.totalBans;
+  }
+
+  function refreshBannedList() {
+    const ids = guard.bannedUsers();
+    if (!ids.length) {
+      bannedEl.innerHTML = '<li class="empty">no users banned</li>';
+      return;
+    }
+    bannedEl.innerHTML = "";
+    for (const id of ids) {
+      const li = document.createElement("li");
+      const span = document.createElement("span");
+      span.className = "uid";
+      span.title = id;
+      span.textContent = id;
+      const btn = document.createElement("button");
+      btn.textContent = "unban";
+      btn.addEventListener("click", () => unbanEverywhere(id));
+      li.appendChild(span);
+      li.appendChild(btn);
+      bannedEl.appendChild(li);
+    }
+  }
+
+
+  // ════════════════════════════════════════════════════════════════════
+  // 3. INITIALIZE THE SPAM GUARD
+  // ════════════════════════════════════════════════════════════════════
+  // chats[channelName] -> the commentsPlugin String-marker object, which
+  // exposes .banUser(userId) and .unbanUser(userId). We populate this in
+  // step 4 below; the guard's banFn closes over it.
+
+  const chats = {};
+
+  let guard;
+  try {
+    guard = root.spamChecker({
+      channelThreshold:    GUARD_CONFIG.channelThreshold,
+      windowMs:            GUARD_CONFIG.windowMs,
+      similarityThreshold: GUARD_CONFIG.similarityThreshold,
+      minMessageLength:    GUARD_CONFIG.minMessageLength,
+      banDurationMs:       GUARD_CONFIG.banDurationMs,
+      whitelistUserIds:    MODERATOR_IDS,
+      autoBan:    true,
+      autoDelete: true,
+
+      // banFn: called when the guard decides a user is spamming.
+      // The comments-plugin's banUser is per-channel, so we iterate.
+      // (User IDs are shared across channels by default in comments-plugin,
+      // so the same userId works in every chat instance.)
+      banFn: async (userId, info) => {
+        let okCount = 0;
+        for (const ch of CHANNELS) {
+          try {
+            const inst = chats[ch.name];
+            if (inst && typeof inst.banUser === "function") {
+              await inst.banUser(userId);
+              okCount++;
+            }
+          } catch (e) {
+            console.warn("[example] banUser failed in #" + ch.name, e);
+          }
+        }
+        log("BANNED " + userId + " in " + okCount + "/" + CHANNELS.length + " channels", "ev-ban");
+        refreshBannedList();
+        refreshStats();
+      },
+
+      // deleteFn: comments-plugin doesn't expose a programmatic delete,
+      // but banning a user typically hides their historical messages on
+      // the comments backend (this is standard moderation behavior).
+      // So this is a logging stub — banFn does the real work.
+      deleteFn: async (messageId, channel) => {
+        log("hide " + messageId + " in #" + channel + " (handled by ban)", "ev-info");
+      },
+
+      // Logged BEFORE the ban happens, so you can see the trigger pattern.
+      onSpamDetected: (report) => {
+        const who = report.username || report.userId || "?";
+        log("SPAM " + who + " repeated message across: " + report.channels.join(", "), "ev-spam");
+      },
+    });
+
+    statusPill.innerHTML = 'guard: <span class="ok">ready</span> · 0 banned · ' + CHANNELS.length + ' channels';
+    log("guard ready · threshold " + GUARD_CONFIG.channelThreshold + " channels in " + (GUARD_CONFIG.windowMs / 1000) + "s", "ev-mod");
+  } catch (e) {
+    console.error("[example] failed to load chat-spam-checker-plugin:", e);
+    statusPill.innerHTML = 'guard: <span class="warn">FAILED — see console</span>';
+    log("FAILED to load chat-spam-checker-plugin: " + e.message, "ev-ban");
+    return;
+  }
+
+  function unbanEverywhere(userId) {
+    guard.unban(userId);
+    for (const ch of CHANNELS) {
+      try {
+        const inst = chats[ch.name];
+        if (inst && typeof inst.unbanUser === "function") inst.unbanUser(userId);
+      } catch (e) { console.warn("unbanUser failed in #" + ch.name, e); }
+    }
+    log("MANUAL UNBAN " + userId, "ev-mod");
+    refreshBannedList();
+  }
+
+
+  // ════════════════════════════════════════════════════════════════════
+  // 4. BUILD TABS + CHANNELS
+  // ════════════════════════════════════════════════════════════════════
+  const tabsEl = document.getElementById("tabs");
+  const hostEl = document.getElementById("channelsHost");
+  const tabBtns = {};
+
+  for (const ch of CHANNELS) {
+    // Tab button
+    const tab = document.createElement("button");
+    tab.className = "tab";
+    tab.dataset.channel = ch.name;
+    tab.innerHTML = escHtml(ch.label) + ' <span class="count zero" data-count>0</span>';
+    tab.addEventListener("click", () => activateTab(ch.name));
+    tabsEl.appendChild(tab);
+    tabBtns[ch.name] = tab;
+
+    // Channel pane (initially hidden)
+    const pane = document.createElement("div");
+    pane.className = "channel-pane";
+    pane.dataset.channel = ch.name;
+    const heading = document.createElement("h3");
+    heading.textContent = "#" + ch.name;
+    pane.appendChild(heading);
+    const commentsHost = document.createElement("div");
+    commentsHost.dataset.commentsHost = ch.name;
+    pane.appendChild(commentsHost);
+    hostEl.appendChild(pane);
+  }
+
+  function activateTab(name) {
+    for (const ch of CHANNELS) {
+      const isActive = ch.name === name;
+      tabBtns[ch.name].classList.toggle("active", isActive);
+      hostEl.querySelector('.channel-pane[data-channel="' + ch.name + '"]').classList.toggle("active", isActive);
+    }
+    // Reset the unread badge on the activated tab
+    const badge = tabBtns[name].querySelector("[data-count]");
+    badge.textContent = "0";
+    badge.classList.add("zero");
+  }
+
+
+  // ════════════════════════════════════════════════════════════════════
+  // 5. WIRE EACH CHANNEL'S commentsPlugin TO THE GUARD
+  // ════════════════════════════════════════════════════════════════════
+  // For each channel, we call commentsPlugin({...}) which returns a
+  // String marker. We innerHTML it into the channel's host element to
+  // trigger iframe creation, then the .banUser / .unbanUser methods on
+  // the returned object are usable from anywhere (e.g. our banFn above).
+
+  let firstCommentLogged = false;
+
+  for (const ch of CHANNELS) {
+    const commentsHost = hostEl.querySelector('[data-comments-host="' + ch.name + '"]');
+
+    // Build per-channel options: spread shared, override channel + handlers.
+    // We clone shared options shallowly so we don't mutate the DSL object.
+    const opts = Object.assign({}, sharedOpts, {
+      channel: ch.name,
+      channelLabel: ch.label,
+
+      // ───────────── the spam-guard hook ─────────────
+      // Every new message in this channel goes through the guard.
+      onComment: async (comment) => {
+        // Defensive field access — comment object shape from comments-plugin
+        // varies a bit; log the first one so you can see what's available.
+        if (!firstCommentLogged) {
+          firstCommentLogged = true;
+          console.log("[example] First comment shape — use this to debug field names:", comment);
+        }
+
+        const userId =
+          comment.userId  ||
+          (comment.user && comment.user.id) ||
+          comment.user    ||
+          (comment.author && comment.author.id) ||
+          comment.author  ||
+          // Fall back: comments-plugin assigns IDs like "MW22-abc123-msgseq".
+          // The first two segments are the user prefix + ID; the third is
+          // per-message. So strip the last segment to recover the user ID.
+          (comment.id ? String(comment.id).split("-").slice(0, -1).join("-") : null);
+
+        const username =
+          comment.username ||
+          (comment.user && comment.user.name) ||
+          (comment.author && comment.author.name) ||
+          userId ||
+          "unknown";
+
+        const text = String(comment.message || comment.text || "");
+
+        if (!userId) {
+          console.warn("[example] couldn't determine userId for comment:", comment);
+          return;
+        }
+
+        await guard.report({
+          channel:   ch.name,
+          userId,
+          username,
+          messageId: comment.id,
+          text,
+          timestamp: comment.time || Date.now(),
+        });
+        refreshStats();
+
+        // Bump the unread-counter badge if this isn't the active tab.
+        const tab = tabBtns[ch.name];
+        if (!tab.classList.contains("active")) {
+          const badge = tab.querySelector("[data-count]");
+          const n = (parseInt(badge.textContent, 10) || 0) + 1;
+          badge.textContent = String(n);
+          badge.classList.remove("zero");
+        }
+      },
+
+      // ───────────── instant-block hook ─────────────
+      // If a banned user somehow tries to post (e.g. ban hasn't propagated
+      // through the iframe yet), block them client-side without a network
+      // round-trip by returning null from beforeSubmit.
+      beforeSubmit: ({ inputText }) => {
+        // We don't know the userId at this point (comments-plugin doesn't
+        // pass it to beforeSubmit), so this is a best-effort hook that you
+        // can extend later. For now it only enforces the minMessageLength.
+        if (!inputText || inputText.trim().length < GUARD_CONFIG.minMessageLength) {
+          // Allow short messages through — minMessageLength only prevents
+          // them from being COUNTED as spam, not from being posted.
+        }
+        return undefined; // continue with submission
+      },
+    });
+
+    // root.commentsPlugin returns a String marker; inserting it as
+    // innerHTML triggers a MutationObserver that swaps it for an iframe.
+    const marker = root.commentsPlugin(opts);
+    commentsHost.innerHTML = String(marker);
+    chats[ch.name] = marker;
+  }
+
+  // Show the first channel by default.
+  activateTab(CHANNELS[0].name);
+
+  // Refresh stats every few seconds so the sidebar stays current.
+  setInterval(refreshStats, 3000);
+
+  log("page ready · " + CHANNELS.length + " channels mounted", "ev-mod");
+  if (MODERATOR_IDS.length === 0) {
+    log("no moderator IDs whitelisted — add yours in moderatorUserIds (top zone)", "ev-info");
+  } else {
+    log("whitelisted " + MODERATOR_IDS.length + " moderator(s)", "ev-mod");
+  }
+})();
+</script>

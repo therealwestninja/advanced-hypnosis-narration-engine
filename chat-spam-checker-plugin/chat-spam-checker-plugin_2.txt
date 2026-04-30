@@ -1,0 +1,400 @@
+<!--
+  chat-spam-checker-plugin · HTML panel
+
+  Public docs page + live demo for visitors to perchance.org/chat-spam-checker-plugin.
+  This panel does NOT run when the plugin is imported by another generator —
+  only the top zone DSL is loaded on import. The implementation lives in
+  the top zone $output function (closure-based), so importers get it for free.
+
+  Brace policy: all { } [ ] live inside <style> or <script>. Static HTML
+  body has none. (Perchance scans the parsed DOM, so HTML entities don't
+  help — script injection is the only reliable workaround.)
+-->
+
+<style>
+  :root {
+    --bg: #0e1014;
+    --panel: #161922;
+    --panel-2: #1d2230;
+    --border: #2a3040;
+    --text: #d8def0;
+    --text-dim: #95a0bb;
+    --accent: #6aa6ff;
+    --good: #62d09a;
+    --bad: #ff6b78;
+    --warn: #ffd166;
+    --code-bg: #0b0d12;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #fafbfd; --panel: #fff; --panel-2: #f3f5fa;
+      --border: #e2e6ef; --text: #1a1d24; --text-dim: #5a6478;
+      --code-bg: #f4f6fa;
+    }
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px 18px 80px; }
+  h1 { margin: 0 0 4px; font-size: 1.9rem; letter-spacing: -0.01em; }
+  h1 .tag { display:inline-block; font-size:0.6em; vertical-align:middle; padding:2px 8px; border-radius:6px; background:var(--accent); color:#fff; margin-left:8px; }
+  h2 { margin-top: 2.2em; font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  p, li { color: var(--text); }
+  small, .dim { color: var(--text-dim); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+  pre {
+    background: var(--code-bg); padding: 14px 16px; border-radius: 8px;
+    overflow-x: auto; border: 1px solid var(--border); font-size: 0.85rem;
+    line-height: 1.5; white-space: pre; margin: 12px 0;
+  }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin: 18px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 0.92rem; vertical-align: top; }
+  th { color: var(--text-dim); font-weight: 600; }
+  td code { white-space: nowrap; }
+
+  /* demo */
+  .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .demo-grid { grid-template-columns: 1fr; } }
+  .channel {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px; min-height: 220px; display: flex; flex-direction: column;
+  }
+  .channel-head { font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-dim); }
+  .channel-feed { flex: 1; overflow-y: auto; max-height: 220px; font-size: 0.85rem; padding-right: 4px; }
+  .msg { padding: 4px 6px; margin: 2px 0; border-radius: 4px; }
+  .msg .who { font-weight: 600; color: var(--accent); }
+  .msg.banned { opacity: 0.35; text-decoration: line-through; }
+  .msg.deleted { background: rgba(255,107,120,0.12); color: var(--bad); font-style: italic; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  input, select {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 10px; font-size: 0.9rem; font-family: inherit;
+  }
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    padding: 6px 14px; font-size: 0.9rem; cursor: pointer; font-weight: 500;
+  }
+  button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button:hover { filter: brightness(1.08); }
+  .log {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px; font-family: ui-monospace, monospace; font-size: 0.78rem;
+    height: 130px; overflow-y: auto; margin-top: 10px;
+  }
+  .log .ev-ban { color: var(--bad); }
+  .log .ev-del { color: var(--warn); }
+  .log .ev-ok  { color: var(--good); }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 4px; background: var(--panel-2); font-size: 0.75rem; color: var(--text-dim); border: 1px solid var(--border); }
+</style>
+
+
+<!-- Static HTML — zero { } [ ] in body. All docs are JS-injected. -->
+<div id="docsRoot"></div>
+
+<div class="wrap" id="demoWrap">
+  <h2>Live demo</h2>
+  <p class="dim" id="demoBlurb"></p>
+
+  <div class="demo-grid" id="channelsGrid"></div>
+
+  <div class="controls">
+    <select id="userSel">
+      <option value="alice">Alice</option>
+      <option value="bob">Bob</option>
+      <option value="eve" selected>Eve - try spamming</option>
+      <option value="mod">Mod - whitelisted</option>
+    </select>
+    <select id="chanSel"></select>
+    <input type="text" id="msgInput" placeholder="Type a message..." style="flex:1; min-width:160px;">
+    <button id="sendBtn">post</button>
+    <button id="clearBtn" class="ghost">clear all</button>
+  </div>
+  <div class="log" id="logEl"></div>
+
+  <h2>License</h2>
+  <p class="dim">MIT.</p>
+</div>
+
+
+<!-- ───────────────────────── docs injection ─────────────────────────
+  All brace-containing content is built as JS strings and injected after
+  Perchance has finished its preprocessing pass.
+-->
+<script>
+(() => {
+  const J = arr => arr.join("\n");
+
+  // ── 1. Page structure (with placeholder pre/div elements) ─────────
+  document.getElementById("docsRoot").innerHTML = J([
+    '<div class="wrap">',
+    '  <h1>chat-spam-checker-plugin <span class="tag">plugin</span></h1>',
+    '  <p class="dim">Watches multiple chat channels and auto-bans users who post the same message across several of them within a short time window — the canonical copy-paste spam pattern. Pairs naturally with <a href="/comments-plugin" target="_blank">comments-plugin</a> and <a href="/tabbed-comments-plugin-v1" target="_blank">tabbed-comments-plugin-v1</a>.</p>',
+    '',
+    '  <div class="panel">',
+    '    <strong>Import:</strong>',
+    '    <pre id="ex_import"></pre>',
+    '    Then in your generator HTML panel:',
+    '    <pre id="ex_quickstart"></pre>',
+    '  </div>',
+    '',
+    '  <h2>What counts as spam?</h2>',
+    '  <p>A user is flagged when <strong>the same (or near-identical) message appears in <code>channelThreshold</code> or more distinct channels from that user within <code>windowMs</code> milliseconds</strong>. "Near-identical" means the normalised fingerprints (lowercase, whitespace collapsed, punctuation/emoji stripped, repeated characters dampened) either match exactly or have a token-set Jaccard similarity above <code>similarityThreshold</code>.</p>',
+    '  <p>Short messages are ignored (controlled by <code>minMessageLength</code>) so things like <em>"hi"</em>, <em>"lol"</em>, <em>"thanks"</em> never trigger a ban just because they happen to appear everywhere.</p>',
+    '',
+    '  <h2>Options</h2>',
+    '  <div id="optionsTable"></div>',
+    '',
+    '  <h2>Returned API</h2>',
+    '  <pre id="ex_api"></pre>',
+    '',
+    '  <h2>Wiring it to <code>comments-plugin</code></h2>',
+    '  <p>The recommended pattern is one commentsPlugin instance per channel, each with an <code>onComment</code> handler that feeds messages into a single shared spam guard. The guard\'s <code>banFn</code> iterates over every commentsPlugin instance and calls <code>banUser(userId)</code> — comments-plugin shares user IDs across channels by default, so the same ID works in all of them. See the <a href="/chat-spam-checker-plugin-example" target="_blank">example generator</a> for a complete working implementation.</p>',
+    '  <pre id="ex_wiring"></pre>',
+    '',
+    '  <h2>Notes &amp; limitations</h2>',
+    '  <ul>',
+    '    <li>The plugin is in-memory only by default. If your page reloads, the per-user history resets — but bans you persisted via <code>banFn</code> stick.</li>',
+    '    <li>The implementation lives in the top-zone <code>$output</code> function closure, so each call to <code>root.spamChecker(opts)</code> creates an independent guard with its own state. Multiple guards on the same page don\'t interfere with each other.</li>',
+    '    <li>The detector is intentionally simple (normalised fingerprint + Jaccard similarity). It won\'t catch determined spammers who randomise text — that needs an LLM check, which would belong in a separate <code>ai-text-plugin</code>-based plugin.</li>',
+    '    <li>Whitelist your moderators. They post the same announcement everywhere on purpose.</li>',
+    '    <li>The comments-plugin doesn\'t expose a programmatic message-delete API, but banning a user typically hides their historical messages on the comments backend (standard moderation behavior). So <code>banFn</code> alone effectively achieves both ban and clear; <code>deleteFn</code> is provided for hosts that have their own moderation backend.</li>',
+    '  </ul>',
+    '</div>',
+  ]);
+
+  // ── 2. Code blocks via textContent ────────────────────────────────
+  document.getElementById("ex_import").textContent =
+    'spamChecker = {import:chat-spam-checker-plugin}';
+
+  document.getElementById("ex_quickstart").textContent = J([
+    'let guard = root.spamChecker({',
+    '  channelThreshold: 3,',
+    '  windowMs: 60000,',
+    '  banFn:    (userId)             => banUserOnYourBackend(userId),',
+    '  deleteFn: (messageId, channel) => removeMessageOnYourBackend(messageId, channel),',
+    '});',
+    '',
+    '// Each time a new message lands in any channel, hand it to the guard:',
+    'guard.report({',
+    '  channel:   "general",',
+    '  userId:    "abc123",',
+    '  username:  "Alice",',
+    '  messageId: "msg_42",',
+    '  text:      "Check out my crypto site!!!",',
+    '});',
+  ]);
+
+  document.getElementById("ex_api").textContent = J([
+    'let guard = root.spamChecker(opts);',
+    '',
+    'guard.report({channel, userId, username, messageId, text, timestamp})',
+    '  // Feed every new message into this. timestamp is optional, defaults to Date.now().',
+    '',
+    'guard.isBanned(userId)         // -> boolean',
+    'guard.ban(userId, reason)      // manually ban',
+    'guard.unban(userId)            // manually unban',
+    'guard.bannedUsers()            // -> array of currently banned IDs',
+    'guard.history(userId)          // -> recent message history for one user',
+    'guard.flush()                  // wipe in-memory state (does NOT unban)',
+    'guard.options                  // live options object — mutate to retune',
+    'guard.stats()                  // -> { tracked, banned, totalReports, totalBans, totalDeletes }',
+  ]);
+
+  document.getElementById("ex_wiring").textContent = J([
+    '// In your generator HTML panel:',
+    'const chats = {};',
+    'const CHANNELS = ["general", "rp", "help", "offtopic", "share"];',
+    '',
+    'const guard = root.spamChecker({',
+    '  channelThreshold: 3,',
+    '  windowMs: 60000,',
+    '  whitelistUserIds: [moderatorUserId],',
+    '  banFn: async (userId) => {',
+    '    // Ban across every channel — comments-plugin shares user IDs by default.',
+    '    for (const ch of CHANNELS) {',
+    '      try { await chats[ch].banUser(userId); } catch (e) { console.warn(e); }',
+    '    }',
+    '  },',
+    '  onSpamDetected: (report) => {',
+    '    showToast("spam from " + report.username + " across " + report.channels.length + " channels");',
+    '  },',
+    '});',
+    '',
+    'for (const ch of CHANNELS) {',
+    '  const inst = root.commentsPlugin({',
+    '    channel: ch,',
+    '    width: "100%", height: 400,',
+    '    onComment: (comment) => {',
+    '      const userId = comment.userId || (comment.id ? comment.id.split("-").slice(0,-1).join("-") : null);',
+    '      if (!userId) return;',
+    '      guard.report({',
+    '        channel: ch,',
+    '        userId,',
+    '        username:  comment.username || userId,',
+    '        messageId: comment.id,',
+    '        text:      comment.message || "",',
+    '      });',
+    '    },',
+    '  });',
+    '  document.getElementById("comments-" + ch).innerHTML = String(inst);',
+    '  chats[ch] = inst;',
+    '}',
+  ]);
+
+  // ── 3. Options table ──────────────────────────────────────────────
+  const rows = [
+    ["channelThreshold",                  "3",         "How many distinct channels the same message must appear in before a ban fires."],
+    ["windowMs",                          "60000",     "Sliding window for repeated-message detection. Older messages drop out."],
+    ["similarityThreshold",               "0.92",      "0–1. How similar two messages must be to count as the same. 1.0 = exact match only."],
+    ["minMessageLength",                  "5",         "Messages shorter than this are never flagged."],
+    ["maxHistoryPerUser",                 "50",        "Per-user history cap (memory bound)."],
+    ["autoBan",                           "true",      "If false, fires onSpamDetected only — host decides whether to ban."],
+    ["autoDelete",                        "true",      "If false, ban without clearing past messages."],
+    ["banDurationMs",                     "0",         "0 = permanent. Otherwise auto-unbans the user after N ms."],
+    ["whitelistUserIds",                  "[]",        "Array of user IDs that are never flagged (mods, bots, etc.)."],
+    ["banFn(userId, info)",               "required",  "Your function that actually bans the user. The plugin doesn't know how to ban — you do."],
+    ["deleteFn(messageId, channel)",      "if autoDelete", "Your function that removes a single message."],
+    ["onSpamDetected(report)",            "—",         "Optional. Called BEFORE ban/delete with {userId, username, channels, messages, fingerprint}. Return false to cancel."],
+    ["onBan(userId, info)",               "—",         "Optional. Called AFTER ban completes — useful for logging."],
+  ];
+  const escAttr = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  let tableHtml = '<table><thead><tr><th>Option</th><th>Default</th><th>What it does</th></tr></thead><tbody>';
+  for (const r of rows) {
+    tableHtml += '<tr><td><code>' + escAttr(r[0]) + '</code></td>'
+              +  '<td><code>'    + escAttr(r[1]) + '</code></td>'
+              +  '<td>'          + escAttr(r[2]) + '</td></tr>';
+  }
+  tableHtml += '</tbody></table>';
+  document.getElementById("optionsTable").innerHTML = tableHtml;
+
+  // ── 4. Demo blurb ─────────────────────────────────────────────────
+  document.getElementById("demoBlurb").innerHTML =
+    'Pick a user and channel, type a message, and post. Try posting the same text from <strong>Eve</strong> into 3+ different channels quickly. <span class="badge">windowMs reduced to 30s for the demo</span>';
+})();
+</script>
+
+
+<!-- ───────────────────────── demo wiring ─────────────────────────
+  This page IS the plugin page, so root.$output(...) is the entry point.
+  We use it directly to demo the guard. Consumers would import this page
+  and alias it as e.g. spamChecker, then call root.spamChecker(...).
+-->
+<script>
+(() => {
+  const demoChannels = ["general", "off-topic", "help", "random"];
+
+  const grid    = document.getElementById("channelsGrid");
+  const chanSel = document.getElementById("chanSel");
+  const userSel = document.getElementById("userSel");
+  const msgIn   = document.getElementById("msgInput");
+  const sendBtn = document.getElementById("sendBtn");
+  const clearBtn= document.getElementById("clearBtn");
+  const logEl   = document.getElementById("logEl");
+
+  const channelEls = {};
+  for (const name of demoChannels) {
+    const div = document.createElement("div");
+    div.className = "channel";
+    div.innerHTML = '<div class="channel-head">#' + name + '</div><div class="channel-feed" data-feed="' + name + '"></div>';
+    grid.appendChild(div);
+    channelEls[name] = div.querySelector(".channel-feed");
+    const opt = document.createElement("option");
+    opt.value = name; opt.textContent = "#" + name;
+    chanSel.appendChild(opt);
+  }
+
+  const log = (msg, cls) => {
+    const line = document.createElement("div");
+    if (cls) line.className = cls;
+    line.textContent = "[" + new Date().toLocaleTimeString() + "] " + msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  // The guard is created by calling THIS PAGE's own $output function.
+  // Consumers of the plugin would write `root.spamChecker(...)` — but
+  // here on the plugin page itself we call `root.$output(...)` directly.
+  let guard;
+  try {
+    guard = root.$output({
+      channelThreshold: 3,
+      windowMs: 30000,
+      whitelistUserIds: ["mod"],
+      banFn: (userId, info) => {
+        log("BAN " + userId + " (matched in " + info.spam.channels.length + " channels)", "ev-ban");
+      },
+      deleteFn: (messageId, channel) => {
+        const feed = channelEls[channel];
+        if (!feed) return;
+        const el = feed.querySelector('[data-mid="' + messageId + '"]');
+        if (el) {
+          el.classList.add("deleted");
+          el.classList.remove("banned");
+          el.textContent = "[message removed by spam-guard]";
+          log("CLEAR " + messageId + " from #" + channel, "ev-del");
+        }
+      },
+      onSpamDetected: (report) => {
+        log("SPAM PATTERN from " + (report.username || report.userId) + " across " + report.channels.length + " channels", "ev-ok");
+      },
+    });
+  } catch (e) {
+    log("FAILED to create guard: " + e.message, "ev-ban");
+    console.error(e);
+    return;
+  }
+
+  let msgCounter = 0;
+  function postMessage() {
+    const userId = userSel.value;
+    const username = userSel.options[userSel.selectedIndex].textContent.split(" ")[0];
+    const channel = chanSel.value;
+    const text = msgIn.value.trim();
+    if (!text) return;
+    const messageId = "m" + (++msgCounter);
+
+    const escapeHtml = s => s.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
+    const feed = channelEls[channel];
+    const row = document.createElement("div");
+    row.className = "msg";
+    row.dataset.mid = messageId;
+    row.innerHTML = '<span class="who">' + escapeHtml(username) + ':</span> ' + escapeHtml(text);
+    feed.appendChild(row);
+    feed.scrollTop = feed.scrollHeight;
+
+    Promise.resolve(guard.report({ channel, userId, username, messageId, text }))
+      .then(result => {
+        if (result.banned) {
+          document.querySelectorAll(".msg").forEach(el => {
+            const who = el.querySelector(".who");
+            if (who && who.textContent.replace(":","").trim() === username) {
+              el.classList.add("banned");
+            }
+          });
+        } else if (result.whitelisted) {
+          log("OK " + username + " is whitelisted — skipping check", "ev-ok");
+        }
+      });
+
+    msgIn.value = "";
+    msgIn.focus();
+  }
+
+  sendBtn.addEventListener("click", postMessage);
+  msgIn.addEventListener("keydown", e => { if (e.key === "Enter") postMessage(); });
+  clearBtn.addEventListener("click", () => {
+    Object.values(channelEls).forEach(el => { el.innerHTML = ""; });
+    logEl.innerHTML = "";
+    guard.flush();
+    guard.bannedUsers().forEach(id => guard.unban(id));
+    log("demo state cleared");
+  });
+
+  log("demo ready — try posting the same text from Eve into 3+ channels within 30s");
+})();
+</script>

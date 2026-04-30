@@ -1,0 +1,73 @@
+$meta
+  title = Chat Spam Checker · Example
+  description = Working demo of chat-spam-checker-plugin wired to a multi-channel Perchance comments-plugin chat. Five public channels — general, roleplay, help, off-topic, and share — share a single spam guard. Any user posting the same or near-identical message into 3 or more different channels within a 60-second sliding window is automatically banned across every channel and their historical messages get hidden, with the moderation event logged in a live sidebar so you can see exactly what was flagged and why. Demonstrates the recommended integration pattern for the spam-checker plugin: each channel hosts its own commentsPlugin instance with an onComment handler that feeds messages into one shared root.spamChecker(...) guard, and the guard banFn iterates over every commentsPlugin instance and calls banUser(userId), which the comments-plugin backend treats as both a future-message block and a hide-all-past-messages action. Includes a moderator whitelist for accounts that legitimately cross-post announcements, a beforeSubmit hook that blocks banned users instantly without a network round-trip, and a status panel showing the guard live state. Fork this generator as a starting template for any multi-channel chat that needs anti-spam moderation.
+  header
+    mode = minimal
+
+
+// ══════════════════════════════════════════════════════════════════════
+// chat-spam-checker-plugin-example
+// ══════════════════════════════════════════════════════════════════════
+//
+// IMPORTS
+//   spamChecker     — the cross-channel spam guard plugin
+//   commentsPlugin  — Perchance native comments / chat plugin
+// ══════════════════════════════════════════════════════════════════════
+
+spamChecker    = {import:chat-spam-checker-plugin}
+commentsPlugin = {import:comments-plugin}
+
+
+// ──────────────────────────────────────────────────────────────────────
+// CHANNELS
+// ──────────────────────────────────────────────────────────────────────
+// One item per channel. Format is  channelName|Display Label
+// Add/remove channels here — the HTML panel auto-renders one tab per
+// item. Channel names must be lowercase letters, numbers, and hyphens
+// only (this is enforced by comments-plugin).
+chatChannels
+  general|💬 General
+  roleplay|🎭 Roleplay
+  help|🆘 Help
+  offtopic|🎲 Off-topic
+  share|🔗 Share
+
+
+// ──────────────────────────────────────────────────────────────────────
+// MODERATOR WHITELIST
+// ──────────────────────────────────────────────────────────────────────
+// Add the full prefixed user IDs of your moderators here (format like
+// MW22-abcd1234efgh...). These users are never flagged by the spam guard,
+// so they can post the same announcement in every channel without getting
+// auto-banned. To find your own ID: post a comment, then check the
+// browser console for the "First comment shape" log line.
+moderatorUserIds
+  // MW22-yourmoduserid-here
+  // MW22-anothermoderator
+
+
+// ──────────────────────────────────────────────────────────────────────
+// SPAM-GUARD TUNING
+// ──────────────────────────────────────────────────────────────────────
+// All of these can also be passed inline in the HTML panel call. Edit
+// here for the cleanest source of truth.
+spamGuardConfig
+  channelThreshold = 3       // ban after the same msg appears in 3+ channels
+  windowMs = 60000           // sliding window (60 seconds)
+  similarityThreshold = 0.92 // 0..1 — fuzzy match strictness
+  minMessageLength = 5       // ignore "hi" / "lol" / etc.
+  banDurationMs = 0          // 0 = permanent. Set to e.g. 3600000 for 1h temp ban.
+
+
+// ──────────────────────────────────────────────────────────────────────
+// COMMENTS-PLUGIN GLOBAL OPTIONS
+// ──────────────────────────────────────────────────────────────────────
+// These get merged into every channel's commentsPlugin call.
+sharedCommentOptions
+  width = 100%
+  height = 480
+  rateLimits = 1 per 3 seconds
+  commentPlaceholderText = type a message...
+  newestCommentsAtTop = false
+  // adminPasswordHash = ... // optional — paste your admin hash here for delete buttons
+  // adminFlair = MOD        // optional — flair shown next to admin comments
