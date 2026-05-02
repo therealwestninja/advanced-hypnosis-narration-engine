@@ -2834,6 +2834,31 @@ padding: 16px; margin-bottom: 16px; text-align: left;
   .preview-btn.stop:hover { color: #e07068; border-color: #7a3a38; }
   .preview-hint { font-size: 0.68rem; color: var(--text-faint); }
 
+  /* History &amp; reset row — destructive + history actions get a
+     distinct color so they don't visually mingle with the additive
+     "Add script block" buttons above. Amber accent matches the
+     existing var(--neon-amber) caution palette. The .preview-row-warn
+     class is only used to scope the row's visual weight; spacing is
+     inherited from .preview-row. */
+  .preview-row-warn { margin-top: 6px; }
+  .preview-btn-warn {
+    background: rgba(212,167,114,0.06);
+    border: 1px solid rgba(212,167,114,0.30);
+    color: var(--accent-warm, #d4a772);
+  }
+  .preview-btn-warn:hover {
+    color: #f0c889;
+    border-color: rgba(212,167,114,0.55);
+    background: rgba(212,167,114,0.10);
+  }
+  .preview-btn-warn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: rgba(255,255,255,0.02);
+    color: var(--text-faint);
+    border-color: var(--glass-border);
+  }
+
   /* Phase row action group — used in #phaseList row markup. flex-wrap
      lets each button size to its own content (no equal-width grid),
      so long-text buttons like "🔊 audition" + "✨ generate" + "remove"
@@ -4356,11 +4381,12 @@ padding: 6px 10px; font-size: 1.1rem;
             <label for="pfShareAll" class="pf-label" style="margin:0;cursor:pointer">Use profile details in script</label>
           </div>
           <div class="sublabel" style="font-size:0.58rem;margin-top:-4px;margin-bottom:4px">When off, age / appearance / goals stay on your device only — local recommendations still use them.</div>
-          <!-- Hidden mirrors — kept .checked in lockstep with pfShareAll
-               so getProfile()/applyProfileToForm() keep working unchanged. -->
-          <input type="checkbox" id="pfShareAge" style="display:none" checked>
-          <input type="checkbox" id="pfShareAppearance" style="display:none" checked>
-          <input type="checkbox" id="pfShareGoals" style="display:none" checked>
+          <!-- Bug fix — three hidden mirror checkboxes removed
+               (pfShareAge, pfShareAppearance, pfShareGoals). They
+               existed only to give getProfile() per-field flags to
+               read; that read path is now centralized in getProfile()
+               itself, which derives all per-field share flags from the
+               single visible pfShareAll toggle. -->
           <div class="pf-row"><label class="pf-label">Pronouns</label>
             <select id="pfPronouns" class="pf-select"><option value="">prefer not to say</option><option value="he/him">he / him</option><option value="she/her">she / her</option><option value="they/them">they / them</option><option value="other">other</option></select>
           </div>
@@ -4570,37 +4596,14 @@ padding: 6px 10px; font-size: 1.1rem;
             </div>
           </details>
 
-          <!-- ── S2 — Category-scope share toggles ────────────────────
-               Per-category opt-out for what the AI sees. Sits inside the
-               More profile data wrapper since the categories are exactly
-               the inner sections. The local Director ALWAYS reads every
-               category for safety gating (e.g. C3 health-notes block, C6
-               low-susceptibility filter); these toggles only gate AI
-               prompt assembly. -->
-          <details class="pf-extended" style="margin-top:10px">
-            <summary style="font-size:0.7rem;font-weight:600;color:var(--text);cursor:pointer;padding:6px 0">🔒 What the AI sees</summary>
-            <div class="sublabel" style="font-size:0.58rem;margin-bottom:8px;color:var(--text-faint)">Default ON for every category. Turning a category OFF hides those fields from the AI prompt only — the local Director and safety gates still use them. Identity (name, age, appearance, goals) uses the per-field share-toggles next to each field above.</div>
-            <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:0.74rem;color:var(--text-dim);cursor:pointer">
-              <input type="checkbox" id="pfCatShare_practiceContext" checked>
-              <span><strong>Practice Context</strong> <span style="color:var(--text-faint)">— typical time, space, posture, co-presence</span></span>
-            </label>
-            <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:0.74rem;color:var(--text-dim);cursor:pointer">
-              <input type="checkbox" id="pfCatShare_lifeContext" checked>
-              <span><strong>Current Life Context</strong> <span style="color:var(--text-faint)">— themes, stressors, wins, health notes</span></span>
-            </label>
-            <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:0.74rem;color:var(--text-dim);cursor:pointer">
-              <input type="checkbox" id="pfCatShare_style" checked>
-              <span><strong>Style Preferences</strong> <span style="color:var(--text-faint)">— metaphor density, authority, touch, spiritual frame</span></span>
-            </label>
-            <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:0.74rem;color:var(--text-dim);cursor:pointer">
-              <input type="checkbox" id="pfCatShare_susceptibility" checked>
-              <span><strong>Hypnotic Susceptibility</strong> <span style="color:var(--text-faint)">— HIP brief score (Director uses regardless)</span></span>
-            </label>
-            <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:0.74rem;color:var(--text-dim);cursor:pointer">
-              <input type="checkbox" id="pfCatShare_anchors" checked>
-              <span><strong>Personal Anchors</strong> <span style="color:var(--text-faint)">— safe place, power object, resource memory</span></span>
-            </label>
-          </details>
+          <!-- Bug fix — "What the AI sees" per-category toggles
+               removed. Their function is fully covered by the master
+               "Use profile details in script" toggle above (pfShareAll),
+               which now gates every category through _isCategoryShared.
+               One toggle, one mental model — no duplicate state.
+               Per-field share toggles next to identity fields (Age,
+               Appearance, Goals) are also gone; pfShareAll is the
+               single switch. -->
           </details><!-- /.pf-more-profile -->
           <div class="sublabel" style="font-size:0.58rem;margin-top:4px">Profile stays on your device. Local recommendations always use these fields; the AI only sees them when "Use profile details in script" is on.</div>
         </div>
@@ -4611,7 +4614,12 @@ padding: 6px 10px; font-size: 1.1rem;
           <div id="sidebarStats"></div>
           <div id="heatmapWrap" style="margin-top:6px"></div>
         </details>
-        <details id="sessionHistoryDetails">
+        <!-- Bug fix — session history is now gated behind the Debug
+             checkbox in Options. It surfaces internal session state
+             (call metadata, profile change log, AI activity) that's
+             primarily useful for development. Hidden by default;
+             revealed when state._debug flips on. -->
+        <details id="sessionHistoryDetails" style="display:none">
           <summary>session history</summary>
           <div id="sessionStatsPanel"></div>
           <div class="history-list" id="sessionHistoryList"></div>
@@ -4640,8 +4648,9 @@ padding: 6px 10px; font-size: 1.1rem;
         </details>
         <!-- B5 — Director audit panel. Surfaces every recommendation +
              every adaptive-weight rating mutation in a chronological
-             feed so power users can debug their adaptive trajectory. -->
-        <details id="directorAuditDetails">
+             feed so power users can debug their adaptive trajectory.
+             Bug fix — hidden by default; revealed when Debug is on. -->
+        <details id="directorAuditDetails" style="display:none">
           <summary>director audit</summary>
           <div class="sublabel" style="font-size:0.6rem;margin:6px 0 4px;color:var(--text-faint)">Each entry shows what the recommendation engine picked, with what inputs, and which filters fired. Local-only; never uploaded.</div>
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;align-items:center">
@@ -4973,6 +4982,7 @@ padding: 6px 10px; font-size: 1.1rem;
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">
             <button type="button" id="customIntentionNewBtn"      class="btn secondary" style="padding:3px 10px;font-size:0.66rem">+ new</button>
+            <button type="button" id="customIntentionDupBtn"      class="btn secondary" style="padding:3px 10px;font-size:0.66rem" title="Create an editable copy of the currently-selected intention">⎘ duplicate selected</button>
             <button type="button" id="customIntentionImportBtn"   class="btn secondary" style="padding:3px 10px;font-size:0.66rem">import</button>
             <button type="button" id="customIntentionExportAllBtn" class="btn secondary" style="padding:3px 10px;font-size:0.66rem">export all</button>
             <button type="button" id="customIntentionShareAllBtn"  class="btn secondary" style="padding:3px 10px;font-size:0.66rem">share bundle</button>
@@ -5277,12 +5287,12 @@ I return to myself easily"></textarea>
             <option value="vortex">Vortex — multi-arm rotating star ⚠ motion</option>
             <option value="mandala">Mandala — rotating symmetric petals</option>
             <option value="lissajous">Lissajous — parametric figure-8</option>
-            <option value="pendulum-viz">Pendulum — harmonograph traces</option>
+            <option value="pendulum-viz">Harmonograph — slowly-precessing two-axis trace</option>
           </optgroup>
           <optgroup label="Stage Props">
             <option value="pocket-watch">Pocket watch — swinging on a chain</option>
             <option value="spinning-coin">Spinning coin — slow rotating disc</option>
-            <option value="hand-pendulum">Hand pendulum — Chevreul's bob</option>
+            <option value="hand-pendulum">Pendulum (swinging) — bob hangs from a string</option>
           </optgroup>
           <optgroup label="Intense">
             <option value="flowfield">Flow field — particle wind ⚠ motion</option>
@@ -5598,6 +5608,175 @@ I return to myself easily"></textarea>
         </div>
       </div>
 
+      <!-- ── Live sensing (webcam + mic + biometric bridge) ──
+           Bug fix continuation — these per-session opt-ins were
+           previously on Step 6 but belong with the rest of the session
+           configuration on Step 5, ABOVE the haptic settings. The
+           privacy framing stays unified under one panel because all
+           three share the "local-only, per-session, off by default"
+           contract. -->
+      <div class="live-sensing-panel" style="margin-top:14px;padding:10px 12px;background:rgba(120,180,240,0.04);border:0.5px solid rgba(120,180,240,0.18);border-radius:6px">
+        <div style="font-size:0.72rem;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">📡 Live sensing <span style="color:var(--text-faint);font-weight:400;text-transform:none;letter-spacing:0">— optional, per-session</span></div>
+        <div class="hint" style="line-height:1.5;margin-bottom:10px;font-size:0.7rem">
+          <strong style="color:var(--text)">All processing happens locally.</strong> No camera or microphone data is saved, transmitted, or sent to any server. Streams stop the moment the session ends.
+        </div>
+        <label class="toggle-row toggle-row-cb" for="webcamOptInThisSession" style="align-items:flex-start;padding:6px 0">
+          <input type="checkbox" id="webcamOptInThisSession">
+          <span>
+            📷 Webcam awareness
+            <span class="hint" style="line-height:1.5">Face presence, eye state (phase-aware — closed eyes are good during trance), and ambient room brightness for visualizer dimming. Loads ~3-5MB MediaPipe on first enable.</span>
+          </span>
+        </label>
+        <label class="toggle-row toggle-row-cb" for="micOptInThisSession" style="align-items:flex-start;padding:6px 0;margin-top:4px">
+          <input type="checkbox" id="micOptInThisSession">
+          <span>
+            🎙 Microphone (breath-aware pacing)
+            <span class="hint" style="line-height:1.5">Detects your actual exhale rhythm via amplitude envelope and adapts pause durations during breath-paced phases. No audio recorded. Falls back to fixed timer in noisy rooms or after 3 silent breaths.</span>
+          </span>
+        </label>
+        <!-- Mic status indicator — appears once mic is granted; shows
+             the latest detected exhale or "listening…" when idle. -->
+        <div id="micStatusRow" style="display:none;font-size:0.66rem;color:var(--text-faint);margin-top:6px;padding-left:24px">
+          <span id="micStatusDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;margin-right:6px;vertical-align:middle"></span>
+          <span id="micStatusText">listening…</span>
+        </div>
+        <!-- Biometric sensor bridge (Round 25, Pass 9). Same per-session
+             opt-in pattern; loopback WebSocket to a local adapter that
+             pushes biometric signals into the engagement engine. -->
+        <label class="toggle-row toggle-row-cb" for="sensorBridgeOptInThisSession" style="align-items:flex-start;padding:6px 0;margin-top:4px">
+          <input type="checkbox" id="sensorBridgeOptInThisSession">
+          <span>
+            📈 Biometric sensor bridge
+            <span class="hint" style="line-height:1.5">
+              Connects to a local adapter (default <code style="font-size:0.65rem">ws://localhost:8765</code>) pushing JSON like
+              <code style="font-size:0.65rem">\{"signal":"heartRate","value":0.5,"weight":0.4\}</code>.
+              Recognized signals: heartRate, hrv, gsr, breath, eegFocus, custom1-3. Each feeds the engagement engine. Intended for self-hosted bridges (e.g. a Polar/Muse adapter you run locally).
+            </span>
+          </span>
+        </label>
+        <div id="sensorBridgeStatusRow" style="display:none;font-size:0.66rem;color:var(--text-faint);margin-top:6px;padding-left:24px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span id="sensorBridgeDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;vertical-align:middle"></span>
+            <span id="sensorBridgeStatusText">not connected</span>
+            <input type="text" id="sensorBridgeUrl" value="ws://localhost:8765" style="background:rgba(0,0,0,0.3);border:0.5px solid var(--border,rgba(255,255,255,0.15));border-radius:4px;color:var(--text);font-size:0.66rem;padding:2px 6px;width:170px;font-family:monospace">
+            <button type="button" id="sensorBridgeReconnectBtn" class="btn secondary" style="padding:2px 10px;font-size:0.66rem">reconnect</button>
+          </div>
+          <div id="sensorBridgeSignalsLine" style="font-size:0.62rem;color:var(--text-faint);margin-top:4px;font-family:monospace;min-height:1.3em"></div>
+        </div>
+      </div>
+
+      <!-- ── Haptic devices (Bug fix — clustered settings on Step 5) ──
+           Previously the haptic toggle lived on Step 6 alongside webcam
+           and mic in the Live Sensing panel. That's the wrong step for
+           configuration: by Step 6 the user's already reviewing their
+           generated script and about to begin. Configuration belongs
+           with the rest of the session settings on Step 5.
+           This panel clusters:
+             - Haptic enable + Intiface/Buttplug URL
+             - Status / test pulse / reconnect
+             - FunScript loading + pattern picker + macro library
+             - Pattern editor button (Pass 15 canvas curve editor)
+             - Live control + intensity ramp -->
+      <div class="field-group" id="hapticPanel" style="margin-top:14px">
+        <div class="field-label">Haptic devices <span class="hint" style="font-weight:normal;text-transform:none;letter-spacing:0;color:var(--text-faint);font-size:0.66rem;margin-left:6px">— optional, per-session</span></div>
+        <div class="hint" style="line-height:1.5;margin-bottom:8px;font-size:0.7rem">
+          External haptic device support via local <a href="https://intiface.com/central/" target="_blank" rel="noopener" style="color:var(--text-dim);text-decoration:underline">Intiface Central</a>. Install Intiface, run it, then enable here. Connection is loopback-only — nothing leaves your machine.
+        </div>
+        <label class="toggle-row toggle-row-cb" for="hapticOptInThisSession" style="align-items:flex-start;padding:6px 0">
+          <input type="checkbox" id="hapticOptInThisSession">
+          <span>
+            🎛 External haptic device
+            <span class="hint" style="line-height:1.5">
+              Drive Bluetooth haptic devices in time with the session — breath pacing, phase boundaries, scripted accents from <code style="font-size:0.65rem">\[HAPTIC:…\]</code> sentinels.
+            </span>
+          </span>
+        </label>
+        <!-- Buttplug.io / Intiface URL — moved here so users can point at
+             a non-default port without editing the source. Defaults to
+             ws://127.0.0.1:12345 (Intiface Central's default). The
+             value is read at connect-time by hapticBridge.connect(). -->
+        <div id="hapticIntifaceRow" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;padding-left:24px;font-size:0.66rem">
+          <span style="color:var(--text-faint)">Intiface URL</span>
+          <input type="text" id="hapticIntifaceUrl" value="ws://127.0.0.1:12345" style="background:rgba(0,0,0,0.3);border:0.5px solid var(--border,rgba(255,255,255,0.15));border-radius:4px;color:var(--text);font-size:0.66rem;padding:2px 6px;width:200px;font-family:monospace">
+          <span class="hint" style="font-size:0.62rem">Buttplug.io v3 / WebSocket. Loopback only.</span>
+        </div>
+        <div id="hapticStatusRow" style="display:none;font-size:0.66rem;color:var(--text-faint);margin-top:6px;padding-left:24px">
+          <span id="hapticStatusDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;margin-right:6px;vertical-align:middle"></span>
+          <span id="hapticStatusText">not connected</span>
+          <button type="button" id="hapticTestBtn" class="btn secondary" style="display:none;margin-left:10px;padding:2px 10px;font-size:0.66rem">test pulse</button>
+          <button type="button" id="hapticReconnectBtn" class="btn secondary" style="display:none;margin-left:6px;padding:2px 10px;font-size:0.66rem">reconnect</button>
+        </div>
+        <!-- FunScript timeline + pattern editor button (Bug fix —
+             clustered with haptic settings on Step 5). The pattern
+             editor is the canvas curve editor from Pass 15; it opens
+             the same modal the pattern picker's "+ new" button uses,
+             but is reachable independent of having a pattern selected. -->
+        <div id="funscriptRow" style="display:none;font-size:0.66rem;color:var(--text-faint);margin-top:8px;padding-left:24px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <label for="funscriptFile" class="btn secondary" style="padding:3px 12px;font-size:0.66rem;cursor:pointer;margin:0">📁 load .funscript</label>
+            <input type="file" id="funscriptFile" accept=".funscript,.json,application/json" style="display:none">
+            <button type="button" id="funscriptPatternBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem">✨ load pattern</button>
+            <button type="button" id="funscriptEditorBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem" title="Open the canvas-based pattern editor — draw your own haptic curve directly">📈 pattern editor</button>
+            <button type="button" id="hapticMacroLibraryBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem" title="Browse + manage haptic macros (short reusable clips fired via \[HAPTIC:macro=name\] sentinels or rule actions)">🎬 macros</button>
+            <span id="funscriptStatus" style="font-style:italic">no track loaded</span>
+            <button type="button" id="funscriptClearBtn" class="btn secondary" style="display:none;padding:2px 10px;font-size:0.66rem">clear</button>
+          </div>
+          <div class="hint" style="font-size:0.62rem;line-height:1.45;margin-top:4px">
+            Time-coded position script — plays through the connected device alongside the session. Built-in patterns are math-generated and meditation-aligned. Max 5 MB.
+          </div>
+          <details id="liveControlDetails" style="margin-top:10px;padding:6px 8px;background:rgba(255,255,255,0.025);border:0.5px solid rgba(255,255,255,0.08);border-radius:4px">
+            <summary style="font-size:0.7rem;color:var(--text-dim);cursor:pointer">▸ live control + intensity ramp</summary>
+            <div style="margin-top:8px;display:grid;grid-template-columns:90px 1fr 60px;gap:6px 12px;align-items:center;font-size:0.66rem">
+              <label style="color:var(--text-dim)">intensity</label>
+              <input id="liveCtrlIntensity" type="range" min="0" max="2" step="0.05" value="1" style="width:100%">
+              <span id="liveCtrlIntensityV" style="font-family:monospace;text-align:right">1.00×</span>
+              <label style="color:var(--text-dim)">speed</label>
+              <input id="liveCtrlSpeed" type="range" min="0.25" max="4" step="0.05" value="1" style="width:100%">
+              <span id="liveCtrlSpeedV" style="font-family:monospace;text-align:right">1.00×</span>
+              <label style="color:var(--text-dim)">randomness</label>
+              <input id="liveCtrlRandom" type="range" min="0" max="1" step="0.05" value="0" style="width:100%">
+              <span id="liveCtrlRandomV" style="font-family:monospace;text-align:right">0%</span>
+            </div>
+            <div style="margin-top:10px;padding-top:8px;border-top:0.5px solid rgba(255,255,255,0.06)">
+              <label style="display:flex;align-items:center;gap:6px;font-size:0.7rem;color:var(--text);cursor:pointer">
+                <input type="checkbox" id="rampEnable">
+                intensity ramp
+                <span class="hint" style="font-size:0.6rem">— auto-escalate intensity over the session</span>
+              </label>
+              <div id="rampPanel" style="display:none;margin-top:6px;font-size:0.66rem">
+                <div style="display:grid;grid-template-columns:80px 1fr 80px 1fr;gap:6px 10px;align-items:center">
+                  <label style="color:var(--text-dim)">mode</label>
+                  <select id="rampMode" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem">
+                    <option value="time">time</option>
+                    <option value="engagement">engagement</option>
+                    <option value="step">step</option>
+                    <option value="adaptive">adaptive (time+eng)</option>
+                  </select>
+                  <label style="color:var(--text-dim)">curve</label>
+                  <select id="rampCurve" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem">
+                    <option value="linear">linear</option>
+                    <option value="exponential">exponential</option>
+                    <option value="sine">sine</option>
+                  </select>
+                  <label style="color:var(--text-dim)">start</label>
+                  <input id="rampStart" type="number" min="0" max="2" step="0.1" value="0.5" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem;font-family:monospace">
+                  <label style="color:var(--text-dim)">end</label>
+                  <input id="rampEnd" type="number" min="0" max="2" step="0.1" value="1.5" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem;font-family:monospace">
+                  <label style="color:var(--text-dim)">blend</label>
+                  <select id="rampBlend" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem">
+                    <option value="max">max(slider, ramp)</option>
+                    <option value="add">slider + (ramp-1)</option>
+                    <option value="replace">replace slider</option>
+                  </select>
+                  <span></span><span></span>
+                </div>
+                <div id="rampStatusLine" style="margin-top:6px;font-size:0.62rem;color:var(--text-faint);font-family:monospace"></div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
       <div class="disclaimer" id="configWarning" style="display:none"></div>
     </div>
 
@@ -5702,11 +5881,11 @@ I return to myself easily"></textarea>
         </details>
 
         <!-- Session variables (Round 25, Pass 11) — runtime values you
-             can reference in scripts via {{name}} and read/set from
+             can reference in scripts via \{\{name\}\} and read/set from
              rule actions (setVar) or rule conditions (metric: 'var:name').
              Definitions persist in localStorage; values reset at each
              session start. Unknown names fall through unchanged so a
-             script that references {{undefined_var}} just shows that
+             script that references \{\{undefined_var\}\} just shows that
              literal text in playback. -->
         <details class="presets-collapsible" id="sessionVariablesDetails" style="margin-bottom:14px">
           <summary>
@@ -5715,7 +5894,7 @@ I return to myself easily"></textarea>
             <span class="presets-hint">tap to expand · advanced</span>
           </summary>
           <div class="sublabel" style="margin-top:8px;margin-bottom:6px">
-            Named values you can reference in scripts as <code style="font-size:0.78rem">{{name}}</code> and read/set from runtime rules (<code style="font-size:0.78rem">setVar</code> action; <code style="font-size:0.78rem">metric: 'var:name'</code> condition). Definitions stick across sessions; current values reset at session start.
+            Named values you can reference in scripts as <code style="font-size:0.78rem">\{\{name\}\}</code> and read/set from runtime rules (<code style="font-size:0.78rem">setVar</code> action; <code style="font-size:0.78rem">metric: 'var:name'</code> condition). Definitions stick across sessions; current values reset at session start.
           </div>
           <div style="display:flex;gap:6px;align-items:center;margin:8px 0;flex-wrap:wrap">
             <input type="text" id="sessionVariableNewName" placeholder="name" maxlength="32" style="background:rgba(0,0,0,0.3);border:0.5px solid var(--border,rgba(255,255,255,0.15));color:var(--text);border-radius:4px;font-size:0.7rem;padding:4px 8px;width:120px;font-family:monospace">
@@ -5760,110 +5939,10 @@ I return to myself easily"></textarea>
         <div class="begin-session-row">
           <button class="btn-primary-action" id="beginBtn">begin session →</button>
         </div>
-        <!-- Live sensing — webcam + mic. Both are per-session opt-in
-             (state resets on finishSession), both run fully local, both
-             stop the underlying media stream at session end. Grouped
-             under one panel so the privacy framing is unified rather
-             than scattered across separate toggles. -->
-        <div class="live-sensing-panel" style="margin-top:10px;padding:10px 12px;background:rgba(120,180,240,0.04);border:0.5px solid rgba(120,180,240,0.18);border-radius:6px">
-          <div style="font-size:0.72rem;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">📡 Live sensing <span style="color:var(--text-faint);font-weight:400;text-transform:none;letter-spacing:0">— optional, per-session</span></div>
-          <div class="hint" style="line-height:1.5;margin-bottom:10px;font-size:0.7rem">
-            <strong style="color:var(--text)">All processing happens locally.</strong> No camera or microphone data is saved, transmitted, or sent to any server. Streams stop the moment the session ends.
-          </div>
-          <label class="toggle-row toggle-row-cb" for="webcamOptInThisSession" style="align-items:flex-start;padding:6px 0">
-            <input type="checkbox" id="webcamOptInThisSession">
-            <span>
-              📷 Webcam awareness
-              <span class="hint" style="line-height:1.5">Face presence, eye state (phase-aware — closed eyes are good during trance), and ambient room brightness for visualizer dimming. Loads ~3-5MB MediaPipe on first enable.</span>
-            </span>
-          </label>
-          <label class="toggle-row toggle-row-cb" for="micOptInThisSession" style="align-items:flex-start;padding:6px 0;margin-top:4px">
-            <input type="checkbox" id="micOptInThisSession">
-            <span>
-              🎙 Microphone (breath-aware pacing)
-              <span class="hint" style="line-height:1.5">Detects your actual exhale rhythm via amplitude envelope and adapts pause durations during breath-paced phases. No audio recorded. Falls back to fixed timer in noisy rooms or after 3 silent breaths.</span>
-            </span>
-          </label>
-          <!-- Mic status indicator — appears once mic is granted; shows
-               the latest detected exhale or "listening…" when idle. -->
-          <div id="micStatusRow" style="display:none;font-size:0.66rem;color:var(--text-faint);margin-top:6px;padding-left:24px">
-            <span id="micStatusDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;margin-right:6px;vertical-align:middle"></span>
-            <span id="micStatusText">listening…</span>
-          </div>
-          <!-- External haptic device support (Round 25, Pass 6).
-               Connects to a local Intiface server (ws://127.0.0.1:12345)
-               which speaks Buttplug.io protocol to a wide range of
-               BLE-capable haptic devices. The device pulses on breath
-               cues, phase boundaries, and any [HAPTIC:pulse] scene
-               sentinels the AI emits. Per-session opt-in; disconnects
-               cleanly at session end. Off by default; the connection
-               only attempts when the user toggles it on. -->
-          <label class="toggle-row toggle-row-cb" for="hapticOptInThisSession" style="align-items:flex-start;padding:6px 0;margin-top:4px">
-            <input type="checkbox" id="hapticOptInThisSession">
-            <span>
-              🎛 External haptic device
-              <span class="hint" style="line-height:1.5">
-                Connects to a local <a href="https://intiface.com/central/" target="_blank" rel="noopener" style="color:var(--text-dim);text-decoration:underline">Intiface Central</a> server (ws://127.0.0.1:12345) to drive Bluetooth haptic devices in time with the session — breath pacing, phase boundaries, and scripted accents. Install Intiface, run it, hit "scan", then enable here. Nothing leaves your machine; the WebSocket stays loopback-only.
-              </span>
-            </span>
-          </label>
-          <div id="hapticStatusRow" style="display:none;font-size:0.66rem;color:var(--text-faint);margin-top:6px;padding-left:24px">
-            <span id="hapticStatusDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;margin-right:6px;vertical-align:middle"></span>
-            <span id="hapticStatusText">not connected</span>
-            <button type="button" id="hapticTestBtn" class="btn secondary" style="display:none;margin-left:10px;padding:2px 10px;font-size:0.66rem">test pulse</button>
-            <button type="button" id="hapticReconnectBtn" class="btn secondary" style="display:none;margin-left:6px;padding:2px 10px;font-size:0.66rem">reconnect</button>
-          </div>
-          <!-- FunScript timeline (Round 25, Pass 7) — load a .funscript file
-               and play it as a continuous position timeline through the same
-               haptic bridge that drives [HAPTIC:pulse] sentinels and breath
-               cues. Designed for stroke-capable devices (LinearCmd path);
-               on vibrate-only devices the bridge falls back to mapping
-               position deviation to vibration intensity.
-               File picker shown only when the haptic toggle is on; loaded
-               track persists across sessions in localStorage as a stub
-               (filename + actions count) — the actions themselves are
-               re-loaded from session memory via the picker each session
-               start to keep storage budget bounded. -->
-          <div id="funscriptRow" style="display:none;font-size:0.66rem;color:var(--text-faint);margin-top:8px;padding-left:24px">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <label for="funscriptFile" class="btn secondary" style="padding:3px 12px;font-size:0.66rem;cursor:pointer;margin:0">📁 load .funscript</label>
-              <input type="file" id="funscriptFile" accept=".funscript,.json,application/json" style="display:none">
-              <button type="button" id="funscriptPatternBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem">✨ load pattern</button>
-              <span id="funscriptStatus" style="font-style:italic">no track loaded</span>
-              <button type="button" id="funscriptClearBtn" class="btn secondary" style="display:none;padding:2px 10px;font-size:0.66rem">clear</button>
-            </div>
-            <div class="hint" style="font-size:0.62rem;line-height:1.45;margin-top:4px">
-              Time-coded position script — plays through the connected device alongside the session. Public-domain corpora exist on community sites. Built-in patterns are math-generated and meditation-aligned. Max 5 MB.
-            </div>
-          </div>
-          <!-- Sensor bridge (Round 25, Pass 9). Opens a WebSocket to a
-               local adapter pushing biometric signals (HR, HRV, GSR,
-               breath, EEG focus, etc.) as JSON. Each signal feeds into
-               the engagement engine via setEngineSignal() with its own
-               weight. Loopback-only by design — the URL field defaults
-               to ws://localhost:8765 and reasonable users won't point
-               it elsewhere. Per-session opt-in like webcam/mic/haptic. -->
-          <label class="toggle-row toggle-row-cb" for="sensorBridgeOptInThisSession" style="align-items:flex-start;padding:6px 0;margin-top:4px">
-            <input type="checkbox" id="sensorBridgeOptInThisSession">
-            <span>
-              📈 Biometric sensor bridge
-              <span class="hint" style="line-height:1.5">
-                Connects to a local adapter (default <code style="font-size:0.65rem">ws://localhost:8765</code>) pushing JSON like
-                <code style="font-size:0.65rem">{"signal":"heartRate","value":0.5,"weight":0.4}</code>.
-                Recognized signals: heartRate, hrv, gsr, breath, eegFocus, custom1-3. Each feeds the engagement engine. Intended for self-hosted bridges (e.g. a Polar/Muse adapter you run locally).
-              </span>
-            </span>
-          </label>
-          <div id="sensorBridgeStatusRow" style="display:none;font-size:0.66rem;color:var(--text-faint);margin-top:6px;padding-left:24px">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span id="sensorBridgeDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;vertical-align:middle"></span>
-              <span id="sensorBridgeStatusText">not connected</span>
-              <input type="text" id="sensorBridgeUrl" value="ws://localhost:8765" style="background:rgba(0,0,0,0.3);border:0.5px solid var(--border,rgba(255,255,255,0.15));border-radius:4px;color:var(--text);font-size:0.66rem;padding:2px 6px;width:170px;font-family:monospace">
-              <button type="button" id="sensorBridgeReconnectBtn" class="btn secondary" style="padding:2px 10px;font-size:0.66rem">reconnect</button>
-            </div>
-            <div id="sensorBridgeSignalsLine" style="font-size:0.62rem;color:var(--text-faint);margin-top:4px;font-family:monospace;min-height:1.3em"></div>
-          </div>
-        </div>
+        <!-- Live sensing (webcam, mic, biometric sensor bridge) and the
+             haptic settings have moved to Step 5 (Configure the Session)
+             so all per-session opt-ins live in one place during config
+             rather than alongside the begin-session button. -->
         <div class="detail-panel" id="phaseEditorPanel" style="margin-top:12px; display:none">
           <div class="detail-title" style="display:flex;align-items:center;gap:10px">
             <span>phase order</span>
@@ -5876,24 +5955,37 @@ I return to myself easily"></textarea>
                renderPhaseEditor so reorders/removes refresh both. -->
           <div id="phaseTimelineWrap" style="margin-bottom:10px"></div>
           <div id="phaseEditorList"></div>
-          <div class="preview-row" style="margin-top:10px">
-            <button class="preview-btn" id="addInductionPhaseBtn" title="Adds an Induction — auto-adds Wake + Reintroduction if missing">+ add induction</button>
-            <button class="preview-btn" id="addDeepenerPhaseBtn" title="Adds a Deepener — auto-adds a paired Lightener. Stackable for nested deepening.">+ add deepener (nest)</button>
-            <button class="preview-btn" id="addLevelPhaseBtn" title="Adds a Level — sustained-depth tonic between two deepeners. Holds the user at the current depth before going deeper.">+ add level</button>
-            <button class="preview-btn" id="addWorkPhaseBtn">+ add work block</button>
-            <button class="preview-btn" id="addAffirmPhaseBtn">+ add affirmation</button>
-            <button class="preview-btn" id="addTrainingPhaseBtn" title="Adds a Training — skill rehearsal in trance. Lead the user through 3-5 repetitions of one specific practice (mental, sensory, or somatic). Each rep slightly easier than the last.">+ add training</button>
-            <button class="preview-btn" id="addTeachingPhaseBtn" title="Adds a Teaching — psychoeducation primer in plain language. Explains the method, normalizes the experience, sets expectations. Best slotted between settling and induction.">+ add teaching</button>
-            <button class="preview-btn" id="addGoalPhaseBtn" title="Adds a Goal — outcome anchor / future-pacing. Vivid sensory rehearsal of what success FEELS like (somatic), not a goal-setting exercise (cognitive).">+ add goal</button>
-            <button class="preview-btn" id="addMissionPhaseBtn" title="Adds a Mission — concrete posthypnotic homework. ONE small doable task tied to waking life. Delivered as the user is surfacing.">+ add mission</button>
-            <button class="preview-btn" id="addSoundingPhaseBtn" title="Adds a Sounding — a brief meta-awareness pause where the user notices their current internal state without changing it.">+ add sounding</button>
-            <button class="preview-btn" id="addCustomPhaseBtn" title="Adds a user-authored block. Edit the text directly, or use Reimagine to have your guide rewrite it.">+ add custom</button>
-            <button class="preview-btn" id="addLightenerPhaseBtn">+ add lightener</button>
-            <button class="preview-btn" id="addWakePhaseBtn">+ add wake</button>
-            <button class="preview-btn" id="addReintroPhaseBtn">+ add reintro</button>
-            <button class="preview-btn" id="normalizePhaseOrderBtn">reset to default order</button>
-            <button class="preview-btn" id="undoBtn" disabled title="Undo (Ctrl+Z / Cmd+Z)">↶ undo</button>
-            <button class="preview-btn" id="redoBtn" disabled title="Redo (Ctrl+Shift+Z / Cmd+Shift+Z)">↷ redo</button>
+          <!-- Bug fix — restructured "Add script block" picker. Each button
+               is just the block name (no "+ add" prefix); a subtitle marks
+               the block-add row; reset / undo / redo live on their own row
+               below with distinct accent styling so destructive + history
+               actions don't visually mingle with the additive ones. -->
+          <div class="sublabel" style="margin-top:14px;margin-bottom:6px;font-size:0.7rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em">Add script block</div>
+          <div class="preview-row">
+            <button class="preview-btn" id="addIntroductionPhaseBtn" title="Adds an Introduction — brief opener where the guide introduces themselves and names the session theme. Sits at the very front, before settling.">introduction</button>
+            <button class="preview-btn" id="addPermissionPhaseBtn" title="Adds a Permission block — asks the user to consent to the work, out loud, with a head nod, or silently inside. Sits after introduction, before settling.">permission</button>
+            <button class="preview-btn" id="addInductionPhaseBtn" title="Adds an Induction — auto-adds Wake + Reintroduction if missing">induction</button>
+            <button class="preview-btn" id="addDeepenerPhaseBtn" title="Adds a Deepener — auto-adds a paired Lightener. Stackable for nested deepening.">deepener (nest)</button>
+            <button class="preview-btn" id="addLevelPhaseBtn" title="Adds a Level — sustained-depth tonic between two deepeners. Holds the user at the current depth before going deeper.">level</button>
+            <button class="preview-btn" id="addWorkPhaseBtn">work block</button>
+            <button class="preview-btn" id="addAffirmPhaseBtn">affirmation</button>
+            <button class="preview-btn" id="addPraisePhaseBtn" title="Adds a Praise block — guide notices and validates something specific the user just did. Sits after work / affirm, before lightener.">praise</button>
+            <button class="preview-btn" id="addRewardPhaseBtn" title="Adds a Reward — felt-sense payoff for the work just done (a small ease, a quiet warmth). Body-level, present-moment. Sits after praise / work.">reward</button>
+            <button class="preview-btn" id="addTrainingPhaseBtn" title="Adds a Training — skill rehearsal in trance. Lead the user through 3-5 repetitions of one specific practice (mental, sensory, or somatic). Each rep slightly easier than the last.">training</button>
+            <button class="preview-btn" id="addTeachingPhaseBtn" title="Adds a Teaching — psychoeducation primer in plain language. Explains the method, normalizes the experience, sets expectations. Best slotted between settling and induction.">teaching</button>
+            <button class="preview-btn" id="addGoalPhaseBtn" title="Adds a Goal — outcome anchor / future-pacing. Vivid sensory rehearsal of what success FEELS like (somatic), not a goal-setting exercise (cognitive).">goal</button>
+            <button class="preview-btn" id="addMissionPhaseBtn" title="Adds a Mission — concrete posthypnotic homework. ONE small doable task tied to waking life. Delivered as the user is surfacing.">mission</button>
+            <button class="preview-btn" id="addSoundingPhaseBtn" title="Adds a Sounding — a brief meta-awareness pause where the user notices their current internal state without changing it.">sounding</button>
+            <button class="preview-btn" id="addCustomPhaseBtn" title="Adds a user-authored block. Edit the text directly, or use Reimagine to have your guide rewrite it.">custom</button>
+            <button class="preview-btn" id="addLightenerPhaseBtn">lightener</button>
+            <button class="preview-btn" id="addWakePhaseBtn">wake</button>
+            <button class="preview-btn" id="addReintroPhaseBtn">reintro</button>
+          </div>
+          <div class="sublabel" style="margin-top:14px;margin-bottom:6px;font-size:0.7rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em">History &amp; reset</div>
+          <div class="preview-row preview-row-warn">
+            <button class="preview-btn preview-btn-warn" id="normalizePhaseOrderBtn">↺ reset to default order</button>
+            <button class="preview-btn preview-btn-warn" id="undoBtn" disabled title="Undo (Ctrl+Z / Cmd+Z)">↶ undo</button>
+            <button class="preview-btn preview-btn-warn" id="redoBtn" disabled title="Redo (Ctrl+Shift+Z / Cmd+Shift+Z)">↷ redo</button>
           </div>
           <!-- Reimagine mode toggle — used by Custom block ✨ buttons -->
           <div id="reimagineModeRow" style="margin-top:10px; padding:8px 10px; background:var(--bg-soft); border:1px solid var(--glass-border); display:none">
@@ -6219,7 +6311,7 @@ I return to myself easily"></textarea>
             <option value="vortex">Vortex</option>
             <option value="mandala">Mandala</option>
             <option value="lissajous">Lissajous</option>
-            <option value="pendulum-viz">Pendulum</option>
+            <option value="pendulum-viz">Harmonograph</option>
           </optgroup>
           <optgroup label="Intense">
             <option value="flowfield">Flow field</option>
@@ -8840,24 +8932,26 @@ I return to myself easily"></textarea>
   } catch {} // already defined or non-extensible — fine
 
   const PHASE_DURATIONS = {
-    micro:    { settling: 15,  induction: 30,  deepener: 15,  level: 10,  work: 60,   lightener: 15,  wake: 12, reintroduction: 20, teaching: 25,  training: 45,  mission: 20,  goal: 30  },
-    quick:    { settling: 30,  induction: 90,  deepener: 30,  level: 20,  work: 120,  lightener: 30,  wake: 20, reintroduction: 30, teaching: 45,  training: 75,  mission: 30,  goal: 50  },
-    short:    { settling: 60,  induction: 180, deepener: 60,  level: 40,  work: 240,  lightener: 45,  wake: 30, reintroduction: 45, teaching: 75,  training: 150, mission: 45,  goal: 75  },
-    medium:   { settling: 90,  induction: 300, deepener: 180, level: 60,  work: 360,  lightener: 60,  wake: 40, reintroduction: 60, teaching: 90,  training: 240, mission: 60,  goal: 100 },
-    long:     { settling: 120, induction: 420, deepener: 300, level: 90,  work: 540,  lightener: 75,  wake: 50, reintroduction: 75, teaching: 120, training: 360, mission: 75,  goal: 130 },
+    micro:    { introduction: 12, permission: 8,  settling: 15,  induction: 30,  deepener: 15,  level: 10,  work: 60,   praise: 12, reward: 20, lightener: 15,  wake: 12, reintroduction: 20, teaching: 25,  training: 45,  mission: 20,  goal: 30  },
+    quick:    { introduction: 20, permission: 15, settling: 30,  induction: 90,  deepener: 30,  level: 20,  work: 120,  praise: 20, reward: 30, lightener: 30,  wake: 20, reintroduction: 30, teaching: 45,  training: 75,  mission: 30,  goal: 50  },
+    short:    { introduction: 30, permission: 20, settling: 60,  induction: 180, deepener: 60,  level: 40,  work: 240,  praise: 30, reward: 45, lightener: 45,  wake: 30, reintroduction: 45, teaching: 75,  training: 150, mission: 45,  goal: 75  },
+    medium:   { introduction: 45, permission: 25, settling: 120, induction: 300, deepener: 180, level: 60,  work: 360,  praise: 45, reward: 60, lightener: 60,  wake: 40, reintroduction: 60, teaching: 90,  training: 240, mission: 60,  goal: 100 },
+    long:     { introduction: 60, permission: 30, settling: 150, induction: 420, deepener: 300, level: 90,  work: 540,  praise: 60, reward: 75, lightener: 75,  wake: 50, reintroduction: 75, teaching: 120, training: 360, mission: 75,  goal: 130 },
     // Phase 6 length-picker expansion. Each step adds ~1 Work + ~1 Affirm
     // pair; marathon also doubles the deepener/lightener depth (handled in
     // getSessionPhaseBlueprint), so its `deepener` total is split across two phases.
     // The `level` value is the budget for EACH level-block when it appears
     // (only marathon auto-places one; other lengths only use it if the user
     // manually adds a second deepener via the script editor).
-    // teaching/training/mission/goal are OPT-IN — they don't appear in the
-    // default blueprint, only when explicitly added via editor, preset, or
-    // program. Their durations here are used when buildPhaseInstructions
-    // computes word budgets for AI generation.
-    extended: { settling: 150, induction: 480, deepener: 360, level: 100, work: 720,  lightener: 90,  wake: 60, reintroduction: 90,  teaching: 150, training: 480, mission: 90,  goal: 160 },
-    deep:     { settling: 180, induction: 540, deepener: 420, level: 120, work: 900,  lightener: 105, wake: 70, reintroduction: 105, teaching: 180, training: 600, mission: 100, goal: 190 },
-    marathon: { settling: 180, induction: 600, deepener: 540, level: 180, work: 1080, lightener: 120, wake: 80, reintroduction: 120, teaching: 200, training: 720, mission: 120, goal: 220 },
+    // teaching/training/mission/goal/introduction/permission/reward/praise are
+    // OPT-IN — they don't appear in the default blueprint, only when explicitly
+    // added via editor, preset, or program. Their durations here are used when
+    // buildPhaseInstructions computes word budgets for AI generation. Settling
+    // duration was bumped on medium+ (was 90s, now 120s) so the AI has room
+    // to write 5-8 distinct pace observations rather than 2-3 short sentences.
+    extended: { introduction: 75, permission: 35, settling: 180, induction: 480, deepener: 360, level: 100, work: 720,  praise: 75, reward: 90,  lightener: 90,  wake: 60, reintroduction: 90,  teaching: 150, training: 480, mission: 90,  goal: 160 },
+    deep:     { introduction: 90, permission: 40, settling: 210, induction: 540, deepener: 420, level: 120, work: 900,  praise: 90, reward: 105, lightener: 105, wake: 70, reintroduction: 105, teaching: 180, training: 600, mission: 100, goal: 190 },
+    marathon: { introduction:100, permission: 45, settling: 240, induction: 600, deepener: 540, level: 180, work: 1080, praise:100, reward: 120, lightener: 120, wake: 80, reintroduction: 120, teaching: 200, training: 720, mission: 120, goal: 220 },
   };
 
   const _FALLBACK_PERSONA = { id: 'fallback', name: 'Guide', tagline: '', category: 'contemplative', systemPrompt: '' };
@@ -9291,6 +9385,13 @@ I return to myself easily"></textarea>
       case 'wakefulness':       return _engineExternalSignals?.wakefulness?.value ?? 0;
       case 'faceDetected':      return state._webcam?.faceDetected ? 1 : 0;
       case 'ambientBrightness': return state.ambientBrightness ?? 0.5;
+      // Round 25, Pass 17 — live-control + ramp readers. liveIntensity
+      // returns the *effective* intensity (ramp-blended if active),
+      // not the raw slider — that's usually what rules want to react to.
+      case 'liveIntensity':     return state._rampActiveIntensity ?? state.liveControl?.intensityScale ?? 1;
+      case 'liveSpeed':         return state.liveControl?.speedScale ?? 1;
+      case 'liveRandomness':    return state.liveControl?.randomness ?? 0;
+      case 'rampActive':        return state.rampSettings?.enabled ? 1 : 0;
       default:
         // Round 25, Pass 11 — "var:name" reads session variables.
         // Numeric values pass through; booleans coerce to 1/0; strings
@@ -9387,6 +9488,15 @@ I return to myself easily"></textarea>
   const RULES_VALID_ACTIONS = new Set([
     'pause', 'resume', 'emergencyExit', 'notifyMessage', 'showOnScreenText',
     'duckAudio', 'unduckAudio', 'setSpeechRate', 'setSoundscapeVolume',
+    // Round 25, Pass 11 — write a session variable from a rule action.
+    // Param shape: { name: 'var_name', value: <number|string|bool> }.
+    // The dispatcher routes through setSessionVariable() which handles
+    // numeric coercion + name validation.
+    'setVar',
+    // Round 25, Pass 17 — live-control rule actions. Let rules drive
+    // the same intensity/speed/randomness sliders the user controls
+    // manually, and toggle the intensity ramp on/off mid-session.
+    'setIntensity', 'setSpeed', 'setRandomness', 'setRamp',
   ]);
   const RULES_VALID_METRICS = new Set([
     'voiceEnvelope', 'voicePulse', 'audioOverall', 'engagement',
@@ -9396,7 +9506,19 @@ I return to myself easily"></textarea>
     // Rules using these are no-ops when the webcam is off because the signals
     // simply aren't injected — `getEngineMetric` returns 0, so '> 0.5' never fires.
     'attention', 'wakefulness', 'faceDetected', 'ambientBrightness',
+    // Round 25, Pass 17 — live-control modifiers exposed as readable
+    // metrics so rules can react to them (e.g. fire a notify when
+    // randomness is high, or pause the ramp when intensity > 1.5).
+    'liveIntensity', 'liveSpeed', 'liveRandomness', 'rampActive',
   ]);
+  // Round 25, Pass 11 — `var:NAME` metric form lets rules read session
+  // variables. The set above is the strict whitelist; this regex
+  // permits the `var:` prefix (lowercased identifier) to pass.
+  const RULES_VAR_METRIC_RE = /^var:[a-z_][a-z0-9_]{0,31}$/;
+  function _isValidRuleMetric(metric) {
+    if (typeof metric !== 'string') return false;
+    return RULES_VALID_METRICS.has(metric) || RULES_VAR_METRIC_RE.test(metric);
+  }
   const RULES_VALID_OPS = new Set(['<', '>', '<=', '>=', '==', '!=']);
 
   function _rulesUid() {
@@ -9413,7 +9535,7 @@ I return to myself easily"></textarea>
       enabled:     raw.enabled !== false,
       name:        typeof raw.name === 'string' && raw.name ? raw.name : 'Rule',
       condition: {
-        metric: RULES_VALID_METRICS.has(cond.metric) ? cond.metric : 'engagement',
+        metric: _isValidRuleMetric(cond.metric) ? cond.metric : 'engagement',
         op:     RULES_VALID_OPS.has(cond.op)         ? cond.op     : '<',
         value:  Number.isFinite(cond.value) || typeof cond.value === 'string' ? cond.value : 0.3,
       },
@@ -9473,6 +9595,54 @@ I return to myself easily"></textarea>
             const ok = setSessionVariable(param.name, param.value);
             if (ok) notify.info(`Rule "${n}": var ${param.name} = ${param.value}`);
           }
+          break;
+        }
+        case 'setIntensity': {
+          // Round 25, Pass 17 — drive the live-control intensity slider
+          // from a rule. param: number 0..2, or {value: number}. The UI
+          // syncs immediately so the user sees the change on the slider.
+          const lc = _ensureLiveControl();
+          const v = Math.max(0, Math.min(2, Number(param?.value ?? param) || 1));
+          lc.intensityScale = v;
+          const el = $('liveCtrlIntensity'); if (el) { el.value = v; const sv = $('liveCtrlIntensityV'); if (sv) sv.textContent = v.toFixed(2) + '×'; }
+          notify.info(`Rule "${n}": intensity → ${v.toFixed(2)}×`);
+          break;
+        }
+        case 'setSpeed': {
+          const lc = _ensureLiveControl();
+          const v = Math.max(0.25, Math.min(4, Number(param?.value ?? param) || 1));
+          lc.speedScale = v;
+          const el = $('liveCtrlSpeed'); if (el) { el.value = v; const sv = $('liveCtrlSpeedV'); if (sv) sv.textContent = v.toFixed(2) + '×'; }
+          notify.info(`Rule "${n}": speed → ${v.toFixed(2)}×`);
+          break;
+        }
+        case 'setRandomness': {
+          const lc = _ensureLiveControl();
+          const v = Math.max(0, Math.min(1, Number(param?.value ?? param) || 0));
+          lc.randomness = v;
+          const el = $('liveCtrlRandom'); if (el) { el.value = v; const sv = $('liveCtrlRandomV'); if (sv) sv.textContent = Math.round(v * 100) + '%'; }
+          notify.info(`Rule "${n}": randomness → ${Math.round(v * 100)}%`);
+          break;
+        }
+        case 'setRamp': {
+          // param: { enabled?: bool, mode?, startVal?, endVal?, curve?, blendMode? }
+          if (!param || typeof param !== 'object') break;
+          const r = state.rampSettings || (state.rampSettings = loadRampSettings());
+          if (typeof param.enabled === 'boolean') r.enabled = param.enabled;
+          if (['time','engagement','step','adaptive'].includes(param.mode))   r.mode = param.mode;
+          if (['linear','exponential','sine'].includes(param.curve))          r.curve = param.curve;
+          if (['max','add','replace'].includes(param.blendMode))              r.blendMode = param.blendMode;
+          if (Number.isFinite(param.startVal)) r.startVal = Math.max(0, Math.min(2, param.startVal));
+          if (Number.isFinite(param.endVal))   r.endVal   = Math.max(0, Math.min(2, param.endVal));
+          // Sync UI
+          const en = $('rampEnable'); if (en) en.checked = r.enabled;
+          const mp = $('rampPanel'); if (mp) mp.style.display = r.enabled ? '' : 'none';
+          const md = $('rampMode'); if (md) md.value = r.mode;
+          const cv = $('rampCurve'); if (cv) cv.value = r.curve;
+          const sv = $('rampStart'); if (sv) sv.value = r.startVal;
+          const ev = $('rampEnd');   if (ev) ev.value = r.endVal;
+          const bl = $('rampBlend'); if (bl) bl.value = r.blendMode;
+          notify.info(`Rule "${n}": ramp updated`);
           break;
         }
         case 'duckAudio': {
@@ -9686,7 +9856,7 @@ I return to myself easily"></textarea>
       atSec:        Number.isFinite(raw.atSec)        ? Math.max(0, raw.atSec)        : 60,
       windowDurSec: Number.isFinite(raw.windowDurSec) ? Math.max(1, raw.windowDurSec) : 10,
       condition: {
-        metric: RULES_VALID_METRICS.has(cond.metric) ? cond.metric : 'engagement',
+        metric: _isValidRuleMetric(cond.metric) ? cond.metric : 'engagement',
         op:     RULES_VALID_OPS.has(cond.op)         ? cond.op     : '>=',
         value:  Number.isFinite(cond.value) || typeof cond.value === 'string' ? cond.value : 0.6,
       },
@@ -13179,20 +13349,34 @@ I return to myself easily"></textarea>
       safePlace:              $('pfSafePlace')?.value?.trim() || '',
       powerObject:            $('pfPowerObject')?.value?.trim() || '',
       resourceMemory:         $('pfResourceMemory')?.value?.trim() || '',
-      // Per-field "share with AI" toggles. Default true so older profiles
-      // (saved before these existed) keep their previous behavior of
-      // sharing everything. The local Director never reads these — they
-      // only gate AI prompt assembly in getProfileContext.
-      shareAge:        $('pfShareAge')        ? !!$('pfShareAge').checked        : true,
-      shareAppearance: $('pfShareAppearance') ? !!$('pfShareAppearance').checked : true,
-      shareGoals:      $('pfShareGoals')      ? !!$('pfShareGoals').checked      : true,
-      // S2 — Category-scope share toggles. Per-category gate over what
-      // the AI sees, layered above the per-field toggles. See _isCategoryShared.
-      // Object — only present when at least one toggle has been touched
-      // by the user (the form helper writes empty object otherwise).
-      categoryShares:  (typeof _readCategorySharesFromForm === 'function')
-                       ? _readCategorySharesFromForm()
-                       : {},
+      // Bug fix — single share toggle (pfShareAll) drives all per-field
+      // and per-category share flags. Previously there were three
+      // hidden mirrors (shareAge/Appearance/Goals) plus five category
+      // checkboxes, all redundant. Now: the master toggle's checked
+      // state populates every legacy field uniformly. Older profiles
+      // that explicitly set any individual flag to false still carry
+      // their stored value forward via the `_legacyShareGate` helper,
+      // which is checked at applyProfileToForm time.
+      ..._buildProfileShareFlags(),
+    };
+  }
+
+  /** Read the master pfShareAll toggle and return all the legacy
+   *  per-field / per-category share flags derived from it. Centralizes
+   *  the consolidation introduced in the bug-fix pass. The downstream
+   *  prompt-assembly code reads `p.shareAge !== false` etc. — this
+   *  helper makes those checks transparent: when the master is OFF,
+   *  every field reads false. */
+  function _buildProfileShareFlags() {
+    const el = document.getElementById('pfShareAll');
+    const on = el ? !!el.checked : true; // default ON when DOM not ready
+    return {
+      shareAge:        on,
+      shareAppearance: on,
+      shareGoals:      on,
+      categoryShares:  on
+        ? {} // empty object => _isCategoryShared returns true for every key
+        : { practiceContext: false, lifeContext: false, style: false, susceptibility: false, anchors: false },
     };
   }
 
@@ -13263,19 +13447,23 @@ I return to myself easily"></textarea>
     setVal('pfSafePlace', p.safePlace, '');
     setVal('pfPowerObject', p.powerObject, '');
     setVal('pfResourceMemory', p.resourceMemory, '');
-    // Share toggles — default true when missing so old profiles keep parity.
-    const shareAge = $('pfShareAge'); if (shareAge) shareAge.checked = (p.shareAge !== false);
-    const shareApp = $('pfShareAppearance'); if (shareApp) shareApp.checked = (p.shareAppearance !== false);
-    const shareGoals = $('pfShareGoals'); if (shareGoals) shareGoals.checked = (p.shareGoals !== false);
-    // Sync universal toggle to reflect the mirrors. ON only when every
-    // mirror is true; older profiles that explicitly set any field to
-    // false roll into "off" so the user has to opt back in deliberately.
+    // Bug fix — only pfShareAll exists now; the three mirror checkboxes
+    // (pfShareAge / pfShareAppearance / pfShareGoals) and the five
+    // category checkboxes (pfCatShare_*) have been removed. Restore the
+    // master toggle by ANDing every legacy field — older profiles that
+    // explicitly turned any one off get migrated into "master OFF" so
+    // the user can re-opt-in deliberately. categoryShares values from
+    // older profiles are also folded in for full backward compat.
     const shareAll = $('pfShareAll');
-    if (shareAll) shareAll.checked = (p.shareAge !== false) && (p.shareAppearance !== false) && (p.shareGoals !== false);
-    // S2 — Restore category-scope share toggles to the form. Defaults
-    // are true (shared) when the persisted value is missing.
-    if (typeof _applyCategorySharesToForm === 'function') {
-      try { _applyCategorySharesToForm(p); } catch {}
+    if (shareAll) {
+      const cs = (p && typeof p.categoryShares === 'object') ? p.categoryShares : {};
+      const anyCatOff = ['practiceContext','lifeContext','style','susceptibility','anchors']
+        .some(k => cs[k] === false);
+      shareAll.checked =
+        (p.shareAge        !== false) &&
+        (p.shareAppearance !== false) &&
+        (p.shareGoals      !== false) &&
+        !anyCatOff;
     }
     const nameEl = $('sidebarDisplayName');
     // FIREWALL: app-domain sidebar greeting reads ONLY from profile (the
@@ -16214,6 +16402,28 @@ Practitioner profile (full, natural sentences):`;
     // Skip button — only visible on step 1
     const skipBtn = $('btnSkipToScript');
     if (skipBtn) skipBtn.hidden = state.currentStep !== 1;
+    // Bug fix — on Step 6 entry, render the phase editor / sequencer
+    // proactively so users can rearrange phase order BEFORE clicking
+    // "generate full script". Previously the editor only became visible
+    // after generation completed (it auto-hides when scriptSections is
+    // empty). With getScriptSectionsFromState() now returning scaffold
+    // rows by default, the editor shows pending status icons up front.
+    //
+    // Follow-up fix — the phase editor lives INSIDE #scriptPreview,
+    // which itself defaults to display:none and only becomes visible
+    // when .visible is added (the skip-to-script flow does this
+    // explicitly; the normal flow used to wait until showScript() ran
+    // post-generation). Add .visible here so the editor's container
+    // is actually rendered. The Saved Scripts library + Script Library
+    // (also inside #scriptPreview) appear too — matching the skip-flow
+    // experience the user expects.
+    if (state.currentStep === 6) {
+      const sp = $('scriptPreview');
+      if (sp) sp.classList.add('visible');
+      if (typeof renderPhaseEditor === 'function') {
+        try { renderPhaseEditor(); } catch (e) { console.warn('[step6] phase editor render failed:', e); }
+      }
+    }
   }
 
   function refreshSummary() {
@@ -16938,7 +17148,37 @@ ${messages}
     // Escape FIRST, then mark up glossary terms — markGlossaryTerms only
     // injects safe span tags around matched plain words, so the order is safe.
     const detailHtml = markGlossaryTerms(escapeHtml(m.detail));
-    el.innerHTML = `<div class="detail-title">${escapeHtml(m.name)}</div><div>${detailHtml}</div>`;
+    // Round 25, Pass 16 — "duplicate to mine" affordance on built-in methods.
+    // Lets a user fork an existing method as the starting point for their own.
+    // The button only appears for built-ins (custom methods already have their
+    // own edit/duplicate flow in the manage list above the grid).
+    const dupBtn = !m._custom
+      ? `<button type="button" class="btn secondary" id="methodDupToMineBtn" style="margin-top:10px;font-size:0.66rem;padding:3px 10px" title="Create an editable copy of this method in your custom methods">⎘ duplicate to mine</button>`
+      : '';
+    el.innerHTML = `<div class="detail-title">${escapeHtml(m.name)}</div><div>${detailHtml}</div>${dupBtn}`;
+    if (!m._custom) {
+      $('methodDupToMineBtn')?.addEventListener('click', () => {
+        // Hand the editor a clone with no id (so _normalizeCustomMethod
+        // generates a fresh `u_` id) and a name suffixed with "(copy)".
+        _openCustomMethodEditor();
+        // The editor is now open with empty fields; pre-fill from `m`.
+        // We do this by querying the editor's DOM directly so we don't
+        // need to thread initial-data through the editor signature.
+        setTimeout(() => {
+          const $$ = id => document.getElementById(id);
+          if ($$('_cm_name') && !$$('_cm_name').value) {
+            $$('_cm_name').value = m.name + ' (copy)';
+            const tagline = $$('_cm_tagline');   if (tagline) tagline.value = m.tagline || '';
+            const tags    = $$('_cm_tags');      if (tags)    tags.value    = (m.tags || []).join(', ');
+            const cat     = $$('_cm_category');  if (cat)     cat.value     = VALID_METHOD_CATEGORIES.includes(m.category) ? m.category : 'therapeutic';
+            const viz     = $$('_cm_visual');    if (viz)     viz.value     = m.visual || 'colorwash';
+            const pacing  = $$('_cm_pacing');    if (pacing)  pacing.value  = m.pacing || 'permissive';
+            const drone   = $$('_cm_drone');     if (drone)   drone.checked = !!m.drone;
+            const detail  = $$('_cm_detail');    if (detail)  detail.value  = m.detail || '';
+          }
+        }, 60);
+      });
+    }
   }
   function updateIntentionHint() {
     const type = $('intentionType').value;
@@ -21301,10 +21541,32 @@ ${messages}
     ctx.fillStyle = 'rgba(0,0,0,0.10)';
     ctx.fillRect(0, 0, W, H);
 
-    // Anchor (the "fingertip") — top center, small dot
+    // Anchor (the "fingertip") — top center, BELOW a visible ceiling line.
+    // Bug fix — previously the anchor sat at H * 0.18 with no visual
+    // reference for where it was hanging FROM, so the bob (much brighter
+    // than the small anchor dot) appeared to float in space. Now a faint
+    // ceiling line at H * 0.06 makes the anchor's "from where" obvious,
+    // and the anchor itself is rendered as a beefier disc (~5px) so it
+    // reads clearly as the pivot point. The bob still hangs DOWN from
+    // it via small-angle pendulum projection (cos(angX) > 0 always).
     const ax = W / 2;
-    const ay = H * 0.18;
-    const stringLen = Math.min(H * 0.6, 360);
+    const ay = Math.max(14, H * 0.12);
+    const stringLen = Math.min(H * 0.62, 360);
+
+    // Faint ceiling line — the surface the pendulum hangs from
+    ctx.strokeStyle = `rgba(${rgb},0.18)`;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.20, ay - 6);
+    ctx.lineTo(W * 0.80, ay - 6);
+    ctx.stroke();
+    // Three short ticks dropping from the ceiling, evoking a fixed point
+    for (let tx = 0.30; tx <= 0.70; tx += 0.10) {
+      ctx.beginPath();
+      ctx.moveTo(W * tx, ay - 6);
+      ctx.lineTo(W * tx, ay - 2);
+      ctx.stroke();
+    }
 
     // Lissajous swing — two slightly-incommensurate frequencies on the
     // x and y axes produce a slowly-precessing ellipse that never
@@ -21337,18 +21599,24 @@ ${messages}
       ctx.stroke();
     }
 
-    // Thread
-    ctx.strokeStyle = `rgba(${rgb},0.30)`;
-    ctx.lineWidth = 1;
+    // Thread (string from anchor to bob)
+    ctx.strokeStyle = `rgba(${rgb},0.45)`;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(ax, ay);
     ctx.lineTo(bx, by);
     ctx.stroke();
 
-    // Anchor (fingertip) — small filled circle
+    // Anchor (fingertip / pivot point) — beefier filled disc with a
+    // small inner highlight so it reads clearly as a fixed point
+    // distinct from the swinging bob below it.
     ctx.beginPath();
-    ctx.arc(ax, ay, 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(${rgb},0.65)`;
+    ctx.arc(ax, ay, 5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${rgb},0.85)`;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(ax - 1.2, ay - 1.2, 1.4, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,0.45)`;
     ctx.fill();
 
     // Bob — soft glowing sphere
@@ -23426,6 +23694,8 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
     const base = phaseId.replace(/-\d+$/, '');
     const idx = phaseId.includes('-') ? phaseId.split('-').pop() : '';
     const labels = {
+      introduction: 'Introduction',
+      permission: 'Permission',
       settling: 'Settling',
       induction: 'Induction',
       deepener: idx ? `Deepener ${idx}` : 'Deepener',
@@ -23442,6 +23712,8 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       training: idx ? `Training ${idx}` : 'Training',
       mission: idx ? `Mission ${idx}` : 'Mission',
       goal: idx ? `Goal ${idx}` : 'Goal',
+      praise: idx ? `Praise ${idx}` : 'Praise',
+      reward: idx ? `Reward ${idx}` : 'Reward',
     };
     return labels[base] || phaseId;
   }
@@ -23581,7 +23853,7 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
     let sections = phases.map(phaseId => ({ phaseId, text: '' }));
     for (const rawKind of extras) {
       const kind = String(rawKind || '').trim().toLowerCase();
-      if (!['teaching','training','mission','goal'].includes(kind)) continue;
+      if (!['teaching','training','mission','goal','praise','reward','introduction','permission'].includes(kind)) continue;
       const existingCount = sections.filter(s => phaseBase(s.phaseId) === kind).length;
       const newId = existingCount > 0 ? `${kind}-${existingCount + 1}` : kind;
       const insertIdx = findPhaseInsertionIdx(sections, kind);
@@ -23621,8 +23893,32 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       sections.forEach((s, i) => { if (pred(s)) last = i; });
       return last;
     };
+    if (kind === 'introduction') {
+      // Introduction always sits at position 0 — first impression / guide
+      // greeting before anything else. Stacks at the very front if added
+      // multiple times (rare) so the latest-added intro becomes the
+      // primary opener.
+      return 0;
+    }
+    if (kind === 'permission') {
+      // Permission goes AFTER any introduction (so the user knows who's
+      // asking) and BEFORE settling (so consent is established before
+      // any inward-direction). If no introduction exists, permission
+      // becomes position 0; if neither intro nor settling exist, it
+      // appends at the end as the user's deliberate choice.
+      const lastIntro = lastIdxOf(s => phaseBase(s.phaseId) === 'introduction');
+      const beforeSettling = idxOf(s => ['settling','induction','deepener','work','affirm','lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (lastIntro >= 0) return lastIntro + 1;
+      if (beforeSettling >= 0) return beforeSettling;
+      return sections.length;
+    }
     if (kind === 'settling') {
-      return 0; // always first
+      // Settling follows any introduction + permission preamble. If those
+      // don't exist, it's still effectively first — but we walk past any
+      // intro/permission sections so they keep their canonical front
+      // positions when settling is added later.
+      const lastPreamble = lastIdxOf(s => ['introduction','permission'].includes(phaseBase(s.phaseId)));
+      return lastPreamble >= 0 ? lastPreamble + 1 : 0;
     }
     if (kind === 'induction') {
       // After last settling, before first deepener/work/lightener/wake/reintro
@@ -23761,6 +24057,33 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
       if (lastMission >= 0) return lastMission + 1;
       if (reintroIdx >= 0) return reintroIdx;
       if (lastWake >= 0) return lastWake + 1;
+      return sections.length;
+    }
+    if (kind === 'praise') {
+      // Praise (mid-trance affirming feedback) — slots after the last
+      // work/affirm block, before lightener. The guide notices and
+      // validates the user's effort right after they've done it. Multiple
+      // praise blocks stack at the same canonical position.
+      const lastPraise = lastIdxOf(s => phaseBase(s.phaseId) === 'praise');
+      const lastWorkAff = lastIdxOf(s => ['work','affirm','training'].includes(phaseBase(s.phaseId)));
+      const beforeReturn = idxOf(s => ['lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (lastPraise >= 0) return lastPraise + 1;
+      if (beforeReturn >= 0) return beforeReturn;
+      if (lastWorkAff >= 0) return lastWorkAff + 1;
+      return sections.length;
+    }
+    if (kind === 'reward') {
+      // Reward (positive reinforcement / felt-sense payoff) — sits AFTER
+      // praise (if both present) so the sequence reads work → praise →
+      // reward → lightener. If no praise, slots in praise's spot.
+      const lastReward = lastIdxOf(s => phaseBase(s.phaseId) === 'reward');
+      const lastPraise = lastIdxOf(s => phaseBase(s.phaseId) === 'praise');
+      const lastWorkAff = lastIdxOf(s => ['work','affirm','training','praise'].includes(phaseBase(s.phaseId)));
+      const beforeReturn = idxOf(s => ['lightener','wake','reintroduction'].includes(phaseBase(s.phaseId)));
+      if (lastReward >= 0) return lastReward + 1;
+      if (lastPraise >= 0) return lastPraise + 1;
+      if (beforeReturn >= 0) return beforeReturn;
+      if (lastWorkAff >= 0) return lastWorkAff + 1;
       return sections.length;
     }
     if (kind === 'custom') {
@@ -23978,7 +24301,28 @@ One affirmation per line. No numbering, no bullets, no quotes around lines, no p
     const totalDepth = deepenerPhases.length;
 
     const phaseInstructions = {
-      settling: `Write the SETTLING phase (~${targetWords.settling} words). Your single job is to ORIENT the user — bring their attention to what's already true, right now, in this moment. Open with three or four UNDENIABLE present-tense observations the user cannot disagree with: "you're sitting here", "your breath is moving on its own", "you can hear my voice", "the weight of your body is held by what's beneath you". These are pace statements — agreement-builders. Stay external before going internal: position, sound, temperature, contact, breath. AVOID introductions ("hello", "welcome", "let's begin"), promises ("you're going to feel..."), instructions ("get comfortable", "close your eyes" — unless that's the persona's signature opener), and questions ("how are you feeling today?"). Place each observation on its own line so each one has time to land. End by gesturing toward what comes next without naming it: "and from here, something settles." Output ONLY the script text — no stage directions, no square-bracket notes.`,
+      settling: `Write the SETTLING phase. WORD TARGET: ~${targetWords.settling} words. THIS IS A HARD MINIMUM — common failure mode is producing only 2-4 short sentences and stopping early; do NOT do that. Aim for the full word budget by including FIVE TO EIGHT distinct present-moment observations, each its own paragraph.
+
+Your single job is to ORIENT the user — bring their attention to what's already true, right now, in this moment. Each observation is a "pace statement" — an undeniable observable truth the user cannot disagree with. Pace-pace-pace builds trust and the agreement set the rest of the session leans on.
+
+REQUIRED COVERAGE — touch at least FIVE of the following, one per paragraph:
+  1. Position / contact: the way the body is held by the chair / floor / bed / what's underneath
+  2. Breath: it's already happening, no effort, in and out
+  3. Sound: the texture of the room around them — distant traffic, the hum of the device, a clock, the silence itself
+  4. Temperature / air: the warmth of the body, the coolness of the air on the skin
+  5. Hands: where they rest, weight, contact
+  6. Eyes (if open): what they're seeing right now without changing it; OR if closed: the texture of darkness, the colors behind the eyelids
+  7. Time of day / quality of light (if knowable from intention or context)
+  8. The sound of the guide's voice itself — present, here, with them
+
+WRITING RULES:
+  • Each observation on its own short paragraph so each one has time to land
+  • Stay external before going internal: position, sound, temperature, contact, breath FIRST; thought / emotion only later if at all
+  • AVOID introductions ("hello", "welcome"), promises ("you're going to feel..."), instructions ("get comfortable", "close your eyes" — unless that's the persona's signature opener), questions ("how are you feeling?"), and abstractions ("let yourself relax")
+  • End by gesturing toward what comes next without naming it — "and from here, something settles" — to hand off to induction
+  • DO use one long pause marker (e.g. \\x5BPAUSE 4\\x5D) between observations to let each one register
+
+Output ONLY the script text — no stage directions, no square-bracket notes other than the pause markers between observations. Do NOT abbreviate or stop short — write the FULL ${targetWords.settling}-word target.`,
       induction: `Write the INDUCTION phase (~${targetWords.induction} words) using ${method.name}. Apply YES-SET / PACE-AND-LEAD: open with TWO or THREE pace statements (observable truths the user cannot deny — body position, breath, sounds, sensations), then transition with "and" or "as" into ONE lead suggestion that rides the agreement. Pattern: "you're aware of the chair beneath you, AND of your breath moving in and out, AND as you notice that breath, something begins to soften..." Repeat this pace→pace→pace→lead pattern 2–3 times across the phase, each cycle taking the lead a little deeper. Embed depth language ("going deeper", "settling further", "drifting down", "letting yourself arrive") inside longer sentences rather than as direct commands — embedded suggestions slip past resistance. Use ellipses (...) within sentences for short held moments, and paragraph breaks for longer settling between cycles. The phase ends with the user noticeably more inward than they started. Output ONLY script text — no stage directions, no square-bracket notes.`,
       wake: `Write the WAKE phase (~${targetWords.wake} words). Bring the user FULLY awake and alert — this is the actual return to ordinary consciousness, not a soft transition. Use a distinct UPWARD COUNT (typically 1→5 or 5→1, depending on persona) or a direct waking sequence; whichever, make the structure CLEAR. Each step in the count should mark a specific re-engagement: "five — energy returning to the limbs", "four — taking a deeper breath", "three — eyes beginning to flutter", "two — alert and present", "one — fully awake and clear." Re-alert with ENERGY in the language — sentences get brisker, vocabulary tightens, vocal tone (implied by punctuation) climbs. Eyes open. Fully awake. This phase MUST NOT be replaced or merged with reintroduction; reintroduction comes AFTER. Each count or instruction stands on its own line so each lands distinctly. Avoid "drifting", "floating", "settling" — those are descent words and undo the work. Output ONLY script text — no stage directions, no square-bracket notes.`,
       reintroduction: `Write the REINTRODUCTION phase (~${targetWords.reintroduction} words). This phase happens AFTER wake — the user is already fully awake, eyes open, alert. Your job is to bridge them from the session back into their day. Include: (1) a warm welcome-back acknowledging what they just did ("and there you are — back, fully present"), (2) a soft suggestion to notice how they feel right now compared to when they began ("and you may notice — the way you arrived here is different from the way you're leaving"), (3) practical permission to take their time getting up — stretch, blink, look around the room, sip water if it's there, (4) a brief integration thought: what they did here is theirs to keep. If the method is a DEMONSTRATION method, the optional convincer test happens AFTER the wake count and BEFORE the final welcome-back; the ending must still fully reintroduce the user to ordinary life. End with a quiet send-off in the persona's voice — not a goodbye, more a release. Output ONLY script text — no stage directions, no square-bracket notes.`,
@@ -24153,6 +24497,50 @@ Avoid: abstractions ("you will be confident"), goal-setting language ("your goal
           role = midRoles[(workIdx - 2) % midRoles.length];
         }
         phaseInstructions[p] = `Write WORK phase ${workIdx} of ${workCount} (~${workWordsEach} words). ROLE: ${role}${state.craftedSuggestion ? '' : ' Therapeutic deepening tied to the intention.'} Do not repeat imagery or phrasing from earlier work blocks. Let phrases breathe — short paragraphs, ellipses for held moments. Output ONLY script text — no stage directions, no square-bracket notes.`;
+      } else if (base === 'introduction') {
+        // Brief opener — guide introduces themselves and the session theme.
+        // Sets warmth + trust BEFORE settling. Mirrors clinical onboarding.
+        phaseInstructions[p] = `Write the INTRODUCTION phase (~${targetWords.introduction || 45} words). This is the very first thing the user hears — first impression, before anything else. ROLE: introduce yourself by your persona name and name the work you're about to do together. Keep it WARM, BRIEF, and HUMAN. In ${persona.name}'s voice:
+  • Open with a warm greeting that feels like a person, not a script. ("Hello." / "Welcome." / your-persona-specific greeting.)
+  • Name yourself. One short sentence. ("I'm ${persona.name}." or persona-appropriate.)
+  • Name what you'll do together — the user's intention, paraphrased gently in their own terms. Don't quote it back verbatim; reflect the spirit.
+  • Optionally one sentence of reassurance ("You don't have to do anything right now — just listen.").
+  • Do NOT begin instructions ("close your eyes", "take a breath"). Settling does that.
+  • Do NOT promise outcomes ("you will feel...").
+End on a soft pause that hands off to the next phase. Output ONLY script text — no stage directions, no square-bracket notes.`;
+      } else if (base === 'permission') {
+        // Consent check. User agrees out loud, with a nod, or silently.
+        // Pulled from ethical hypnosis practice.
+        phaseInstructions[p] = `Write the PERMISSION phase (~${targetWords.permission || 25} words). ROLE: ask the user for explicit consent to do this work. Their agreement can be out loud, a small head nod, or silent inside their own thoughts — name all three options so they know any one is enough. In ${persona.name}'s voice:
+  • Ask once, plainly, kindly. ("Before we go further — is it alright with you that we do this?" or persona-appropriate phrasing.)
+  • Name the three ways to answer: out loud, with a nod, or silently inside.
+  • Make clear that any "no" — even a flicker of one — means we don't continue right now, and that's a complete answer too.
+  • Wait. Use a long pause marker (e.g. \\x5BPAUSE 5\\x5D) so the script genuinely waits for the user to register their answer.
+End by acknowledging the answer ("good", "thank you") and gesturing to the next phase. Output ONLY script text — no stage directions, no square-bracket notes other than the wait pause.`;
+      } else if (base === 'praise') {
+        // Mid-trance affirming feedback. Guide notices and validates the
+        // user's effort. Distinct from user's own affirmations (those
+        // are the user's words about themselves).
+        const praiseIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
+        const praiseCount = phases.filter(pp => phaseBase(pp) === 'praise').length;
+        phaseInstructions[p] = `Write a PRAISE phase (~${targetWords.praise || 45} words). ROLE: ${praiseCount > 1 ? `block ${praiseIdx} of ${praiseCount} — ` : ''}affirming feedback FROM THE GUIDE TO THE USER. Notice and validate something specific the user just did or is doing right now (settled into trance, allowed depth, stayed present, returned attention from a distraction). In ${persona.name}'s voice:
+  • Be specific, not generic. Name what they actually did. ("You let yourself drop in." NOT "Good job.")
+  • Land it slowly. Each affirming line on its own paragraph so it has time to register in trance.
+  • Keep it warm but not sticky-sweet. Praise that feels earned lands; flattery slides off.
+  • One short ratification at the end ("yes, like that") to seal it.
+Avoid: comparing them to others, conditional praise ("you'll be even better when..."), or treating it as a transaction. Output ONLY script text — no stage directions, no square-bracket notes.`;
+      } else if (base === 'reward') {
+        // Felt-sense reward / positive reinforcement. NOT transactional;
+        // a body-felt sense of having received something for the work.
+        const rewardIdx = p.includes('-') ? parseInt(p.split('-')[1]) : 1;
+        const rewardCount = phases.filter(pp => phaseBase(pp) === 'reward').length;
+        phaseInstructions[p] = `Write a REWARD phase (~${targetWords.reward || 60} words). ROLE: ${rewardCount > 1 ? `block ${rewardIdx} of ${rewardCount} — ` : ''}deliver a FELT-SENSE reward — a quiet body-level payoff for the work just done. NOT a tangible thing, NOT a promise of future outcomes — a small, present-moment sensation the user can keep. In ${persona.name}'s voice:
+  • Frame it as the reward that arrives BECAUSE of the work, not as a separate gift.
+  • Pick ONE concrete felt-sense: a softening in the chest, a small warmth, a quiet ease, a click of something settling, a release of held tension somewhere small.
+  • Place it in the body. Specific anatomy, specific quality. ("A small ease, here, behind the breastbone.")
+  • Tell the user to carry it forward — it's theirs now, in the body, available.
+  • Linger. Long pauses. Each phrase its own line so the felt sense has time to register.
+End with a brief "and you carry that with you" beat. Output ONLY script text — no stage directions, no square-bracket notes.`;
       }
     });
 
@@ -25300,7 +25688,27 @@ ${gs.phaseResults[p]}
       }));
     }
     const ordered = state.parsedScript?.ordered?.length ? state.parsedScript.ordered : getPlaybackPhaseOrder();
-    return ordered.map(phaseId => ({ phaseId, text: state.parsedScript?.[phaseId] || '' })).filter(s => s.text && s.text.trim());
+    const sections = ordered.map(phaseId => ({ phaseId, text: state.parsedScript?.[phaseId] || '' }));
+    const generatedSections = sections.filter(s => s.text && s.text.trim());
+    // Bug fix — let users rearrange the script sequencer BEFORE generating.
+    // When nothing is generated yet, fall back to scaffold rows for the
+    // default phase order. The renderer marks scaffold-only rows with
+    // is-pending status, and reorder/add/remove operations on these rows
+    // persist in state.scriptSections + generatedPhaseOrder so the
+    // generation step uses the user's chosen order. Returning scaffold
+    // rows is safe because scriptSections is the editor's source of
+    // truth — generation reads from _genState.phases, not from here.
+    if (!generatedSections.length) {
+      // Use either the user's previously-set generatedPhaseOrder or the
+      // default phase list. scaffoldForPhase always returns a non-empty
+      // string for built-in phases (settling/induction/work/etc.) so
+      // these rows always pass the renderer's filter.
+      return ordered.map(phaseId => ({
+        phaseId,
+        text: scaffoldForPhase(phaseId) || '',
+      }));
+    }
+    return generatedSections;
   }
 
   // ====================================================================
@@ -25451,10 +25859,31 @@ ${gs.phaseResults[p]}
     const cleaned = normalizePhaseSections(sections);
     state.scriptSections = cleaned.map(s => ({ ...s }));
     state.generatedPhaseOrder = cleaned.map(s => s.phaseId);
-    state.fullScript = cleaned.map(s => `===${phaseIdToMarker(s.phaseId)}===
+    // Bug fix — when the user is reordering BEFORE generation (all rows
+    // are still scaffold text), don't write fullScript / parsedScript.
+    // Otherwise updateStepUI sees state.fullScript as truthy and shows
+    // "ready ✓" on Step 6, and the begin-session flow would consume the
+    // scaffold text as if it were an actual generated script. Detect by
+    // comparing each section's text against its phase scaffold; if every
+    // row matches, we're in pre-gen reorder mode — persist order only.
+    const allScaffold = cleaned.length > 0 && cleaned.every(s => {
+      const sc = (typeof scaffoldForPhase === 'function') ? scaffoldForPhase(s.phaseId) : '';
+      return sc && (s.text || '').trim() === sc.trim();
+    });
+    if (!allScaffold) {
+      state.fullScript = cleaned.map(s => `===${phaseIdToMarker(s.phaseId)}===
 ${s.text.trim()}`).join('\n\n').trim();
-    state.parsedScript = parseScript(state.fullScript);
-    if (!opts.skipRender) showScript();
+      state.parsedScript = parseScript(state.fullScript);
+      if (!opts.skipRender) showScript();
+    } else {
+      // Scaffold-only mode: just refresh the phase editor (which is
+      // visible on Step 6). Skip showScript so the scriptPreview block
+      // doesn't pop open with "No script loaded." before the user has
+      // clicked generate.
+      if (!opts.skipRender && typeof renderPhaseEditor === 'function') {
+        try { renderPhaseEditor(); } catch {}
+      }
+    }
     updateStepUI();
     // Keep the progress indicator row (#genPhases) in sync with the new phase
     // list so users can generate / retry for newly added blocks. No-op if
@@ -25924,6 +26353,19 @@ ${s.text.trim()}`).join('\n\n').trim();
    * Scaffold text for a new phase. Depth-aware for nested deepener/lightener.
    */
   function scaffoldForPhase(phaseId, depth = 1) {
+    if (phaseId === 'introduction') {
+      // Brief opener — guide introduces themselves and the session theme.
+      // First impression; sets warmth and trust BEFORE the user is asked
+      // to settle. Mirrors clinical onboarding: the practitioner names
+      // themselves, names the work, primes the user for what's next.
+      return 'Welcome. I\'m here with you. \x5BPAUSE 2\x5D Today we\'ll work together on what you came here for. \x5BPAUSE 3\x5D';
+    }
+    if (phaseId === 'permission') {
+      // Consent-check. The user agrees out loud, with a head nod, or
+      // silently in their own thoughts — any one is enough. Pulled from
+      // ethical hypnosis practice: explicit consent before going under.
+      return 'Before we begin — do you give yourself permission to do this work? Out loud, with a nod, or just inside. Whatever feels right. \x5BPAUSE 5\x5D';
+    }
     if (phaseId === 'settling') return 'Find a comfortable position. Let the day settle. \x5BPAUSE 3\x5D';
     if (phaseId === 'induction') return 'Begin the induction here. \x5BPAUSE 3\x5D';
     if (phaseId === 'deepener' || phaseBase(phaseId) === 'deepener') {
@@ -25983,6 +26425,22 @@ ${s.text.trim()}`).join('\n\n').trim();
       // NLP future-pace pattern.
       return 'See yourself there. The day this works. The way it looks, the way it feels in your body, the small differences only you would notice. \x5BPAUSE 5\x5D Stay there a moment. Let your nervous system learn the shape of it. \x5BPAUSE 5\x5D';
     }
+    if (phaseBase(phaseId) === 'praise') {
+      // Mid-trance affirming feedback from the guide. Reinforces that the
+      // user is doing it right. Not the same as the user's affirmations
+      // (which are the user's own words about themselves) — this is the
+      // guide explicitly noticing and validating the user's effort and
+      // state. Pulled from clinical hypnosis ratification protocols.
+      return 'You\'re doing this beautifully. \x5BPAUSE 3\x5D Just by being here, just by allowing this — that takes something. And you\'re doing it. \x5BPAUSE 4\x5D';
+    }
+    if (phaseBase(phaseId) === 'reward') {
+      // Positive reinforcement for engagement / completion of work. Often
+      // appears after a work block as a "something you carry forward"
+      // moment — a felt-sense reward, not a transactional one. Variable-
+      // ratio reinforcement is hypnotically powerful (see Erickson on
+      // utilization).
+      return 'And in return for the work you just did, something settles in. A small lift. A quiet ease. \x5BPAUSE 4\x5D Carry that with you. \x5BPAUSE 3\x5D';
+    }
     return 'New phase text. \x5BPAUSE 3\x5D';
   }
 
@@ -26004,7 +26462,7 @@ ${s.text.trim()}`).join('\n\n').trim();
       const existingCount = countPhaseBase(sections.concat(added), kind);
       let id = kind;
       // Numbered IDs for anything that can legitimately appear multiple times
-      if (['work', 'affirm', 'deepener', 'lightener', 'sounding', 'custom', 'teaching', 'training', 'mission', 'goal'].includes(kind)) {
+      if (['work', 'affirm', 'deepener', 'lightener', 'sounding', 'custom', 'teaching', 'training', 'mission', 'goal', 'praise', 'reward', 'introduction', 'permission'].includes(kind)) {
         const nextN = existingCount + 1;
         id = nextN > 1 ? `${kind}-${nextN}` : kind;
         // Rename the first occurrence to `${kind}-1` for consistency once we have 2+.
@@ -27865,6 +28323,20 @@ Start immediately:`;
         return true;
       }
 
+      // Round 25, Pass 18 — haptic macro share kinds.
+      if (payload.kind === 'haptic-macro' || payload.kind === 'haptic-macro-bundle') {
+        const summary = payload.kind === 'haptic-macro-bundle'
+          ? `${(payload.data?.length || 0)} macro(s)`
+          : `macro: ${payload.data?.name || '(unnamed)'}`;
+        const ok = await confirmAsync(
+          `Someone shared haptic macro${payload.kind.endsWith('bundle') ? 's' : ''} with you:\n\n${summary}\n\nMacros are short reusable haptic clips. Add to your library?`,
+          { okText: 'add', cancelText: 'cancel' }
+        );
+        if (!ok) return true;
+        await _importHapticMacroEnvelope(payload);
+        return true;
+      }
+
       notify.warn('Unknown payload kind: ' + payload.kind);
       return false;
     } catch (e) {
@@ -28089,6 +28561,30 @@ Start immediately:`;
         } catch (e) { console.warn(prefix + ' hash handling failed:', e); }
       }
     }
+    // Round 25, Pass 18 — haptic-macro hash-share. Single + bundle.
+    for (const prefix of ['#haptic-macro=', '#haptic-macro-bundle=']) {
+      if (hash.startsWith(prefix)) {
+        try {
+          const b64 = hash.slice(prefix.length);
+          const payload = await _decodeHashShareFragment(b64);
+          if (payload && (payload.kind === 'haptic-macro' || payload.kind === 'haptic-macro-bundle')) {
+            const summary = payload.kind === 'haptic-macro-bundle'
+              ? `${(payload.data?.length || 0)} macro(s)`
+              : `macro: ${payload.data?.name || '(unnamed)'}`;
+            const ok = await confirmAsync(
+              `Someone shared haptic macro${payload.kind.endsWith('bundle') ? 's' : ''} with you:\n\n${summary}\n\nAdd to your library?`,
+              { okText: 'add', cancelText: 'cancel' }
+            );
+            if (ok) {
+              await _importHapticMacroEnvelope(payload);
+              await markFeatureUsed?.(FEAT.SHARE);
+            }
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+            return;
+          }
+        } catch (e) { console.warn(prefix + ' hash handling failed:', e); }
+      }
+    }
 
     if (!hash.startsWith('#cfg=')) return;
     const paramStr = hash.slice(5);
@@ -28243,6 +28739,11 @@ Start immediately:`;
       customIntentions: await safe('customIntentions', () => loadCustomIntentions(), []),
       // Round 25, Pass 14 — user-authored custom methods. Same pattern.
       customMethods: await safe('customMethods', () => loadCustomMethods(), []),
+      // Round 25, Pass 17 — intensity ramp preferences (live-control
+      // sliders are session-scoped, not backed up).
+      rampSettings: await safe('rampSettings', () => loadRampSettings(), null),
+      // Round 25, Pass 18 — user-authored haptic macros.
+      hapticMacros: await safe('hapticMacros', () => loadUserMacros(), []),
       // Round 25 fixation-dot position (Pass 4) — small but persists
       // user spatial preferences. Two strings, never large.
       fixationPos: await safe('fixationPos', () => {
@@ -28735,6 +29236,30 @@ Start immediately:`;
           importedMethods = fresh.length;
         }
       }
+      // Round 25, Pass 17 — restore ramp settings if present and we
+      // don't already have customised settings (preserve user changes).
+      if (backup.rampSettings && typeof backup.rampSettings === 'object') {
+        const current = loadRampSettings();
+        // Only apply if current is at defaults (i.e. user hasn't tuned)
+        const isDefault = !current.enabled && current.startVal === 0.5 && current.endVal === 1.5;
+        if (isDefault) {
+          saveRampSettings({ ...RAMP_DEFAULTS, ...backup.rampSettings });
+          state.rampSettings = loadRampSettings();
+        }
+      }
+      // Round 25, Pass 18 — restore user macros. Merge by id; existing
+      // entries kept on conflict.
+      let importedMacros = 0;
+      if (Array.isArray(backup.hapticMacros) && backup.hapticMacros.length) {
+        const existing = loadUserMacros();
+        const seen = new Set(existing.map(m => m.id));
+        const fresh = backup.hapticMacros
+          .filter(m => m && m.id && m.name && Array.isArray(m.actions) && !seen.has(m.id));
+        if (fresh.length) {
+          saveUserMacros([...existing, ...fresh]);
+          importedMacros = fresh.length;
+        }
+      }
       // Round 25, Pass 12 — restore fixation-dot position. Skip if user
       // already has one set so we don't override their preference.
       if (backup.fixationPos && typeof backup.fixationPos === 'object') {
@@ -28773,6 +29298,7 @@ Start immediately:`;
       if (importedVariables)     counts.push(`${importedVariables} variable${importedVariables === 1 ? '' : 's'}`);
       if (importedIntentions)    counts.push(`${importedIntentions} intention${importedIntentions === 1 ? '' : 's'}`);
       if (importedMethods)       counts.push(`${importedMethods} method${importedMethods === 1 ? '' : 's'}`);
+      if (importedMacros)        counts.push(`${importedMacros} macro${importedMacros === 1 ? '' : 's'}`);
       notify.success(counts.length ? `Imported: ${counts.join(', ')}.` : 'Backup imported (nothing new to add).');
     } catch(e) { notify.error('Import failed: ' + e.message); }
   }
@@ -29491,7 +30017,7 @@ Start immediately:`;
     // No-ops harmlessly when no device connected; intensities clamp to
     // [0..1], durations to [20..5000] ms.
     stripped = stripped.replace(
-      /\[HAPTIC:\s*(pulse|level|stop|macro)(?:=\s*([\w\s.,\-]+))?\s*\]/gi,
+      /\[HAPTIC:\s*(pulse|level|stop|macro|intensity|speed|random|ramp)(?:=\s*([\w\s.,\-]+))?\s*\]/gi,
       (_, op, args) => {
         const lop = op.toLowerCase();
         if (lop === 'macro') {
@@ -29499,6 +30025,19 @@ Start immediately:`;
           // but for now we just take the first token as the macro id.
           const id = (args || '').split(',')[0].trim().toLowerCase();
           if (id) dispatches.push({ kind: 'haptic-macro', id });
+          return '';
+        }
+        // Round 25, Pass 17 — live-control sentinels. Numeric args clamp
+        // server-side; the dispatcher routes through the same code paths
+        // the slider UI uses, so the slider visibly moves too.
+        if (lop === 'intensity' || lop === 'speed' || lop === 'random') {
+          const v = parseFloat((args || '').split(',')[0]);
+          if (Number.isFinite(v)) dispatches.push({ kind: 'haptic-' + lop, value: v });
+          return '';
+        }
+        if (lop === 'ramp') {
+          const tok = (args || '').toLowerCase().trim();
+          dispatches.push({ kind: 'haptic-ramp', mode: tok === 'off' ? 'off' : 'on' });
           return '';
         }
         const a = (args || '').split(',').map(s => parseFloat(s.trim())).filter(n => Number.isFinite(n));
@@ -29546,13 +30085,25 @@ Start immediately:`;
               const macro = _findHapticMacro(d.id);
               if (macro) funscriptEngine.injectMacro(macro);
             } catch {}
+          } else if (d.kind === 'haptic-intensity' || d.kind === 'haptic-speed' || d.kind === 'haptic-random') {
+            // Round 25, Pass 17 — live-control via scene sentinel.
+            // Routes through executeRuleAction so the UI sliders sync
+            // and the same clamping rules apply.
+            try {
+              const map = { 'haptic-intensity': 'setIntensity', 'haptic-speed': 'setSpeed', 'haptic-random': 'setRandomness' };
+              executeRuleAction({ name: 'scene', action: { type: map[d.kind], param: d.value } });
+            } catch {}
+          } else if (d.kind === 'haptic-ramp') {
+            try { executeRuleAction({ name: 'scene', action: { type: 'setRamp', param: { enabled: d.mode === 'on' } } }); } catch {}
           }
         } catch (e) { console.warn('[scene sentinel dispatch]', d, e); }
       }, ms);
       // Haptic dispatches don't need the 800ms audio-engine spacing —
       // they're independent of the soundscape lifecycle. Use 50ms so a
       // pulse that lands right after a [BG:…] doesn't stack visibly.
-      delay += (d.kind === 'haptic-pulse' || d.kind === 'haptic-level' || d.kind === 'haptic-macro') ? 50 : 800;
+      delay += (d.kind === 'haptic-pulse' || d.kind === 'haptic-level' || d.kind === 'haptic-macro'
+                 || d.kind === 'haptic-intensity' || d.kind === 'haptic-speed'
+                 || d.kind === 'haptic-random' || d.kind === 'haptic-ramp') ? 50 : 800;
     }
   }
 
@@ -30958,6 +31509,17 @@ Start immediately:`;
     // disconnects so the engine doesn't keep ticking position commands
     // into a dead socket.
     try { funscriptEngine.stop(); } catch {}
+    // Round 25, Pass 17 — reset live-control runtime state. Sliders snap
+    // back to 1× / 0% on next session start (LIVE_CONTROL_DEFAULTS).
+    // Ramp settings (state.rampSettings) survive — those are user prefs.
+    try {
+      state.liveControl = { ...LIVE_CONTROL_DEFAULTS };
+      delete state._rampActiveIntensity;
+      // Re-sync the UI so the slider thumbs reflect the reset
+      const li = $('liveCtrlIntensity'); if (li) { li.value = 1; const v = $('liveCtrlIntensityV'); if (v) v.textContent = '1.00×'; }
+      const ls = $('liveCtrlSpeed');     if (ls) { ls.value = 1; const v = $('liveCtrlSpeedV');     if (v) v.textContent = '1.00×'; }
+      const lr = $('liveCtrlRandom');    if (lr) { lr.value = 0; const v = $('liveCtrlRandomV');    if (v) v.textContent = '0%'; }
+    } catch {}
     try { hapticBridge.stop(); } catch {}
     try { await hapticBridge.disconnect(); } catch {}
     const _hpCb = $('hapticOptInThisSession'); if (_hpCb) _hpCb.checked = false;
@@ -33321,6 +33883,10 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
 
   $('beginBtn')?.addEventListener('click', startSession);
   $('addInductionPhaseBtn')?.addEventListener('click', () => addPhaseSection('induction'));
+  $('addIntroductionPhaseBtn')?.addEventListener('click', () => addPhaseSection('introduction'));
+  $('addPermissionPhaseBtn')?.addEventListener('click', () => addPhaseSection('permission'));
+  $('addPraisePhaseBtn')?.addEventListener('click', () => addPhaseSection('praise'));
+  $('addRewardPhaseBtn')?.addEventListener('click', () => addPhaseSection('reward'));
   $('addDeepenerPhaseBtn')?.addEventListener('click', () => addPhaseSection('deepener'));
   $('addLevelPhaseBtn')?.addEventListener('click', () => addPhaseSection('level'));
   $('addWorkPhaseBtn')?.addEventListener('click', () => addPhaseSection('work'));
@@ -39923,9 +40489,9 @@ Begin:`;
           if (typeof renderSessionHistory === 'function') renderSessionHistory();
         } },
       { kind: 'action', label: 'Open AI/TTS options',       hint: 'API keys, narrator, providers', keywords: 'options settings ai tts elevenlabs openai narrator voice',
-        run: () => { try { $('optionsBtn')?.click(); } catch {} } },
+        run: () => { try { $('openOptionsBtn')?.click(); } catch {} } },
       { kind: 'action', label: 'Test premium narrator',     hint: 'preview the configured TTS voice', keywords: 'test voice tts narrator preview elevenlabs',
-        run: () => { try { $('optionsBtn')?.click(); setTimeout(() => $('extTtsTestBtn')?.click(), 250); } catch {} } },
+        run: () => { try { $('openOptionsBtn')?.click(); setTimeout(() => $('extTtsTestBtn')?.click(), 250); } catch {} } },
       { kind: 'action', label: 'Toggle sidebar (mobile)',   hint: 'show/hide the side panel', keywords: 'sidebar toggle mobile',
         run: () => { try { $('sidebar')?.classList?.toggle('open'); } catch {} } },
       { kind: 'action', label: 'Crisis resources',          hint: 'show helpline numbers', keywords: 'crisis help suicide emergency',
@@ -40321,6 +40887,21 @@ Begin:`;
   // pulse/setLevel/stop. All errors swallowed — a missing Intiface
   // install must not break the session.
   const HAPTIC_INTIFACE_URL = 'ws://127.0.0.1:12345';
+  /** Read the user-supplied Intiface URL from the Step 5 settings input,
+   *  if present + non-empty. Returns null to signal "use default". The
+   *  WebSocket scheme + loopback host is enforced by browsers / Intiface
+   *  itself; we only validate that the field starts with ws:// or wss://
+   *  to avoid passing nonsense URLs to ButtplugBrowserWebsocketClientConnector. */
+  function _hapticUrlOverride() {
+    try {
+      const el = document.getElementById('hapticIntifaceUrl');
+      if (!el) return null;
+      const v = (el.value || '').trim();
+      if (!v) return null;
+      if (!/^wss?:\/\//.test(v)) return null;
+      return v;
+    } catch { return null; }
+  }
   const HAPTIC_BUTTPLUG_CDN = 'https://cdn.jsdelivr.net/npm/buttplug@3.2.2/+esm';
 
   const hapticBridge = (() => {
@@ -40391,7 +40972,7 @@ Begin:`;
         _client.addListener('disconnect', () => {
           _connected = false; _devices = []; _setStatus('idle');
         });
-        _connector = new ButtplugBrowserWebsocketClientConnector(HAPTIC_INTIFACE_URL);
+        _connector = new ButtplugBrowserWebsocketClientConnector(_hapticUrlOverride() || HAPTIC_INTIFACE_URL);
         await _client.connect(_connector);
         _connected = true;
         _setStatus('scanning');
@@ -40581,6 +41162,139 @@ Begin:`;
     return (a && a.length) ? a[a.length - 1].at / 1000 : 0;
   }
 
+  // ====================================================================
+  // LIVE CONTROL + INTENSITY RAMP — Round 25, Pass 17
+  // ====================================================================
+  // Runtime performance modifiers applied to FunScript position output:
+  //   intensityScale (0..2): scales pos away from neutral 50
+  //   speedScale     (0.25..4): scales the playback clock
+  //   randomness     (0..1):    adds ±N% jitter to position
+  //
+  // Plus an automatic intensity ramp that escalates intensity over time,
+  // optionally driven by engagement, in steps, or a blend.
+  //
+  // All modifiers are non-persisted by design — they're performance tools,
+  // not authored content. Reset at session end. The ramp's _settings_ ARE
+  // persisted via state.rampSettings (saved in user prefs) so a user's
+  // preferred ramp behavior survives across sessions.
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio —
+  //   js/live-control.js (~250 LOC) + js/intensity-ramp.js (~210 LOC)
+  // ====================================================================
+  const LIVE_CONTROL_DEFAULTS = Object.freeze({
+    intensityScale: 1.0,
+    speedScale:     1.0,
+    randomness:     0.0,
+  });
+  function _ensureLiveControl() {
+    if (!state.liveControl) state.liveControl = { ...LIVE_CONTROL_DEFAULTS };
+    return state.liveControl;
+  }
+
+  /** Apply intensity / randomness to a raw 0..100 pos value. The intensity
+   *  scale rotates around 50 (mid-stroke) so a 0.5 scale halves the swing
+   *  amplitude rather than dragging everything toward zero. */
+  function _applyLiveControl(rawPos) {
+    if (!Number.isFinite(rawPos)) return 50;
+    const lc = _ensureLiveControl();
+    const intensity = state._rampActiveIntensity ?? lc.intensityScale ?? 1;
+    let pos = 50 + (rawPos - 50) * intensity;
+    if (lc.randomness > 0) {
+      pos += (Math.random() * 2 - 1) * lc.randomness * 10;
+    }
+    return Math.max(0, Math.min(100, pos));
+  }
+
+  /** Convert raw elapsed-ms into effective playback ms after speedScale. */
+  function _liveSpeedAdjustedMs(elapsedMs) {
+    const lc = _ensureLiveControl();
+    const sp = Number.isFinite(lc.speedScale) && lc.speedScale > 0 ? lc.speedScale : 1;
+    return elapsedMs * sp;
+  }
+
+  // ── Intensity ramp ────────────────────────────────────────────────
+  const RAMP_DEFAULTS = Object.freeze({
+    enabled:   false,
+    mode:      'time',     // 'time' | 'engagement' | 'step' | 'adaptive'
+    startVal:  0.5,
+    endVal:    1.5,
+    curve:     'linear',   // 'linear' | 'exponential' | 'sine'
+    steps:     [],         // [{atSec, intensity}] for step mode
+    blendMode: 'max',      // 'max' | 'add' | 'replace'
+  });
+  const HNE_RAMP_KEY = 'hne_ramp_settings_v1';
+  function loadRampSettings() {
+    try {
+      const raw = localStorage.getItem(HNE_RAMP_KEY);
+      if (!raw) return { ...RAMP_DEFAULTS };
+      const parsed = JSON.parse(raw);
+      return { ...RAMP_DEFAULTS, ...(parsed && typeof parsed === 'object' ? parsed : {}) };
+    } catch { return { ...RAMP_DEFAULTS }; }
+  }
+  function saveRampSettings(s) {
+    try { localStorage.setItem(HNE_RAMP_KEY, JSON.stringify(s || {})); } catch {}
+  }
+
+  function _applyRampCurve(t01, curve) {
+    t01 = Math.max(0, Math.min(1, t01));
+    if (curve === 'exponential') return t01 * t01;
+    if (curve === 'sine')        return 0.5 - 0.5 * Math.cos(Math.PI * t01);
+    return t01; // linear
+  }
+
+  /** Compute the ramp-target intensity for the current session moment.
+   *  Returns null if disabled (caller falls back to manual slider). */
+  function _evaluateRamp() {
+    const r = state.rampSettings;
+    if (!r || !r.enabled) return null;
+    const es = state.engineState || {};
+    const elapsed = es.sessionSec ?? 0;
+    const total   = es.totalSec || 600;
+    const tFraction = total > 0 ? Math.min(1, elapsed / total) : 0;
+
+    let target = r.startVal;
+    if (r.mode === 'time') {
+      target = r.startVal + (r.endVal - r.startVal) * _applyRampCurve(tFraction, r.curve);
+    } else if (r.mode === 'engagement') {
+      const eng = Math.max(0, Math.min(1, es.engagement ?? 0));
+      target = r.startVal + (r.endVal - r.startVal) * _applyRampCurve(eng, r.curve);
+    } else if (r.mode === 'step') {
+      // Find the highest step whose atSec <= elapsed
+      const steps = (Array.isArray(r.steps) ? r.steps : [])
+        .filter(s => Number.isFinite(s.atSec) && Number.isFinite(s.intensity))
+        .sort((a, b) => a.atSec - b.atSec);
+      target = r.startVal;
+      for (const s of steps) { if (s.atSec <= elapsed) target = s.intensity; else break; }
+    } else if (r.mode === 'adaptive') {
+      // 50/50 blend of time + engagement curves
+      const eng = Math.max(0, Math.min(1, es.engagement ?? 0));
+      const timeT = _applyRampCurve(tFraction, r.curve);
+      const blend = (timeT + eng) / 2;
+      target = r.startVal + (r.endVal - r.startVal) * blend;
+    }
+    return Math.max(0, Math.min(2, target));
+  }
+
+  /** Tick the ramp: compute target, blend with manual slider per blendMode,
+   *  store result on state for the live-control output path to consume. */
+  function _tickRamp() {
+    const target = _evaluateRamp();
+    if (target == null) {
+      delete state._rampActiveIntensity;
+      return;
+    }
+    const manual = state.liveControl?.intensityScale ?? 1;
+    const mode = state.rampSettings?.blendMode || 'max';
+    let result;
+    switch (mode) {
+      case 'add':     result = manual + (target - 1); break;     // ramp acts as offset around 1
+      case 'replace': result = target;                break;
+      case 'max':
+      default:        result = Math.max(manual, target); break;
+    }
+    state._rampActiveIntensity = Math.max(0, Math.min(2, result));
+  }
+
   const funscriptEngine = (() => {
     let _track       = null;     // currently loaded track or null
     let _tickHandle  = null;
@@ -40728,6 +41442,9 @@ Begin:`;
       if (_pauseStartedAt) return;
       if (state.paused) return;
       const now = Date.now();
+      // Round 25, Pass 17 — tick the ramp first so _rampActiveIntensity
+      // is fresh for the live-control read below.
+      try { _tickRamp(); } catch {}
       // Injection takes priority — its blended sequence is what we
       // emit until it expires.
       if (_injection) {
@@ -40756,15 +41473,28 @@ Begin:`;
             const t = dAt > 0 ? (injElapsed - a[lo].at) / dAt : 0;
             pos100 = a[lo].pos + t * (a[hi].pos - a[lo].pos);
           }
-          const pos01 = Math.max(0, Math.min(1, pos100 / 100));
+          // Injection pos goes through live-control too (intensity/randomness
+          // shape the macro consistently with the track around it). Speed
+          // scaling is intentionally NOT applied to injections — they're
+          // authored as fixed-duration accents.
+          const adjPos100 = _applyLiveControl(pos100);
+          const pos01 = Math.max(0, Math.min(1, adjPos100 / 100));
           try { hapticBridge.linear(pos01, FUNSCRIPT_TICK_MS); } catch {}
           return;
         }
       }
       if (!_track) return;
-      const elapsedMs = now - _startMs - _pausedAccumMs;
-      const pos = _funscriptInterpolate(_track, elapsedMs);
-      try { hapticBridge.linear(pos, FUNSCRIPT_TICK_MS); } catch {}
+      // Round 25, Pass 17 — speed scale stretches/compresses the playback
+      // clock. We multiply elapsed time so a 2× speed reads further into
+      // the track per real-time tick.
+      const rawElapsedMs = now - _startMs - _pausedAccumMs;
+      const elapsedMs = _liveSpeedAdjustedMs(rawElapsedMs);
+      const pos01 = _funscriptInterpolate(_track, elapsedMs);
+      // Apply intensity / randomness via live-control. _funscriptInterpolate
+      // returns 0..1 so we scale to 0..100 first, modify, scale back.
+      const adjPos100 = _applyLiveControl(pos01 * 100);
+      const adjPos01  = Math.max(0, Math.min(1, adjPos100 / 100));
+      try { hapticBridge.linear(adjPos01, FUNSCRIPT_TICK_MS); } catch {}
     }
 
     return {
@@ -41019,8 +41749,74 @@ Begin:`;
   function _findHapticMacro(id) {
     if (!id || typeof id !== 'string') return null;
     const norm = id.trim().toLowerCase();
+    // Round 25, Pass 18 — user macros take precedence over built-ins on
+    // id collision (so a user can shadow a built-in with their own
+    // version named the same).
+    const users = loadUserMacros();
+    const u = users.find(m => m.id === norm);
+    if (u) return u;
     return HAPTIC_MACROS.find(m => m.id === norm) || null;
   }
+
+  // ====================================================================
+  // USER MACRO LIBRARY — Round 25, Pass 18
+  // ====================================================================
+  // User-authored haptic macros. Stored in localStorage with the same
+  // shape as built-in HAPTIC_MACROS entries plus an `_custom: true` flag
+  // for editor / share UI. Same shareKit pattern as the rest of the
+  // pickers — single + bundle envelopes, both share dispatchers wired,
+  // included in backup.
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio —
+  //   js/macros.js + js/macro-ui.js (~600 LOC combined; HNE version is
+  //   leaner because we already have the sentinel dispatch + injectMacro
+  //   from Pass 10).
+  // ====================================================================
+  const HNE_USER_MACROS_KEY = 'hne_user_haptic_macros_v1';
+
+  function loadUserMacros() {
+    try {
+      const raw = localStorage.getItem(HNE_USER_MACROS_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(m => m && typeof m === 'object' && typeof m.id === 'string' && Array.isArray(m.actions));
+    } catch { return []; }
+  }
+  function saveUserMacros(arr) {
+    try { localStorage.setItem(HNE_USER_MACROS_KEY, JSON.stringify(arr || [])); }
+    catch (e) { notify.warn?.('Could not save macros: ' + (e.message || 'storage full')); }
+  }
+
+  /** Normalize a user macro shape. Forces id prefix `u_` so user ids
+   *  never accidentally shadow a built-in even on roundtrip. Validates
+   *  actions array (required for injectMacro to function), clamps
+   *  durations and positions to safe ranges. */
+  function _normalizeUserMacro(raw, existingIds = new Set()) {
+    const baseRaw = String(raw?.id || raw?.name || 'macro').toLowerCase().trim();
+    const base = baseRaw.startsWith('u_') ? baseRaw : 'u_' + baseRaw.replace(/[^a-z0-9_-]+/g, '_').slice(0, 28);
+    let id = base, suffix = 1;
+    const builtinIds = new Set(HAPTIC_MACROS.map(m => m.id));
+    while (existingIds.has(id) || builtinIds.has(id)) id = base + '-' + (++suffix);
+    // Action validation: each must have at: number, pos: number, sorted by at
+    const actions = (Array.isArray(raw?.actions) ? raw.actions : [])
+      .map(a => ({
+        at:  Math.max(0, Math.min(60000, Number(a?.at)  || 0)),
+        pos: Math.max(0, Math.min(100,   Number(a?.pos) || 0)),
+      }))
+      .filter(a => Number.isFinite(a.at) && Number.isFinite(a.pos))
+      .sort((a, b) => a.at - b.at);
+    return {
+      id,
+      name:        String(raw?.name || 'Untitled').slice(0, 60),
+      icon:        String(raw?.icon || '🎵').slice(0, 4),
+      description: String(raw?.description || '').slice(0, 240),
+      actions,
+      _custom:     true,
+      _created:    Number(raw?._created) || Date.now(),
+    };
+  }
+
 
   // ====================================================================
   // SENSOR BRIDGE — biometric WebSocket (Round 25, Pass 9)
@@ -41291,6 +42087,92 @@ Begin:`;
     funscriptEngine.clearTrack();
     notify.info('FunScript cleared.');
   });
+  // Round 25, Pass 18 — haptic macro library button.
+  $('hapticMacroLibraryBtn')?.addEventListener('click', () => {
+    try { _openHapticMacroLibrary(); }
+    catch (e) { notify.error('Macro library unavailable: ' + (e?.message || e)); }
+  });
+  // Bug fix — Step 5 funscript timeline editor button. Opens the canvas
+  // pattern editor (Pass 15) directly without going through the picker.
+  // Useful when users want to quickly draft a custom curve. The editor
+  // creates a brand-new pattern; the picker offers edit-existing.
+  $('funscriptEditorBtn')?.addEventListener('click', () => {
+    try { _openPatternEditor(); }
+    catch (e) { notify.error('Pattern editor unavailable: ' + (e?.message || e)); }
+  });
+
+  // ── Live control + ramp wiring (Pass 17) ───────────────────────────────
+  // Sliders are session-scoped; ramp settings persist across sessions.
+  function _initLiveControlPanel() {
+    const lc = _ensureLiveControl();
+    const intensity = $('liveCtrlIntensity'), speed = $('liveCtrlSpeed'), random = $('liveCtrlRandom');
+    if (!intensity) return;
+    const setLabel = (el, fmt) => {
+      const span = $(el.id + 'V');
+      if (span) span.textContent = fmt(parseFloat(el.value));
+    };
+    intensity.value = lc.intensityScale;
+    speed.value     = lc.speedScale;
+    random.value    = lc.randomness;
+    setLabel(intensity, v => v.toFixed(2) + '×');
+    setLabel(speed,     v => v.toFixed(2) + '×');
+    setLabel(random,    v => Math.round(v * 100) + '%');
+    intensity.addEventListener('input', e => {
+      lc.intensityScale = parseFloat(e.target.value);
+      setLabel(e.target, v => v.toFixed(2) + '×');
+    });
+    speed.addEventListener('input', e => {
+      lc.speedScale = parseFloat(e.target.value);
+      setLabel(e.target, v => v.toFixed(2) + '×');
+    });
+    random.addEventListener('input', e => {
+      lc.randomness = parseFloat(e.target.value);
+      setLabel(e.target, v => Math.round(v * 100) + '%');
+    });
+
+    // Ramp panel
+    const ramp = state.rampSettings || (state.rampSettings = loadRampSettings());
+    const enableEl = $('rampEnable');
+    const panel    = $('rampPanel');
+    if (!enableEl) return;
+    enableEl.checked = !!ramp.enabled;
+    if (panel) panel.style.display = ramp.enabled ? '' : 'none';
+    $('rampMode').value = ramp.mode;
+    $('rampCurve').value = ramp.curve;
+    $('rampStart').value = ramp.startVal;
+    $('rampEnd').value   = ramp.endVal;
+    $('rampBlend').value = ramp.blendMode;
+    const _persist = () => saveRampSettings(ramp);
+    enableEl.addEventListener('change', e => {
+      ramp.enabled = e.target.checked;
+      if (panel) panel.style.display = ramp.enabled ? '' : 'none';
+      _persist();
+    });
+    $('rampMode')?.addEventListener('change', e => { ramp.mode = e.target.value; _persist(); });
+    $('rampCurve')?.addEventListener('change', e => { ramp.curve = e.target.value; _persist(); });
+    $('rampStart')?.addEventListener('change', e => { ramp.startVal = Math.max(0, Math.min(2, parseFloat(e.target.value) || 0.5)); e.target.value = ramp.startVal; _persist(); });
+    $('rampEnd')?.addEventListener('change',   e => { ramp.endVal   = Math.max(0, Math.min(2, parseFloat(e.target.value) || 1.5)); e.target.value = ramp.endVal; _persist(); });
+    $('rampBlend')?.addEventListener('change', e => { ramp.blendMode = e.target.value; _persist(); });
+
+    // Live status read-out — updates 2× per second when the panel is open
+    // (cheap; uses the already-computed _rampActiveIntensity).
+    setInterval(() => {
+      const det = $('liveControlDetails');
+      if (!det || !det.open) return;
+      const line = $('rampStatusLine');
+      if (!line) return;
+      const eff = state._rampActiveIntensity;
+      if (eff == null) {
+        line.textContent = ramp.enabled ? 'ramp: starting…' : '';
+      } else {
+        line.textContent = `ramp target: ${eff.toFixed(2)}× (manual: ${(state.liveControl?.intensityScale || 1).toFixed(2)}×)`;
+      }
+    }, 500);
+  }
+  // Defer init until after init() has populated state. Bare check is fine —
+  // the panel HTML exists from page load.
+  setTimeout(() => { try { _initLiveControlPanel(); } catch (e) { console.warn('[live-control init]', e); } }, 50);
+
 
   // ── Sensor bridge wiring (Pass 9) ──────────────────────────────────────
   // Per-session opt-in mirrors webcam/mic/haptic. Enabling connects
@@ -41458,7 +42340,7 @@ Begin:`;
         <div id="_pe_canvas_tip" style="position:absolute;pointer-events:none;background:rgba(0,0,0,0.85);color:#fff;font-family:monospace;font-size:0.66rem;padding:2px 6px;border-radius:3px;display:none;z-index:1;white-space:nowrap"></div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">
-        <span style="font-size:0.62rem;color:var(--text-faint)">click: add · drag: move · right-click: delete · shift: lock-x · ctrl: lock-y</span>
+        <span style="font-size:0.62rem;color:var(--text-faint)">click: add · drag: move · alt+drag: marquee · shift+click: toggle select · del: delete selected · right-click: delete · ctrl: lock-y</span>
         <span style="flex:1"></span>
         <span style="font-size:0.62rem;color:var(--text-faint)">duration:</span>
         <input id="_pe_duration" type="number" min="500" max="600000" step="500" style="width:90px;padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.7rem;font-family:monospace" title="Pattern duration in milliseconds">
@@ -41500,6 +42382,14 @@ Begin:`;
     let _ceDuration = Math.max(1000, _ceActions.at(-1)?.at ?? 60000);
     let _ceDrag     = null; // { idx, startX, startY, origAt, origPos, lockAxis }
     let _ceHover    = -1;   // index of point under cursor (-1 = none)
+    // Round 25, Pass 16 — multi-select state. _ceSelected holds object
+    // references (not indices) so sort()/splice() don't invalidate it.
+    // Toolbar ops that re-create objects (reverse, flip, paste, clear)
+    // call _ceClearSelection() to keep state consistent.
+    let _ceSelected = new Set();      // Set<actionObject>
+    let _ceMarquee  = null;           // { x0, y0, x1, y1 } when active
+    let _ceGroupDrag = null;          // { startX, startY, origPositions: Map<obj,{at,pos}>, lockX, lockY }
+    function _ceClearSelection() { _ceSelected.clear(); }
 
     const canvas = $$('_pe_canvas');
     const ctx    = canvas.getContext('2d');
@@ -41611,13 +42501,40 @@ Begin:`;
         const y = _cePosToY(_ceActions[i].pos);
         const isHover = i === _ceHover;
         const isDrag = _ceDrag && _ceDrag.idx === i;
+        const isSelected = _ceSelected.has(_ceActions[i]);
         ctx.beginPath();
-        ctx.arc(x, y, isDrag ? 6 : (isHover ? 5 : 3.5), 0, Math.PI * 2);
-        ctx.fillStyle = isDrag ? '#7dc87a' : (isHover ? 'rgba(120,180,240,1)' : 'rgba(120,180,240,0.8)');
+        // Selected points draw slightly larger with a halo ring
+        const r = isDrag ? 6 : (isSelected ? 5.5 : (isHover ? 5 : 3.5));
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = isDrag ? '#7dc87a'
+                        : (isSelected ? 'rgba(255,200,80,1)'
+                        : (isHover ? 'rgba(120,180,240,1)' : 'rgba(120,180,240,0.8)'));
         ctx.fill();
         ctx.lineWidth = 1;
         ctx.strokeStyle = 'rgba(0,0,0,0.6)';
         ctx.stroke();
+        if (isSelected) {
+          ctx.beginPath();
+          ctx.arc(x, y, r + 3, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(255,200,80,0.5)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+
+      // Marquee rectangle (drawn last so it sits on top)
+      if (_ceMarquee) {
+        const x = Math.min(_ceMarquee.x0, _ceMarquee.x1);
+        const y = Math.min(_ceMarquee.y0, _ceMarquee.y1);
+        const w = Math.abs(_ceMarquee.x1 - _ceMarquee.x0);
+        const h = Math.abs(_ceMarquee.y1 - _ceMarquee.y0);
+        ctx.fillStyle = 'rgba(255,200,80,0.10)';
+        ctx.strokeStyle = 'rgba(255,200,80,0.6)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x, y, w, h);
+        ctx.setLineDash([]);
       }
     }
 
@@ -41674,15 +42591,46 @@ Begin:`;
       if (e.button === 2) return; // right-click handled by contextmenu
       const { x, y } = _ceCanvasPos(e);
       const hit = _ceHitTest(x, y, 10);
+
       if (hit >= 0) {
-        // Start drag
-        _ceDrag = {
-          idx: hit, startX: x, startY: y,
-          origAt: _ceActions[hit].at, origPos: _ceActions[hit].pos,
-          lockX: e.shiftKey, lockY: e.ctrlKey || e.metaKey,
-        };
+        const obj = _ceActions[hit];
+        if (e.shiftKey) {
+          // Shift+click on a point → toggle selection (no drag)
+          if (_ceSelected.has(obj)) _ceSelected.delete(obj);
+          else _ceSelected.add(obj);
+          _ceRender();
+          return;
+        }
+        if (_ceSelected.has(obj) && _ceSelected.size > 1) {
+          // Group drag — capture all selected positions
+          const origPositions = new Map();
+          for (const o of _ceSelected) origPositions.set(o, { at: o.at, pos: o.pos });
+          _ceGroupDrag = {
+            startX: x, startY: y,
+            origPositions,
+            lockX: false,                         // shift would have toggled, so axis-lock uses ctrl/alt instead
+            lockY: e.ctrlKey || e.metaKey,
+          };
+        } else {
+          // Single-point drag — also clear selection (acting on a single
+          // unselected point implicitly deselects others, matching most
+          // editor conventions).
+          if (!_ceSelected.has(obj)) _ceClearSelection();
+          _ceDrag = {
+            idx: hit, startX: x, startY: y,
+            origAt: obj.at, origPos: obj.pos,
+            lockX: false, // Shift used for selection toggle now
+            lockY: e.ctrlKey || e.metaKey,
+          };
+        }
+      } else if (e.altKey) {
+        // Alt+drag in empty space → marquee select
+        _ceMarquee = { x0: x, y0: y, x1: x, y1: y };
+        if (!e.shiftKey) _ceClearSelection();
+        _ceRender();
       } else {
-        // Add a point at this position
+        // Click empty (no Alt) → add a point AND clear selection
+        _ceClearSelection();
         const t = _ceXToTime(x), p = _ceYToPos(y);
         _ceActions.push({ at: Math.round(t), pos: Math.round(p) });
         _ceActions.sort((a, b) => a.at - b.at);
@@ -41693,6 +42641,40 @@ Begin:`;
 
     canvas.addEventListener('mousemove', (e) => {
       const { x, y } = _ceCanvasPos(e);
+      if (_ceMarquee) {
+        // Update rectangle and recompute selection from points inside
+        _ceMarquee.x1 = x; _ceMarquee.y1 = y;
+        const xMin = Math.min(_ceMarquee.x0, _ceMarquee.x1);
+        const xMax = Math.max(_ceMarquee.x0, _ceMarquee.x1);
+        const yMin = Math.min(_ceMarquee.y0, _ceMarquee.y1);
+        const yMax = Math.max(_ceMarquee.y0, _ceMarquee.y1);
+        // Rebuild selection: keep any pre-existing if shift is held, else replace
+        if (!e.shiftKey) _ceClearSelection();
+        for (const a of _ceActions) {
+          const px = _ceTimeToX(a.at), py = _cePosToY(a.pos);
+          if (px >= xMin && px <= xMax && py >= yMin && py <= yMax) _ceSelected.add(a);
+        }
+        _ceRender();
+        return;
+      }
+      if (_ceGroupDrag) {
+        const dx = x - _ceGroupDrag.startX;
+        const dy = y - _ceGroupDrag.startY;
+        const m = _ceMetrics();
+        const dT = _ceGroupDrag.lockX ? 0 : (dx / m.plotW) * _ceDuration;
+        const dP = _ceGroupDrag.lockY ? 0 : -(dy / m.plotH) * 100; // y-axis inverted
+        for (const [obj, orig] of _ceGroupDrag.origPositions) {
+          obj.at  = Math.max(0, Math.min(_ceDuration, Math.round(orig.at + dT)));
+          obj.pos = Math.max(0, Math.min(100, Math.round(orig.pos + dP)));
+        }
+        tipEl.style.display = 'block';
+        tipEl.textContent = `${_ceSelected.size} pts · Δ${(dT/1000).toFixed(2)}s · Δ${dP.toFixed(0)}`;
+        const r = canvas.getBoundingClientRect();
+        tipEl.style.left = (e.clientX - r.left + 10) + 'px';
+        tipEl.style.top  = (e.clientY - r.top  - 24) + 'px';
+        _ceRender();
+        return;
+      }
       if (_ceDrag) {
         const newT = _ceDrag.lockX ? _ceDrag.origAt : Math.round(_ceXToTime(x));
         const newP = _ceDrag.lockY ? _ceDrag.origPos : Math.round(_ceYToPos(y));
@@ -41710,7 +42692,7 @@ Begin:`;
         const hit = _ceHitTest(x, y, 10);
         if (hit !== _ceHover) {
           _ceHover = hit;
-          canvas.style.cursor = hit >= 0 ? 'grab' : 'crosshair';
+          canvas.style.cursor = hit >= 0 ? 'grab' : (e.altKey ? 'cell' : 'crosshair');
           _ceRender();
         }
         if (hit >= 0) {
@@ -41726,10 +42708,19 @@ Begin:`;
     });
 
     function _endDrag() {
+      let mutated = false;
+      if (_ceMarquee) { _ceMarquee = null; mutated = true; }
+      if (_ceGroupDrag) {
+        _ceActions.sort((a, b) => a.at - b.at);
+        _ceGroupDrag = null;
+        mutated = true;
+      }
       if (_ceDrag) {
-        // Re-sort after drag (point may have moved past neighbors)
         _ceActions.sort((a, b) => a.at - b.at);
         _ceDrag = null;
+        mutated = true;
+      }
+      if (mutated) {
         tipEl.style.display = 'none';
         _ceSyncToJson();
         _ceRender();
@@ -41743,12 +42734,48 @@ Begin:`;
       const { x, y } = _ceCanvasPos(e);
       const hit = _ceHitTest(x, y, 10);
       if (hit >= 0) {
-        if (_ceActions.length <= 2) { notify.warn('Need at least 2 points.'); return; }
-        _ceActions.splice(hit, 1);
+        const obj = _ceActions[hit];
+        // If the right-clicked point is in selection, delete the whole
+        // selection. Otherwise just delete this one point.
+        if (_ceSelected.has(obj) && _ceSelected.size > 1) {
+          const remaining = _ceActions.filter(a => !_ceSelected.has(a));
+          if (remaining.length < 2) { notify.warn('Need at least 2 points.'); return; }
+          _ceActions = remaining;
+          _ceClearSelection();
+        } else {
+          if (_ceActions.length <= 2) { notify.warn('Need at least 2 points.'); return; }
+          _ceSelected.delete(obj);
+          _ceActions.splice(hit, 1);
+        }
         _ceSyncToJson();
         _ceRender();
       }
     });
+
+    // Keyboard handling — Delete/Backspace removes selection, Escape clears it.
+    // We attach to document and gate on the modal being present so the
+    // shortcuts don't fire when the user is in another part of the page.
+    function _ceKeyHandler(e) {
+      if (!document.body.contains(backdrop)) return;
+      // Don't intercept while typing in an input
+      const tgt = e.target;
+      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA')) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (!_ceSelected.size) return;
+        const remaining = _ceActions.filter(a => !_ceSelected.has(a));
+        if (remaining.length < 2) { notify.warn('Need at least 2 points.'); return; }
+        _ceActions = remaining;
+        _ceClearSelection();
+        _ceSyncToJson();
+        _ceRender();
+        e.preventDefault();
+      } else if (e.key === 'Escape' && _ceSelected.size) {
+        _ceClearSelection();
+        _ceRender();
+        e.preventDefault();
+      }
+    }
+    document.addEventListener('keydown', _ceKeyHandler);
 
     // Toolbar
     $$('_pe_normalize').addEventListener('click', () => {
@@ -41763,10 +42790,12 @@ Begin:`;
       if (_ceActions.length < 2) return;
       const last = _ceActions.at(-1).at;
       _ceActions = _ceActions.map(a => ({ at: last - a.at, pos: a.pos })).sort((a, b) => a.at - b.at);
+      _ceClearSelection();
       _ceSyncToJson(); _ceRender();
     });
     $$('_pe_invert_y').addEventListener('click', () => {
       _ceActions = _ceActions.map(a => ({ at: a.at, pos: 100 - a.pos }));
+      _ceClearSelection();
       _ceSyncToJson(); _ceRender();
     });
     $$('_pe_smooth').addEventListener('click', () => {
@@ -41780,12 +42809,14 @@ Begin:`;
         out.push(b);
       }
       _ceActions = out;
+      _ceClearSelection();  // selection refs survive (b's), but new midpoints aren't included so behavior is clearer if we just clear
       _ceSyncToJson(); _ceRender();
     });
     $$('_pe_clear').addEventListener('click', async () => {
       const ok = await confirmAsync('Clear all points? This keeps two anchor points (0% and 100% time, both pos 50).', { okText: 'clear', cancelText: 'keep' });
       if (!ok) return;
       _ceActions = [{ at: 0, pos: 50 }, { at: _ceDuration, pos: 50 }];
+      _ceClearSelection();
       _ceSyncToJson(); _ceRender();
     });
 
@@ -41813,6 +42844,7 @@ Begin:`;
       try {
         const parsed = _parseFunScript(file.text);
         _ceActions = parsed.actions.slice();
+        _ceClearSelection();
         _ceDuration = Math.max(1000, _ceActions.at(-1)?.at ?? 60000);
         $$('_pe_duration').value = _ceDuration;
         $$('_pe_invert').checked = !!parsed.inverted;
@@ -41868,10 +42900,272 @@ Begin:`;
     const _ceObs = new MutationObserver(() => {
       if (!document.body.contains(backdrop)) {
         window.removeEventListener('resize', _ceResizeHandler);
+        document.removeEventListener('keydown', _ceKeyHandler);
         _ceObs.disconnect();
       }
     });
     _ceObs.observe(document.body, { childList: true });
+  }
+
+  // ====================================================================
+  // HAPTIC MACRO LIBRARY MODAL — Round 25, Pass 18
+  // ====================================================================
+  // Browse and manage built-in + user-authored haptic macros. The
+  // built-in set is read-only; user macros support full CRUD.
+  // Macros fire via [HAPTIC:macro=name] sentinels or the setRamp rule
+  // action; this UI just makes them discoverable + editable.
+  function _openHapticMacroLibrary() {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop visible';
+    backdrop.innerHTML = `<div class="modal" style="max-width:680px">
+      <h2>Haptic macro library</h2>
+      <div style="font-size:0.66rem;color:var(--text-faint);line-height:1.5;margin-bottom:10px">
+        Short reusable haptic clips. Fire with <code>[HAPTIC:macro=id]</code> in a script,
+        or call <code>injectMacro(macro)</code> from a rule action. Built-ins are read-only;
+        your custom macros support full CRUD + share.
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <button type="button" id="_macroNewBtn"      class="btn secondary" style="padding:3px 10px;font-size:0.66rem">+ new</button>
+        <button type="button" id="_macroImportBtn"   class="btn secondary" style="padding:3px 10px;font-size:0.66rem">import</button>
+        <button type="button" id="_macroExportAllBtn" class="btn secondary" style="padding:3px 10px;font-size:0.66rem">export all</button>
+        <button type="button" id="_macroShareAllBtn"  class="btn secondary" style="padding:3px 10px;font-size:0.66rem">share bundle</button>
+      </div>
+      <div id="_macroLibraryList" style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:4px"></div>
+      <div class="modal-actions" style="margin-top:14px">
+        <button class="btn secondary" id="_macroLibClose">close</button>
+      </div>
+    </div>`;
+    document.body.appendChild(backdrop);
+
+    function _renderList() {
+      const list = backdrop.querySelector('#_macroLibraryList');
+      list.innerHTML = '';
+      const userMacros = loadUserMacros();
+
+      const makeSection = (label, count) => {
+        const h = document.createElement('div');
+        h.style.cssText = 'font-size:0.66rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-faint);margin:8px 0 4px;font-weight:600';
+        h.textContent = `${label} · ${count}`;
+        list.appendChild(h);
+      };
+
+      const makeRow = (m, isUser) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:flex-start;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.08);border-radius:5px';
+        const dur = m.actions?.length ? (m.actions[m.actions.length - 1].at / 1000).toFixed(2) : '0.00';
+        const thumb = _patternThumbSVG(m.actions || [], 70, 22);
+        row.innerHTML = `
+          <div style="font-size:1.3rem;line-height:1;margin-top:1px">${escapeHtml(m.icon || '🎵')}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div style="font-size:0.74rem;font-weight:600;color:var(--text)">${escapeHtml(m.name)}</div>
+              <code style="font-size:0.6rem;color:var(--text-faint);background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:2px">${escapeHtml(m.id)}</code>
+              <span style="font-size:0.62rem;color:var(--text-faint);font-family:monospace">${dur}s</span>
+              ${thumb ? `<div style="opacity:0.85">${thumb}</div>` : ''}
+            </div>
+            <div style="font-size:0.62rem;color:var(--text-faint);line-height:1.4;margin-top:2px">${escapeHtml(m.description || '')}</div>
+            <div class="_mr_actions" style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap"></div>
+          </div>`;
+        const actions = row.querySelector('._mr_actions');
+        const mkBtn = (label, handler, primary = false) => {
+          const b = document.createElement('button');
+          b.type = 'button'; b.className = primary ? 'btn' : 'btn secondary';
+          b.style.cssText = 'font-size:0.62rem;padding:2px 8px';
+          b.textContent = label;
+          b.addEventListener('click', e => { e.stopPropagation(); handler(); });
+          actions.appendChild(b);
+        };
+        mkBtn('preview', () => {
+          if (!hapticBridge.isReady?.()) {
+            notify.warn('Connect a haptic device first.');
+            return;
+          }
+          try { funscriptEngine.injectMacro(m); notify.success(`Previewing "${m.name}"…`); }
+          catch (e) { notify.error('Preview failed: ' + (e?.message || e)); }
+        }, true);
+        if (isUser) {
+          mkBtn('edit', () => _openHapticMacroEditor(m.id, _renderList));
+          mkBtn('duplicate', () => {
+            const all = loadUserMacros();
+            const dup = _normalizeUserMacro({ ...m, id: '', name: m.name + ' (copy)', _created: Date.now() }, new Set(all.map(x => x.id)));
+            saveUserMacros([...all, dup]);
+            _renderList();
+            notify.success(`Duplicated as "${dup.name}".`);
+          });
+          mkBtn('share', async () => {
+            await shareKit.shareEnvelope(shareKit.envelope('haptic-macro', m), { fileLabel: 'macro', modalTitle: `Share macro · ${m.name}` });
+            await markFeatureUsed?.(FEAT.SHARE);
+          });
+          mkBtn('export', () => shareKit.downloadJson(`hne-macro-${m.id}`, shareKit.envelope('haptic-macro', m)));
+          mkBtn('×', async () => {
+            const ok = await confirmAsync(`Delete macro "${m.name}"?`, { okText: 'delete', cancelText: 'keep' });
+            if (!ok) return;
+            saveUserMacros(loadUserMacros().filter(x => x.id !== m.id));
+            _renderList();
+            notify.info(`Deleted "${m.name}".`);
+          });
+        } else {
+          mkBtn('duplicate to mine', () => {
+            const all = loadUserMacros();
+            const dup = _normalizeUserMacro({ ...m, id: '', name: m.name + ' (custom)', _created: Date.now() }, new Set(all.map(x => x.id)));
+            saveUserMacros([...all, dup]);
+            _renderList();
+            notify.success(`Forked as "${dup.name}".`);
+          });
+        }
+        list.appendChild(row);
+      };
+
+      makeSection('Built-in', HAPTIC_MACROS.length);
+      HAPTIC_MACROS.forEach(m => makeRow(m, false));
+      makeSection('Mine', userMacros.length);
+      if (!userMacros.length) {
+        const empty = document.createElement('div');
+        empty.style.cssText = 'color:var(--text-faint);font-style:italic;font-size:0.66rem;padding:8px 4px';
+        empty.textContent = 'No custom macros yet. Click "+ new" to author one.';
+        list.appendChild(empty);
+      } else {
+        userMacros.forEach(m => makeRow(m, true));
+      }
+    }
+
+    backdrop.querySelector('#_macroNewBtn').addEventListener('click', () => _openHapticMacroEditor(null, _renderList));
+    backdrop.querySelector('#_macroImportBtn').addEventListener('click', async () => {
+      const choice = await confirmAsync('Import macros from a file or paste JSON?', { okText: 'file', cancelText: 'paste' });
+      let parsed = null;
+      if (choice) {
+        const file = await shareKit.pickFile('.json');
+        if (!file) return;
+        try { parsed = JSON.parse(file.text); } catch (e) { notify.error('Not valid JSON: ' + e.message); return; }
+      } else {
+        parsed = await shareKit.promptForJson('Import haptic macros');
+        if (!parsed) return;
+      }
+      await _importHapticMacroEnvelope(parsed);
+      _renderList();
+    });
+    backdrop.querySelector('#_macroExportAllBtn').addEventListener('click', () => {
+      const all = loadUserMacros();
+      if (!all.length) { notify.warn('No custom macros to export.'); return; }
+      shareKit.downloadJson('hne-macros-bundle', shareKit.envelope('haptic-macro-bundle', all));
+    });
+    backdrop.querySelector('#_macroShareAllBtn').addEventListener('click', async () => {
+      const all = loadUserMacros();
+      if (!all.length) { notify.warn('No custom macros to share.'); return; }
+      await shareKit.shareEnvelope(
+        shareKit.envelope('haptic-macro-bundle', all),
+        { fileLabel: 'macros', modalTitle: `Share ${all.length} macro${all.length === 1 ? '' : 's'}` }
+      );
+      await markFeatureUsed?.(FEAT.SHARE);
+    });
+
+    const close = () => backdrop.remove();
+    backdrop.querySelector('#_macroLibClose').addEventListener('click', close);
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+
+    _renderList();
+  }
+
+  function _openHapticMacroEditor(id, onSave) {
+    const all = loadUserMacros();
+    let editing = id ? all.find(m => m.id === id) : null;
+    const isNew = !editing;
+    const init = editing || { id: '', name: '', icon: '🎵', description: '', actions: [{ at: 0, pos: 50 }, { at: 1000, pos: 50 }] };
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop visible';
+    backdrop.innerHTML = `<div class="modal" style="max-width:560px">
+      <h2>${isNew ? 'New macro' : 'Edit macro'}</h2>
+      <div style="display:grid;grid-template-columns:80px 1fr;gap:10px 14px;align-items:center;margin-bottom:12px">
+        <label style="font-size:0.74rem;color:var(--text-dim)">Icon</label>
+        <input id="_mh_icon" type="text" maxlength="4" value="${escapeHtml(init.icon)}" style="width:60px;padding:6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:1.1rem;text-align:center">
+        <label style="font-size:0.74rem;color:var(--text-dim)">Name</label>
+        <input id="_mh_name" type="text" maxlength="60" placeholder="My macro" value="${escapeHtml(init.name)}" style="width:100%;padding:6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.84rem">
+        <label style="font-size:0.74rem;color:var(--text-dim);align-self:start;margin-top:6px">Description</label>
+        <textarea id="_mh_desc" maxlength="240" rows="2" placeholder="One-line description shown in the library" style="width:100%;padding:6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.78rem;resize:vertical">${escapeHtml(init.description || '')}</textarea>
+      </div>
+      <div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:6px">Actions (JSON, [{at:ms, pos:0..100}, …])</div>
+      <textarea id="_mh_actions" rows="6" style="width:100%;padding:8px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-family:monospace;font-size:0.7rem;resize:vertical">${escapeHtml(JSON.stringify(init.actions, null, 2))}</textarea>
+      <div id="_mh_status" style="font-size:0.62rem;color:var(--text-faint);margin-top:4px"></div>
+      <div class="modal-actions" style="margin-top:14px">
+        <button class="btn secondary" id="_mh_cancel">cancel</button>
+        <button class="btn" id="_mh_save">${isNew ? 'create' : 'save'}</button>
+      </div>
+    </div>`;
+    document.body.appendChild(backdrop);
+    const $$ = sel => backdrop.querySelector(sel);
+    const updateStatus = () => {
+      try {
+        const arr = JSON.parse($$('#_mh_actions').value);
+        if (!Array.isArray(arr) || !arr.length) throw new Error('need at least one point');
+        const last = arr.at(-1).at;
+        $$('#_mh_status').textContent = `${arr.length} points · ${(last / 1000).toFixed(2)}s`;
+        $$('#_mh_status').style.color = 'var(--text-faint)';
+      } catch (e) {
+        $$('#_mh_status').textContent = 'invalid: ' + e.message;
+        $$('#_mh_status').style.color = '#ff6b6b';
+      }
+    };
+    $$('#_mh_actions').addEventListener('input', updateStatus);
+    updateStatus();
+
+    const close = () => backdrop.remove();
+    $$('#_mh_cancel').addEventListener('click', close);
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+    $$('#_mh_save').addEventListener('click', () => {
+      const name = $$('#_mh_name').value.trim();
+      if (!name) { notify.warn('Name required.'); return; }
+      let actions;
+      try { actions = JSON.parse($$('#_mh_actions').value); }
+      catch (e) { notify.error('Actions JSON invalid: ' + e.message); return; }
+      if (!Array.isArray(actions) || !actions.length) { notify.error('Need at least one action point.'); return; }
+      const list = loadUserMacros();
+      const otherIds = new Set(list.map(x => x.id).filter(x => x !== init.id));
+      const updated = _normalizeUserMacro({
+        id: init.id, name, icon: $$('#_mh_icon').value, description: $$('#_mh_desc').value,
+        actions, _created: init._created,
+      }, otherIds);
+      const idx = list.findIndex(x => x.id === init.id);
+      if (idx >= 0) list[idx] = updated; else list.push(updated);
+      saveUserMacros(list);
+      close();
+      notify.success(isNew ? `Macro "${updated.name}" created.` : 'Macro saved.');
+      if (typeof onSave === 'function') onSave();
+    });
+  }
+
+  /** Import handler for haptic-macro / haptic-macro-bundle envelopes. */
+  async function _importHapticMacroEnvelope(parsed) {
+    let items = [];
+    try {
+      if (parsed?.kind === 'haptic-macro') items = [parsed.data];
+      else if (parsed?.kind === 'haptic-macro-bundle') {
+        if (!Array.isArray(parsed.data)) throw new Error('Bundle data must be an array');
+        items = parsed.data;
+      } else if (Array.isArray(parsed) && parsed.every(x => x?.actions && x?.name)) {
+        items = parsed;
+      } else if (parsed?.actions && parsed?.name) {
+        items = [parsed];
+      } else {
+        throw new Error('Unrecognized payload — expected haptic-macro or bundle');
+      }
+    } catch (e) { notify.error('Import failed: ' + e.message); return; }
+    const existing = loadUserMacros();
+    const ids = new Set(existing.map(x => x.id));
+    let added = 0, replaced = 0;
+    for (const raw of items) {
+      const norm = _normalizeUserMacro(raw, new Set([...ids].filter(x => x !== raw?.id)));
+      const dup = existing.find(x => x.id === norm.id);
+      if (dup) {
+        const ok = await confirmAsync(`Macro "${norm.name}" already exists. Replace it?`, { okText: 'replace', cancelText: 'skip' });
+        if (!ok) continue;
+        existing[existing.findIndex(x => x.id === norm.id)] = norm;
+        replaced++;
+      } else {
+        existing.push(norm); ids.add(norm.id); added++;
+      }
+    }
+    saveUserMacros(existing);
+    notify.success(`Imported · ${added} added${replaced ? `, ${replaced} replaced` : ''}.`);
   }
 
   // ── Picker rendering ──────────────────────────────────────────────────
@@ -41888,13 +43182,49 @@ Begin:`;
       list.appendChild(h);
     };
 
+    // Round 25, Pass 16 — render a small SVG thumbnail of the pattern's
+    // curve so users can pre-visualize shape before clicking `use`. Uses
+    // the same actions array as `_trackFromAnyPattern` would build, so
+    // built-in patterns (which lazily generate via `.generate()`) get
+    // their curves rendered the same way as user patterns.
+    function _patternThumbSVG(actions, w = 90, h = 28) {
+      if (!Array.isArray(actions) || actions.length < 2) return '';
+      const last = actions.at(-1).at || 1;
+      const pad = 1;
+      const points = actions.map(a => {
+        const x = pad + (a.at / last) * (w - pad * 2);
+        const y = pad + (1 - Math.max(0, Math.min(100, a.pos)) / 100) * (h - pad * 2);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(' ');
+      return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="display:block">
+        <rect x="0" y="0" width="${w}" height="${h}" fill="rgba(255,255,255,0.03)" rx="2"/>
+        <polyline points="${points}" fill="none" stroke="rgba(120,180,240,0.85)" stroke-width="1.2" stroke-linejoin="round"/>
+      </svg>`;
+    }
+    /** Get the actions array for a pattern (built-in or user). Built-ins
+     *  lazy-generate via .generate(); cache the result on the pattern
+     *  object so we don't regenerate on every render. */
+    function _patternActions(p) {
+      if (Array.isArray(p?.actions)) return p.actions;
+      if (typeof p?.generate === 'function') {
+        if (!p._cached) { try { p._cached = p.generate() || []; } catch { p._cached = []; } }
+        return p._cached;
+      }
+      return [];
+    }
+
     const makeRow = (p, isUser) => {
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.02);border:0.5px solid var(--border,rgba(255,255,255,0.1));border-radius:6px';
+      const thumbActions = _patternActions(p);
+      const thumb = thumbActions.length >= 2 ? _patternThumbSVG(thumbActions) : '';
       row.innerHTML = `
         <div style="font-size:1.4rem;line-height:1;margin-top:1px">${escapeHtml(p.icon || '🎵')}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:0.78rem;font-weight:600;color:var(--text)">${escapeHtml(p.name)}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div style="font-size:0.78rem;font-weight:600;color:var(--text)">${escapeHtml(p.name)}</div>
+            ${thumb ? `<div title="curve preview" style="opacity:0.85">${thumb}</div>` : ''}
+          </div>
           <div style="font-size:0.66rem;color:var(--text-faint);line-height:1.4;margin-top:2px">${escapeHtml(p.description || '')}</div>
           <div class="_pp_actions" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"></div>
         </div>`;
@@ -42364,6 +43694,16 @@ Begin:`;
     const on = !!$('debugMode')?.checked;
     const memBtn = $('viewMemoriesBtn');
     if (memBtn) memBtn.style.display = on ? '' : 'none';
+    // Bug fix — debug-gated sidebar sections. Both surface internal
+    // state (AI call metadata, audit log of every recommendation) that
+    // is primarily useful for development. Hidden by default; revealed
+    // when Debug is enabled. The <details> elements have inline
+    // display:none initially; the toggle replaces it with '' (CSS
+    // default) when on, restores 'none' when off.
+    const sessHist = $('sessionHistoryDetails');
+    if (sessHist) sessHist.style.display = on ? '' : 'none';
+    const dirAudit = $('directorAuditDetails');
+    if (dirAudit) dirAudit.style.display = on ? '' : 'none';
     applyMethodGating(); // re-evaluate the visible tab locks immediately
     // Self persona is gated on debug — re-render the persona grid so it
     // appears/disappears immediately. If the user had Self selected and is
@@ -42860,24 +44200,17 @@ Begin:`;
   ].forEach(id => {
     $(id)?.addEventListener('change', saveProfile);
   });
-  // Universal "use profile details" toggle — fans out to the three
-  // hidden mirrors (pfShareAge / pfShareAppearance / pfShareGoals) so
-  // the existing per-field read code in getProfile() stays unchanged.
-  $('pfShareAll')?.addEventListener('change', e => {
-    const on = !!e.target.checked;
-    ['pfShareAge', 'pfShareAppearance', 'pfShareGoals'].forEach(id => {
-      const el = $(id); if (el) el.checked = on;
-    });
+  // Bug fix — single profile-share toggle. Previously this fanned out
+  // to three hidden mirror checkboxes; those have been removed.
+  // getProfile() now derives every per-field / per-category share flag
+  // directly from this checkbox via _buildProfileShareFlags(). On
+  // change we simply persist the profile so the new flag set sticks.
+  $('pfShareAll')?.addEventListener('change', () => {
     saveProfile();
   });
-  // S2 — Category-scope share toggles. Each one fires a profile save so
-  // the selection persists. The local Director never reads these (it
-  // always sees the full profile for safety gating); only AI prompt
-  // assembly via getProfileContext is gated.
-  ['pfCatShare_practiceContext', 'pfCatShare_lifeContext', 'pfCatShare_style',
-   'pfCatShare_susceptibility', 'pfCatShare_anchors'].forEach(id => {
-    $(id)?.addEventListener('change', () => saveProfile());
-  });
+  // Bug fix — category-scope share toggles (pfCatShare_*) and their
+  // event listener loop are removed. The master toggle drives every
+  // category flag through _buildProfileShareFlags / _isCategoryShared.
   // When the age field changes, surfaces sensitive to the relaxation
   // gate refresh in place so the user sees the effect immediately —
   // softer soundscape hints, no nag prompts, etc. Existing dropdown
@@ -43559,6 +44892,25 @@ Begin:`;
   }
 
   $('customIntentionNewBtn')?.addEventListener('click', () => _openCustomIntentionEditor());
+  // Round 25, Pass 16 — fork the current built-in (or custom) intention.
+  // Opens the editor, then pre-fills via direct DOM after a microtask so
+  // we don't have to thread initial-data through the editor signature.
+  $('customIntentionDupBtn')?.addEventListener('click', () => {
+    const current = state.intentionType;
+    const src = INTENTION_TYPES[current];
+    if (!src) { notify.warn('Select an intention to duplicate first.'); return; }
+    _openCustomIntentionEditor();
+    setTimeout(() => {
+      const $$ = id => document.getElementById(id);
+      if ($$('_ci_label') && !$$('_ci_label').value) {
+        const label = (src.label || current) + ' (copy)';
+        $$('_ci_label').value = label;
+        const hint = $$('_ci_hint');         if (hint) hint.value = src.hint || '';
+        const grp  = $$('_ci_group');        if (grp)  grp.value = src._group || (src._custom ? 'Custom' : 'Forked');
+        const guid = $$('_ci_guidance');     if (guid) guid.value = src.guidance || '';
+      }
+    }, 60);
+  });
   $('customIntentionImportBtn')?.addEventListener('click', async () => {
     const choice = await confirmAsync('Import intentions from a file or paste JSON?', { okText: 'file', cancelText: 'paste' });
     let parsed = null;
@@ -44070,6 +45422,17 @@ Begin:`;
     // Sync debug state from DOM (checkboxes default unchecked, but this guarantees
     // state._debug matches the visible UI in all cases). Banner re-renders from here.
     _syncDebugState();
+    // Bug fix — apply debug-gated sidebar panel visibility on init so
+    // these stay hidden on first paint (the change handler only fires
+    // on user interaction, not on initial load even if debugMode was
+    // restored from storage).
+    {
+      const _dbgOn = !!$('debugMode')?.checked;
+      const _sh = $('sessionHistoryDetails');
+      if (_sh) _sh.style.display = _dbgOn ? '' : 'none';
+      const _da = $('directorAuditDetails');
+      if (_da) _da.style.display = _dbgOn ? '' : 'none';
+    }
     _updateDirectorBiasUI();
     _refreshAffirmationsBtnState(); // initial render so button reflects SD state at load
 
