@@ -5760,6 +5760,7 @@ I return to myself easily"></textarea>
             <input type="file" id="funscriptFile" accept=".funscript,.json,application/json" style="display:none">
             <button type="button" id="funscriptPatternBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem">✨ load pattern</button>
             <button type="button" id="funscriptEditorBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem" title="Open the canvas-based pattern editor — draw your own haptic curve directly">📈 pattern editor</button>
+            <button type="button" id="funscriptSessionAutoBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem" title="Auto-generate a haptic track shaped to the current session — uses the phase blueprint and selected length. Track plays once at session length (no loop), tapering through wake / reintroduction.">🎯 fit to session</button>
             <button type="button" id="hapticMacroLibraryBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem" title="Browse + manage haptic macros (short reusable clips fired via \[HAPTIC:macro=name\] sentinels or rule actions)">🎬 macros</button>
             <span id="funscriptStatus" style="font-style:italic">no track loaded</span>
             <button type="button" id="funscriptClearBtn" class="btn secondary" style="display:none;padding:2px 10px;font-size:0.66rem">clear</button>
@@ -41691,10 +41692,13 @@ Begin:`;
     }
     const dur = (track.actions[track.actions.length - 1].at - track.actions[0].at) || 1;
     const elapsed = funscriptEngine.getElapsedMs?.() || 0;
-    // Loop the playhead across track duration if elapsed exceeds it —
-    // matches funscript-utils convention where the heatmap displays the
-    // full track and longer sessions wrap. Clamp negative values to 0.
-    const t = Math.max(0, (elapsed % dur) / dur);
+    // Round 26 — playhead behavior matches the engine's loop semantics:
+    // looped tracks (built-in patterns) wrap modulo duration; one-shot
+    // tracks (loaded .funscript files) clamp at 100% once they finish so
+    // the user sees "we played to the end and then held the last pos".
+    const t = track.loop
+      ? Math.max(0, ((elapsed % dur) + dur) % dur) / dur
+      : Math.max(0, Math.min(1, elapsed / dur));
     playhead.style.display = '';
     playhead.style.left = (t * 100).toFixed(2) + '%';
   }
@@ -42116,7 +42120,18 @@ Begin:`;
       // clock. We multiply elapsed time so a 2× speed reads further into
       // the track per real-time tick.
       const rawElapsedMs = now - _startMs - _pausedAccumMs;
-      const elapsedMs = _liveSpeedAdjustedMs(rawElapsedMs);
+      let elapsedMs = _liveSpeedAdjustedMs(rawElapsedMs);
+      // Round 26 — looping support. When the track is marked `loop:true`
+      // (set by _funscriptFromPattern for the built-in 60s patterns), wrap
+      // the playhead so the curve repeats indefinitely instead of
+      // pinning to its final position. User-loaded .funscript files
+      // default to non-looping, matching player conventions.
+      if (_track.loop && _track.actions.length >= 2) {
+        const trackDur = _track.actions[_track.actions.length - 1].at - _track.actions[0].at;
+        if (trackDur > 0) {
+          elapsedMs = ((elapsedMs % trackDur) + trackDur) % trackDur;
+        }
+      }
       const pos01 = _funscriptInterpolate(_track, elapsedMs);
       // Apply intensity / randomness via live-control. _funscriptInterpolate
       // returns 0..1 so we scale to 0..100 first, modify, scale back.
@@ -42424,7 +42439,224 @@ Begin:`;
       version:  1,
       inverted: false,
       range:    100,
+      // Round 26 — patterns are 60s loops by design. Mark loop:true so
+      // the engine wraps the playhead continuously instead of pinning to
+      // the final position when a session runs longer than 60s. Loaded
+      // .funscript FILES default to loop:false (matching player convention)
+      // since they're authored at session length, not as loops.
+      loop:     true,
       actions:  p.generate(),
+    };
+  }
+
+  // ====================================================================
+  // PHASE-AWARE AUTO-FUNSCRIPT — Round 26
+  // ====================================================================
+  // Generates a funscript curve from the current session's phase
+  // blueprint and total duration. Intent is to give users a
+  // session-shaped haptic track without authoring one — the curve
+  // naturally swells through deepening + work and tapers through
+  // lighteners + wake. The track length matches the user-selected
+  // session length so the engine doesn't need to loop.
+  //
+  // Each phase has a profile of {ampSpan, mid, periodMs, ampShape}.
+  // ampShape is one of:
+  //   'flat'    — constant amplitude across the phase
+  //   'rise'    — amplitude grows from 0 to full across the phase
+  //   'fall'    — amplitude shrinks from full to 0
+  //   'arc'     — amplitude rises then falls (peak at mid-phase)
+  //
+  // Phase profiles are intentionally CONSERVATIVE. The user can amplify
+  // via the live-control intensity slider if they want more — better to
+  // start gentle and let them dial up than to surprise them with an
+  // intense baseline.
+  const PHASE_FUNSCRIPT_PROFILE = Object.freeze({
+    settling:        { ampSpan: 14,  mid: 50, periodMs: 6500, ampShape: 'rise' },
+    induction:       { ampSpan: 26,  mid: 50, periodMs: 5500, ampShape: 'rise' },
+    deepener:        { ampSpan: 38,  mid: 50, periodMs: 4500, ampShape: 'rise' },
+    level:           { ampSpan: 30,  mid: 50, periodMs: 5000, ampShape: 'flat' },
+    teaching:        { ampSpan: 24,  mid: 50, periodMs: 5000, ampShape: 'flat' },
+    training:        { ampSpan: 36,  mid: 50, periodMs: 3500, ampShape: 'arc'  },
+    work:            { ampSpan: 50,  mid: 50, periodMs: 3000, ampShape: 'arc'  },
+    affirm:          { ampSpan: 30,  mid: 50, periodMs: 4000, ampShape: 'flat' },
+    mission:         { ampSpan: 38,  mid: 50, periodMs: 3500, ampShape: 'arc'  },
+    goal:            { ampSpan: 32,  mid: 50, periodMs: 4000, ampShape: 'flat' },
+    lightener:       { ampSpan: 22,  mid: 50, periodMs: 5500, ampShape: 'fall' },
+    wake:            { ampSpan: 12,  mid: 50, periodMs: 6500, ampShape: 'fall' },
+    reintroduction:  { ampSpan: 6,   mid: 50, periodMs: 8000, ampShape: 'fall' },
+  });
+
+  /** Default profile for any phase name not in the map. Acts as a
+   *  catch-all that produces gentle activity rather than zero output —
+   *  unknown phase types should still feel something. */
+  const PHASE_FUNSCRIPT_DEFAULT = Object.freeze(
+    { ampSpan: 24, mid: 50, periodMs: 5000, ampShape: 'flat' }
+  );
+
+  /** Strip numbering suffixes like `deepener-2` → `deepener`, `work-1` →
+   *  `work`. Phase blueprints number phases when there are multiples;
+   *  the profile map keys on the basename. */
+  function _phaseBaseName(name) {
+    if (!name || typeof name !== 'string') return '';
+    const m = name.match(/^([a-z]+)/i);
+    return m ? m[1].toLowerCase() : name.toLowerCase();
+  }
+
+  /** Map session-length string to estimated total seconds. Mirrors the
+   *  values shown in the length-select <option> labels in step 5. */
+  function _sessionLengthSec(len) {
+    const map = {
+      micro: 120, quick: 300, short: 720, medium: 1200,
+      long: 1800, extended: 2700, deep: 3600, marathon: 5400,
+    };
+    return map[len] || 1200;  // medium default
+  }
+
+  /** Build a complete funscript track for the current session. Returns
+   *  the canonical { version, inverted, range, actions } shape ready to
+   *  hand to funscriptEngine.loadTrack(). The track is NOT loopable —
+   *  it's already session-length, so wrapping would cause a discontinuity
+   *  at the wake/reintroduction → settling boundary.
+   *
+   *  Intent type modifies the work-phase profile: sleep intentions get
+   *  a softer work + faded wake; energy intentions get a more activated
+   *  work + crisp wake; everything else uses defaults. */
+  function buildAutoFunscriptForSession(opts = {}) {
+    const length = opts.length || (typeof state !== 'undefined' && state.length) || 'medium';
+    const intentType = opts.intentionType || (typeof state !== 'undefined' && state.intentionType) || 'general';
+    let phases = opts.phases;
+    if (!Array.isArray(phases) || !phases.length) {
+      // Fall back to the live blueprint when no phase list is supplied
+      try { phases = (typeof getSessionPhaseBlueprint === 'function') ? getSessionPhaseBlueprint() : []; }
+      catch { phases = []; }
+    }
+    if (!phases.length) {
+      // Last-resort blueprint — covers callers that invoke this before
+      // the session-config UI has populated state.
+      phases = ['settling', 'induction', 'deepener', 'work', 'lightener', 'wake', 'reintroduction'];
+    }
+
+    const totalSec = _sessionLengthSec(length);
+    const totalMs  = totalSec * 1000;
+    // Word-weight per phase. Same weights the existing script-generation
+    // path uses so audio + haptic stay roughly in sync. Bigger weight =
+    // more time. work blocks get the biggest share, then deepeners, then
+    // bookend phases. Affirm is small because it usually rides on top
+    // of a work phase rather than standing alone.
+    const weight = (basename) => ({
+      settling: 0.5, induction: 1.5, deepener: 1.5, level: 1.0,
+      teaching: 1.5, training: 2.0, work: 3.0, affirm: 0.6,
+      mission: 1.5, goal: 1.5, lightener: 1.0, wake: 0.7,
+      reintroduction: 0.4, sleep: 1.5,
+    }[basename] ?? 1.0);
+
+    // Compute per-phase durations from weights
+    const phaseEntries = phases.map(name => ({
+      name,
+      base: _phaseBaseName(name),
+      profile: { ...(PHASE_FUNSCRIPT_PROFILE[_phaseBaseName(name)] || PHASE_FUNSCRIPT_DEFAULT) },
+    }));
+    // Intent-type tweaks. Sleep softens everything past settling and
+    // empties wake/reintroduction. Energy boosts work and keeps wake
+    // crisp. These match the corresponding script-generation guidance
+    // present in the intention-type metadata.
+    if (intentType === 'sleep') {
+      for (const e of phaseEntries) {
+        if (e.base === 'wake' || e.base === 'reintroduction') {
+          e.profile.ampSpan = 0;  // no activity — let the user drift off
+        } else if (e.base === 'work' || e.base === 'affirm' || e.base === 'lightener') {
+          e.profile.ampSpan = Math.max(4, e.profile.ampSpan * 0.55);
+          e.profile.periodMs = Math.min(9000, e.profile.periodMs * 1.4);
+        }
+      }
+    } else if (intentType === 'energy' || intentType === 'performance') {
+      for (const e of phaseEntries) {
+        if (e.base === 'work' || e.base === 'training') {
+          e.profile.ampSpan = Math.min(70, e.profile.ampSpan * 1.25);
+          e.profile.periodMs = Math.max(1800, e.profile.periodMs * 0.75);
+        } else if (e.base === 'wake') {
+          e.profile.ampSpan = Math.min(40, e.profile.ampSpan * 1.8);  // brisk wake
+        }
+      }
+    }
+    const totalWeight = phaseEntries.reduce((s, e) => s + weight(e.base), 0) || 1;
+    let cursor = 0;
+    for (const e of phaseEntries) {
+      const share = weight(e.base) / totalWeight;
+      e.startMs = cursor;
+      e.durMs   = share * totalMs;
+      cursor   += e.durMs;
+    }
+
+    // Now generate position samples across the full timeline. Each phase
+    // contributes a sine wave at its profile's period, with the amplitude
+    // shaped per `ampShape`. Phase-to-phase amplitude continuity is
+    // preserved by NOT resetting the sine phase at boundaries — the
+    // accumulator keeps running across phase ends.
+    const stepMs = 100;  // 10Hz sample rate — funscript-typical, plenty
+    const out = [];
+    let phaseAcc = 0;
+    let lastPhaseIdx = -1;
+    for (let t = 0; t <= totalMs; t += stepMs) {
+      // Advance phase pointer until we land in the phase containing t
+      let pIdx = 0;
+      for (let i = 0; i < phaseEntries.length; i++) {
+        if (phaseEntries[i].startMs <= t) pIdx = i; else break;
+      }
+      const ph = phaseEntries[pIdx];
+      const phT = (ph.durMs > 0) ? Math.max(0, Math.min(1, (t - ph.startMs) / ph.durMs)) : 0;
+      // Apply ampShape to get the effective amplitude scalar in [0..1]
+      let ampScalar;
+      switch (ph.profile.ampShape) {
+        case 'rise': ampScalar = phT; break;
+        case 'fall': ampScalar = 1 - phT; break;
+        case 'arc':  ampScalar = Math.sin(phT * Math.PI); break;  // 0→1→0
+        default:     ampScalar = 1; break;  // 'flat'
+      }
+      // Smoothing across phase boundaries: blend with the prior phase's
+      // contribution within the first 4% of each phase to avoid abrupt
+      // amplitude jumps where shapes meet.
+      if (pIdx !== lastPhaseIdx && phT < 0.04 && pIdx > 0) {
+        const prev = phaseEntries[pIdx - 1];
+        const prevProfile = prev.profile;
+        let prevAmp;
+        switch (prevProfile.ampShape) {
+          case 'rise': prevAmp = 1; break;
+          case 'fall': prevAmp = 0; break;
+          case 'arc':  prevAmp = 0; break;
+          default:     prevAmp = 1; break;
+        }
+        const blend = phT / 0.04;
+        ampScalar = prevAmp * (1 - blend) + ampScalar * blend;
+      }
+      lastPhaseIdx = pIdx;
+      const ampSpan = ph.profile.ampSpan * ampScalar;
+      const period = ph.profile.periodMs;
+      phaseAcc += (stepMs / period) * Math.PI * 2;
+      const pos = ph.profile.mid + (ampSpan / 2) * Math.sin(phaseAcc);
+      out.push({ at: t, pos: Math.max(0, Math.min(100, Math.round(pos))) });
+    }
+
+    return {
+      version:  1,
+      inverted: false,
+      range:    100,
+      // Session-length tracks DON'T loop — they're meant to play once
+      // matched to the actual session, then the engine sits on the final
+      // position (which is near rest by design — wake/reintro are gentle).
+      loop:     false,
+      actions:  out,
+      // Round 26 — _autoMeta is a non-standard field tracking how this
+      // track was generated. Lets the UI show a useful filename in the
+      // status row ("session-auto · medium · sleep") and prevents naive
+      // share-link round-trips from accidentally exporting a session-
+      // specific track as a generic one.
+      _autoMeta: {
+        kind: 'session-auto',
+        length,
+        intentionType: intentType,
+        phaseCount: phaseEntries.length,
+      },
     };
   }
 
@@ -42886,6 +43118,26 @@ Begin:`;
     catch (e) { notify.error('Pattern editor unavailable: ' + (e?.message || e)); }
   });
 
+  // Round 26 — fit to session. Builds a phase-aware funscript matched
+  // to the current session length and intent type, then loads it into
+  // the engine. The track is one-shot (loop:false) so it tapers through
+  // wake / reintroduction at session end rather than wrapping. Existing
+  // live-control sliders still apply on top.
+  $('funscriptSessionAutoBtn')?.addEventListener('click', () => {
+    try {
+      const track = buildAutoFunscriptForSession();
+      const meta  = track._autoMeta || {};
+      const dur   = _funscriptDuration(track);
+      const m = Math.floor(dur / 60), s = Math.round(dur % 60);
+      const filename = `session-auto · ${meta.length || '?'}${meta.intentionType && meta.intentionType !== 'general' ? ' · ' + meta.intentionType : ''}`;
+      funscriptEngine.loadTrack(track, filename);
+      notify.success(`Auto-track ready · ${m}:${String(s).padStart(2,'0')} · ${track.actions.length} points · ${meta.phaseCount} phases`);
+    } catch (e) {
+      console.warn('[funscript-auto] generation failed:', e);
+      notify.error('Auto-track failed: ' + (e?.message || e));
+    }
+  });
+
   // Round 26 — keep the speed preset chip highlight in sync with the
   // current slider value. Tolerance of 0.025 covers the slider's
   // 0.05 step quantization without falsely matching adjacent presets
@@ -43063,12 +43315,35 @@ Begin:`;
       name:        String(p.name || 'Untitled').slice(0, 80),
       icon:        safeIcon,
       description: String(p.description || '').slice(0, 240),
+      // Round 26 — funscript-standard metadata fields. Both optional;
+      // empty values get normalized away rather than stored as empty
+      // strings so JSON exports stay clean.
+      creator:     String(p.creator || '').slice(0, 80) || undefined,
+      tags:        Array.isArray(p.tags) ? p.tags.filter(t => typeof t === 'string').map(t => t.trim()).filter(Boolean).slice(0, 20) : [],
       inverted:    !!p.inverted,
       range,
       actions,
       _user:       true,
       _created:    Number(p._created) || Date.now(),
     };
+  }
+
+  // Round 26 — split a comma-separated tags input into a clean array.
+  // Trims whitespace, lowercases, drops empties and duplicates. Capped
+  // at 20 tags to keep storage / share payloads reasonable.
+  function _peParseTags(s) {
+    if (!s || typeof s !== 'string') return [];
+    const seen = new Set();
+    const out = [];
+    for (const raw of s.split(',')) {
+      const t = raw.trim().toLowerCase();
+      if (!t || seen.has(t)) continue;
+      if (t.length > 30) continue;
+      seen.add(t);
+      out.push(t);
+      if (out.length >= 20) break;
+    }
+    return out;
   }
 
   /** Materialize a track from any pattern (built-in or user). User
@@ -43135,6 +43410,14 @@ Begin:`;
         <input id="_pe_name" type="text" maxlength="80" placeholder="My pattern" value="${escapeHtml(init.name)}" style="width:100%;padding:6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.84rem">
         <label style="font-size:0.74rem;color:var(--text-dim);align-self:start;margin-top:6px">Description</label>
         <textarea id="_pe_desc" maxlength="240" rows="2" placeholder="One-line description shown in the picker" style="width:100%;padding:6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.78rem;resize:vertical">${escapeHtml(init.description)}</textarea>
+        <!-- Round 26 — funscript-standard metadata fields. Captured per
+             user pattern and embedded in the metadata block when the
+             pattern is exported as a .funscript file (see _pe_export
+             below). Optional — defaults to empty. -->
+        <label style="font-size:0.74rem;color:var(--text-dim)">Creator</label>
+        <input id="_pe_creator" type="text" maxlength="80" placeholder="Your name or handle (optional)" value="${escapeHtml(init.creator || '')}" style="width:100%;padding:6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.78rem">
+        <label style="font-size:0.74rem;color:var(--text-dim)">Tags</label>
+        <input id="_pe_tags" type="text" maxlength="200" placeholder="Comma-separated, e.g. sleep, breath, gentle" value="${escapeHtml(Array.isArray(init.tags) ? init.tags.join(', ') : (init.tags || ''))}" style="width:100%;padding:6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.78rem">
         <label style="font-size:0.74rem;color:var(--text-dim)">Range</label>
         <div style="display:flex;align-items:center;gap:10px">
           <input id="_pe_range" type="range" min="10" max="100" value="${init.range}" style="flex:1">
@@ -43195,6 +43478,11 @@ Begin:`;
       </details>
       <div class="modal-actions" style="margin-top:14px">
         <button class="btn secondary" id="_pe_cancel">cancel</button>
+        <!-- Round 26 — export as standard .funscript file. Writes a
+             well-formed JSON document with metadata block (title,
+             creator, description, tags, duration) so the file is
+             interoperable with funscript-io, OFS, ScriptAxis, etc. -->
+        <button class="btn secondary" id="_pe_export" title="Download this curve as a standard .funscript file with metadata">💾 export .funscript</button>
         <button class="btn" id="_pe_save">${isNew ? 'create' : 'save'}</button>
       </div>
     </div>`;
@@ -43791,6 +44079,11 @@ Begin:`;
         name,
         icon: $$('_pe_icon').value || '🎵',
         description: $$('_pe_desc').value,
+        // Round 26 — funscript-standard metadata. Tags input is a
+        // comma-separated string in the UI; normalized to an array
+        // and trimmed/deduped at save time.
+        creator: ($$('_pe_creator')?.value || '').trim().slice(0, 80),
+        tags:    _peParseTags($$('_pe_tags')?.value || ''),
         inverted: $$('_pe_invert').checked,
         range: Number($$('_pe_range').value) || 100,
         actions: _ceActions,
@@ -43803,6 +44096,62 @@ Begin:`;
       close();
       notify.success(isNew ? `Pattern "${updated.name}" created.` : `Pattern saved.`);
       _renderPatternPicker(); // refresh underlying picker if open
+    });
+
+    // Round 26 — export the current curve as a standard .funscript file.
+    // Format follows the de-facto convention used by funscript-io, OFS,
+    // ScriptAxis, etc.: top-level { version, inverted, range, actions,
+    // metadata }. Metadata fields are optional but improve discoverability
+    // when the file is uploaded to script directories or shared.
+    $$('_pe_export').addEventListener('click', () => {
+      if (!_ceActions.length) { notify.warn('Add at least one point before exporting.'); return; }
+      const name = ($$('_pe_name').value || 'pattern').trim() || 'pattern';
+      const tags = _peParseTags($$('_pe_tags')?.value || '');
+      // Action positions get pre-clamped to integer 0..100 — most
+      // funscript players expect ints, not floats. We round once on
+      // export rather than mutating _ceActions itself.
+      const actions = _ceActions.map(a => ({
+        at: Math.max(0, Math.round(a.at)),
+        pos: Math.max(0, Math.min(100, Math.round(a.pos))),
+      })).sort((a, b) => a.at - b.at);
+      const lastAt = actions.length ? actions[actions.length - 1].at : 0;
+      const fs = {
+        version: '1.0',
+        inverted: !!$$('_pe_invert').checked,
+        range: Number($$('_pe_range').value) || 100,
+        actions,
+        metadata: {
+          title: name,
+          creator: ($$('_pe_creator')?.value || '').trim() || undefined,
+          description: ($$('_pe_desc')?.value || '').trim() || undefined,
+          duration: Math.round(lastAt / 1000),  // seconds, funscript-utils convention
+          tags: tags.length ? tags : undefined,
+          script_url: undefined,
+          original_name: undefined,
+          original_total_duration_ms: lastAt,
+          // Marks this file as HNE-authored — informational, ignored by other players.
+          generator: 'HNE Pattern Editor',
+        },
+      };
+      // Strip undefined keys from metadata so the JSON stays clean.
+      for (const k of Object.keys(fs.metadata)) {
+        if (fs.metadata[k] === undefined) delete fs.metadata[k];
+      }
+      const json = JSON.stringify(fs, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const safeName = name.replace(/[^\w\-. ]+/g, '_').slice(0, 60) || 'pattern';
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${safeName}.funscript`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Release the blob URL after the click has had time to fire — 1s
+      // is well past the synchronous download trigger and avoids
+      // prematurely revoking on slow browsers.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      notify.success(`Exported ${safeName}.funscript (${actions.length} points)`);
     });
 
     // Initial render — needs to wait for the modal to be in the DOM so
