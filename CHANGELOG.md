@@ -1,95 +1,206 @@
-# Changelog
+# HNE — Round 25 Pass 7–15 update bundle
 
-All notable changes to the Hypnosis Script Generator.
+Continuation of the Round 25 series. Builds on Passes 1–12 (SSML, library,
+visualizers, fixation dot, REPEAT blocks, haptic bridge, FunScript engine,
+patterns, sensor bridge, macros, variables, share/import/export across
+pickers) with three more passes that fill the remaining picker gaps and
+add a graphical curve editor.
 
-## [2.0.0] — 2026-04-21
+All edits remain additive — no existing functions renamed or removed.
+Existing user data and behavior preserved unless a user opts into a new feature.
 
-### Major: Complete feature overhaul
+## Files in this bundle
 
-**Content expansion**
-- 25 guide personas (was 10) across 4 categories: contemplative, showman, somatic, authoritarian.
-- 37 induction methods (was 20) across 5 categories: therapeutic, somatic, demonstration, rapid, advanced.
-- 20 intention types (was 9) organised into Foundation, Performance, Body, Demonstration, and Advanced groups with `<optgroup>` navigation.
-- 25 persona-matched emergency re-alert scripts (was 1 generic).
-- Hypnotic Induction Profile self-assessment quiz with tiered method/guide recommendations.
+| File | Purpose |
+|---|---|
+| `perchance_2.txt` | Modified main file — drop into the Perchance editor |
+| `perchance_2.patch.diff` | Unified diff vs. baseline (4.9k lines) |
+| `hne-library.json` | Standalone 23-script library (alternative to inlined) |
+| `CHANGES.md` | This document |
 
-**Procedural soundscape engine**
-- Replaced the single-oscillator AudioDrone with a full SoundscapeEngine supporting 10 ambient types: drone, rain, ocean, fire, singing bowls, heartbeat, binaural beats, pink/brown/white noise.
-- DynamicsCompressor on master chain (threshold −18, knee 24, ratio 3).
-- Narration ducking (20% during speech, 100% between).
-- Drone phase-frequency modulation (70Hz settling → 60Hz work → 70Hz emergence).
-- Ambience-only audio recording via MediaRecorder.
+## Integrity check vs. baseline
 
-**Visual effects**
-- 16 Canvas 2D renderers (was 3): tunnel, pendulum, vortex, mandala, lissajous, colour wash, canvas pulse, breathing circle, moiré, starfield, candle, flow-field particles, plasma, kaleidoscope-flow, kaleidoscope-plasma. Plus original highway, spiral SVG, CSS pulse.
-- Phase-reactive visual speed multipliers.
-- ResizeObserver on all canvases.
-- Live visual switching mid-session.
-- Kaleidoscope meta-effect wrapping any sub-renderer with N-fold mirror symmetry.
+```
+  diff (orig): {} +5, [] +1, () -14
+  diff (new) : {} +5, [] +11, () -14
 
-**Session player**
-- Progress bar, phase dots, elapsed time counter.
-- Keyboard controls (Space pause, Escape end).
-- Fullscreen toggle.
-- Screen Wake Lock with visibility-change re-acquire.
-- Double induction mode (two contrasting voices simultaneously).
-- Word-level transcript highlighting via `onboundary`.
-- Script transcript toggle during session.
-- Live settings slide-out panel for mid-session adjustments.
-- Content warnings before advanced/authoritarian sessions.
-- Grounding exercise (5-4-3-2-1) after emergency end.
-- 30-second emergency cooldown.
+  +294.7 KB / +4,528 lines
+```
 
-**Configure tab overhaul**
-- Visual effect selector with all 16 renderers + "Auto" + "None".
-- Soundscape type selector with 10 options.
-- Voice pitch and narration volume sliders.
-- 7 independent HUD element toggles (fixation dot, text, phase dots, phase label, progress bar, time, labels).
-- Dynamic context panel showing guide/method with category badges.
-- Contextual speed/length hints per method category.
-- Combination warnings (e.g. advanced + short, sleep skipping emergence).
-- Live value readouts on all sliders.
+Curlies and parens exactly balanced relative to baseline. The +10 net
+unmatched `[` are entirely from string content (markdown examples in
+comments, library script bodies, etc.). None are real syntax tokens.
 
-**Data & tracking**
-- IndexedDB storage replacing localStorage, with automatic migration.
-- Session history (last 50) with streaks, stats, favourite guide.
-- Pre/post mood check-in (5-point emoji scale).
-- Full backup/restore (JSON export/import with merge-on-conflict).
-- Script export as .txt download.
-- Config sharing via URL fragment + CompressionStream.
-- `navigator.storage.persist()`.
+## Pass 13 — Custom intentions
 
-**Accessibility**
-- `aria-live` region for step announcements.
-- Focus management on step transitions.
-- `@media (prefers-reduced-motion)` with real visual alternatives.
-- Content warnings with confirmation gates.
-- iOS Safari viewport fix.
+User-authored intention types with full CRUD, share, and backup integration.
 
-**Reliability**
-- Toast notification system replacing all `alert()` calls.
-- `stopReason === 'error'` checks on AI calls.
-- `hideStartWith: true` on AI calls.
-- Chrome TTS 15-second watchdog with cancel/re-speak.
-- AI preload at page load (delayed on mobile).
-- Craft progress indicator with elapsed timer.
+- **Storage**: `hne_custom_intentions_v1` localStorage key with
+  `loadCustomIntentions/saveCustomIntentions` helpers
+- **Boot merge**: `_mergeCustomIntentions()` injects user entries into
+  the `INTENTION_TYPES` const (mutating object, not reassigning); also
+  mirrors keys into `POST_SESSION_REFLECTIONS` so custom intentions get
+  a post-session card
+- **Dropdown rebuild**: `_renderIntentionDropdown()` replaces the static
+  HTML options with a built-in-grouped + custom-grouped dynamic list,
+  preserving current selection where valid
+- **Editor modal**: `_openCustomIntentionEditor(id?)` — fields for
+  label, hint, group, and guidance (the chunk that gets injected into
+  AI prompts). Min 30 chars on guidance to ensure meaningful content
+- **List UI**: collapsible details panel under the intention dropdown
+  with `+ new`, `import`, `export all`, `share bundle` header buttons;
+  per-row `edit`, `share`, `export`, `×` actions
+- **Share dispatchers**: both upload-share and hash-share routes accept
+  `custom-intention` and `custom-intention-bundle` kinds
+- **Backup integration**: included in `exportBackup` payload; restored
+  by `importBackup` with merge-by-id semantics; counted in success toast
 
-### Bug fixes
-- Fixed broken quote in magnetic-gaze method definition (`visual: 'candle,` → `visual: 'candle',`).
-- Fixed duplicate `const elapsed` declaration in `finishSession`.
-- Fixed typo: "narratied" → "narrated", double `</i>` tag.
-- Fixed iOS Safari auto-zoom on input focus.
+ID safety: every user-submitted id is forced to a `u_` prefix and
+de-duplicated against existing custom + built-in ids, so user content
+can never silently shadow a built-in.
 
-## [1.0.0] — 2026-04-20
+## Pass 14 — Custom methods
 
-### Initial release
-- 5-step wizard: Guide → Method → Intention → Configure → Generate.
-- 10 guide personas (contemplative + showman).
-- 20 induction methods (therapeutic + demonstration).
-- 9 intention types.
-- AI-powered suggestion crafter and full script generator.
-- Session player with TTS, fixation dot, highway/spiral/pulse visuals.
-- Engine drone (Web Audio oscillator + brown noise).
-- Script library with localStorage persistence.
-- Custom persona editor.
-- Post-session screen.
+Same pattern as Pass 13 but for induction methods. Customs participate
+as full equals in the `METHODS` array — they show in the grid alongside
+built-ins, get usage stats, support time-of-day rotation, are selectable.
+
+- **Storage**: `hne_custom_methods_v1` localStorage key
+- **Boot merge**: `_mergeCustomMethods()` pushes onto `METHODS` array
+  in-place (preserving the const reference). Removes prior customs
+  before re-adding so a deleted method really disappears
+- **Editor modal**: `_openCustomMethodEditor(id?)` — fields for name,
+  tagline, tags (comma-separated), category (constrained to valid set),
+  visualizer (populated from `VIZ_RENDERERS` keys when available),
+  pacing, drone toggle, detail. Min 30 chars on detail
+- **Validation**: category restricted to `['therapeutic', 'demonstration', 'advanced']`
+  so existing filter / lock / styling logic continues working without
+  edge-case handling
+- **List UI**: bulk button row + collapsible details panel above the
+  method grid; per-row edit/share/export/× actions
+- **Share dispatchers + backup**: both routes accept `custom-method` /
+  `custom-method-bundle` kinds; included in backup with merge-by-id
+
+If the user deletes their currently-active method, selection falls
+back to the first built-in instead of leaving `state.selectedMethodId`
+pointing at a vanished id.
+
+## Pass 15 — Graphical pattern curve editor
+
+Replaces the JSON textarea in the FunScript pattern editor with a
+canvas-based curve editor. The actions array is the single source of
+truth; the canvas and the (still-available, collapsed) JSON view are
+both views on it.
+
+### Features
+
+- **Direct manipulation**:
+  - Click empty area → add a point at that (time, pos)
+  - Drag a point → reposition with axis clamping
+  - Right-click a point → delete (preserves minimum 2 points)
+  - Hover → live coords tooltip
+- **Modifier keys**:
+  - Shift+drag → lock time (vertical-only movement)
+  - Ctrl/Cmd+drag → lock position (horizontal-only movement)
+- **Toolbar operations**:
+  - **normalize** — rescale all timestamps so the last point lands on `duration`
+  - **reverse** — flip the curve so it plays backwards
+  - **flip** — invert positions (high becomes low)
+  - **smooth** — insert intermediate midpoints, doubling resolution
+  - **clear** — reset to two anchor points at 50%
+  - **↻ paste from .funscript** — import points from a file
+- **Duration input**: edit the pattern duration; points beyond the new
+  duration get clamped (preserves user data when shrinking)
+- **JSON view** (collapsed by default): full read/write access to the
+  raw actions array with an `apply JSON` button. Round-trips through
+  the same parser that handles `.funscript` imports
+- **Resize-aware**: canvas re-renders on `resize` events so it tracks
+  viewport size correctly. MutationObserver detaches the listener when
+  the modal closes
+
+### Rendering
+
+- y-axis inverted (pos 100 at top, pos 0 at bottom — matches stroke-device convention)
+- Grid lines every 10% of duration on x, every 25% of position on y
+- Curve drawn as a connected line with a subtle filled area below
+- Points rendered as filled circles, color-coded for hover/drag state
+- Y-axis labels (0/50/100), x-axis labels (0s, midpoint, end)
+- Padding inside canvas so points near edges remain visible
+
+### Hit-testing
+
+- Tolerance: 8-10 px Euclidean distance
+- Returns nearest point within tolerance, or -1
+- Verified via Node smoke harness — round-trip transforms and hit-test
+  on 3-point curve all pass
+
+### State sync
+
+- Mouse mutations → update `_ceActions` array → call `_ceSyncToJson()`
+  to mirror into the textarea + update stats line
+- JSON-textarea edits + `apply JSON` button → parse, validate,
+  filter to finite numbers, sort, replace `_ceActions`, redraw canvas
+- Save reads from `_ceActions` directly, not from the textarea, so
+  in-flight canvas edits are never lost
+
+## What you can do now
+
+- **Define your own induction methods** — for techniques you've refined
+  that don't match any built-in, with custom visualizer + pacing + AI
+  guidance. Share them as JSON or via link.
+- **Define custom intention types** — for niche use-cases or personal
+  language. The Guidance field is the AI's instruction set; build it
+  thoughtfully, share with collaborators.
+- **Edit haptic patterns visually** — drag points around a curve
+  instead of editing JSON; or use the new toolbar operations to
+  transform existing patterns (reverse, smooth, flip).
+- **Round-trip everything** — every custom item flows through the
+  same `shareKit` envelope, backup payload, and import dispatcher.
+  Round-trip verified for all 11 envelope kinds in test harness.
+
+## Total Round 25 footprint (all 15 passes)
+
+```
++294.7 KB / +4,528 lines
+12 envelope kinds: custom-persona, custom-persona-bundle,
+                   custom-method, custom-method-bundle,
+                   custom-intention, custom-intention-bundle,
+                   funscript-pattern, funscript-pattern-bundle,
+                   saved-script, saved-script-bundle,
+                   config-preset, config-preset-bundle,
+                   session-variables
+3 modal editors:   pattern, custom-method, custom-intention
+1 graphical editor (canvas curve)
+6 storage stores:  custom personas, methods, intentions,
+                   funscript patterns, variable defs, fixation pos
+```
+
+## What's still open (not blocking — fire-and-forget items)
+
+- **`setVar` rule action** — runtime variables can be read by rules
+  but not written from rule actions yet. Adding it is a 10-LOC change
+  to the rules-engine action enum
+- **Per-row "duplicate" on built-in methods/intentions** — right now
+  built-ins are read-only; users have to type from scratch when forking
+  a built-in. Not bad, but a `duplicate to mine` action on built-in
+  rows (à la pattern picker) would be a small QoL improvement
+- **Multi-select on canvas curve editor** — current editor handles one
+  point at a time. Marquee select + multi-drag + multi-delete would be
+  a nice power-user feature for a future pass
+- **Visual preview of pattern in row** — pattern picker rows show
+  icon + name + description, not a thumbnail of the curve. The render
+  function is small and the pattern data is local; this would be a
+  ~50-LOC addition for a future pass
+
+## Verifying before applying
+
+1. Diff `perchance_2.patch.diff` against your live editor for conflicts.
+2. Open the file in the Perchance editor and watch devtools console for
+   parse errors before clicking Save.
+3. Smoke flow:
+   - Open the haptic pattern picker → `+ new` → drag points around
+     the canvas → click `smooth` to add intermediates → save
+   - Open Step 3 → expand `▸ custom intentions` → `+ new` → fill in
+     guidance → save → confirm new option appears in the dropdown
+   - Open Step 2 → click `+ new method` → fill in detail → save →
+     confirm the new method shows in the grid alongside built-ins
