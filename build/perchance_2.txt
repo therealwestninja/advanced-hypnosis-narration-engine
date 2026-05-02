@@ -2017,14 +2017,23 @@ min-width: 28px; min-height: 0;
      pan in a random direction across 60-90s; restarts when a new image
      swaps in via the bg engine. Disabled by prefers-reduced-motion.
      Skipped on .bg-video so videos don't double-animate. */
+  /* Ken Burns slow zoom-and-pan on the active background image.
+     Bug fix — previous values (1.02 → 1.06 scale, ≤1.4% translate,
+     80s cycle) were so subtle the user reported "static until a
+     transition". Bumped to ~1.0 → 1.10 scale and ≤4% translate over
+     50s so the motion is actually perceptible. The .alternate
+     direction with ease-in-out gives a slow inhale/exhale feel
+     rather than a jarring loop. Disabled by prefers-reduced-motion.
+     Skipped on .bg-video so videos don't double-animate. JS soft-
+     motion (when enabled) overrides this via inline `animation: none`. */
   body.bg-active .bg-img.active {
-    animation: bg-ken-burns 80s ease-in-out infinite alternate;
+    animation: bg-ken-burns 50s ease-in-out infinite alternate;
     transform-origin: center center;
   }
   @keyframes bg-ken-burns {
-    0%   { transform: scale(1.02) translate(0%, 0%); }
-    50%  { transform: scale(1.06) translate(-1.4%, 0.8%); }
-    100% { transform: scale(1.02) translate(1.2%, -0.6%); }
+    0%   { transform: scale(1.00) translate(0%, 0%); }
+    50%  { transform: scale(1.06) translate(-2.4%, 1.6%); }
+    100% { transform: scale(1.10) translate(2.4%, -1.6%); }
   }
   @media (prefers-reduced-motion: reduce) {
     body.bg-active .bg-img.active { animation: none; transform: scale(1.02); }
@@ -3674,13 +3683,24 @@ padding: 8px 12px; font-size: 0.75rem;
     padding: 6px 12px; font-family: var(--font-body);
     font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
     font-weight: 600; cursor: pointer;
-    transition: background 0.12s, color 0.12s;
+    transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+    /* Bug fix — active button needed clearer "selected" affordance.
+       The previous flat amber + cursor:default looked like a disabled
+       button; now there's a subtle inset shadow (pressed look), an
+       accent underline that confirms which one is current, and the
+       cursor stays as pointer so users still feel the button is
+       responsive. The text-shadow gives black-on-amber a touch more
+       weight on small text. */
+    border-bottom: 2px solid transparent;
   }
   .segmented-small button:hover { color: var(--neon-amber); }
   .segmented-small button.active {
-    background: var(--neon-amber); color: #000; cursor: default;
+    background: var(--neon-amber); color: #000;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.32);
+    border-bottom-color: rgba(0,0,0,0.55);
+    text-shadow: 0 0 1px rgba(0,0,0,0.25);
   }
-  .segmented-small button.active:hover { color: #000; }
+  .segmented-small button.active:hover { color: #000; background: var(--neon-amber); }
   .bg-transition-grid {
     display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 5px; margin-top: 6px;
@@ -18214,6 +18234,12 @@ ${messages}
     // (maskImage, transformOrigin, backfaceVisibility) so transition
     // leakage between swaps is impossible — every run starts from a
     // known-clean state regardless of what the previous one did.
+    //
+    // Includes inline `animation` reset so a previous slide's
+    // soft-motion override (which set animation: none) doesn't carry
+    // over to a new slide where soft motion is now off — without this
+    // the CSS bg-ken-burns rule would stay disabled.
+    newEl.style.animation = '';
     newEl.style.transition = 'none';
     newEl.style.transform = '';
     newEl.style.filter = '';
@@ -18230,6 +18256,7 @@ ${messages}
   function _bgScheduleCleanup(el, delayMs) {
     setTimeout(() => {
       if (el.style.zIndex !== '2') { // don't clobber a slide the next transition just promoted
+        el.style.animation = '';
         el.style.transition = 'none';
         el.style.transform = '';
         el.style.filter = '';
@@ -18326,6 +18353,17 @@ ${messages}
     // the long ease-in-out transition to the to-state. The reflow is
     // critical — without it the browser collapses both writes into
     // a single frame and the transition never plays.
+    //
+    // Bug fix — the CSS rule `body.bg-active .bg-img.active` has
+    // `animation: bg-ken-burns 80s ...` which was always animating
+    // `transform` on the same element. CSS-animated property values
+    // win over inline-style values, so the inline `transform =
+    // profile.from` was silently overridden and soft motion never
+    // appeared. Setting `animation: none` here disables the CSS
+    // animation for this element so the inline transform wins.
+    // _bgPrep() resets `animation: ''` on the next swap so the CSS
+    // rule re-takes effect for the next slide if soft motion is off.
+    el.style.animation = 'none';
     el.style.transition = 'none';
     el.style.transform = profile.from;
     void el.offsetWidth;
@@ -21638,6 +21676,152 @@ ${messages}
     ctx.fill();
   }
 
+  // ─── Mini-preview-only canvas-2D renderers ──────────────────────────
+  // The session-time render paths for spiral, pulse, highway, and
+  // neural-bloom are DOM- or WebGL-based (CSS animations, requestAnimation
+  // loops driving DOM nodes, or WebGL shaders). The mini-preview canvas
+  // can't host those; without canvas-2D approximations, the preview
+  // showed a "non-canvas preview" placeholder instead of the actual
+  // shape of the visualizer. These approximations are purely visual
+  // — just enough that a user picking from the dropdown can see what
+  // they'll get without the heavy infrastructure spinning up.
+  //
+  // Session-time setupVisual() returns early for these types BEFORE
+  // reaching the VIZ_RENDERERS map (lines ~22472-22533 in this file),
+  // so adding these keys to the map does not affect playback — only
+  // the preview lookup at startVizPreview().
+  function renderSpiralPreview(ctx, W, H, t, color) {
+    const rgb = hexToRgb(color);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2;
+    const maxR = Math.min(W, H) * 0.46;
+    const turns = 4.5;
+    ctx.strokeStyle = `rgba(${rgb},0.85)`;
+    ctx.lineWidth = 1.4;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    const rotation = t * 0.6;
+    const STEPS = 220;
+    for (let i = 0; i <= STEPS; i++) {
+      const frac = i / STEPS;
+      const angle = frac * turns * Math.PI * 2 + rotation;
+      const r = frac * maxR;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  function renderPulsePreview(ctx, W, H, t, color) {
+    const rgb = hexToRgb(color);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2;
+    const maxR = Math.min(W, H) * 0.46;
+    // Concentric breathing rings — three offset cycles produce a
+    // continuous outward pulse without strobe-like single beats.
+    for (let i = 0; i < 3; i++) {
+      const phase = (t * 0.85 + i / 3) % 1;
+      const r = phase * maxR;
+      const a = (1 - phase) * 0.6;
+      ctx.strokeStyle = `rgba(${rgb},${a.toFixed(3)})`;
+      ctx.lineWidth = 1.5 + (1 - phase) * 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // Center dot — a steady fixation point the rings pulse out from
+    ctx.fillStyle = `rgba(${rgb},0.85)`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function renderHighwayPreview(ctx, W, H, t, color) {
+    const rgb = hexToRgb(color);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    // Vanishing point — slightly above center for forward-tilted
+    // perspective, like driving at night
+    const vx = W / 2;
+    const vy = H * 0.40;
+    // Five lane stripes coming toward viewer. Each stripe's "depth"
+    // cycles from the vanishing point out to the bottom edge.
+    const STRIPES = 5;
+    ctx.strokeStyle = `rgba(${rgb},0.85)`;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    for (let i = 0; i < STRIPES; i++) {
+      const phase = ((t * 0.7) + i / STRIPES) % 1;
+      // Quadratic ease so stripes accelerate as they approach (perspective)
+      const depth = phase * phase;
+      const y = vy + (H - vy) * depth;
+      const halfWidth = (W * 0.42) * depth;
+      const alpha = 0.2 + depth * 0.7;
+      ctx.lineWidth = 1 + depth * 2;
+      ctx.strokeStyle = `rgba(${rgb},${alpha.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.moveTo(vx - halfWidth, y);
+      ctx.lineTo(vx - halfWidth * 0.18, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(vx + halfWidth * 0.18, y);
+      ctx.lineTo(vx + halfWidth, y);
+      ctx.stroke();
+    }
+    // Horizon line + center vanishing point
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = `rgba(${rgb},0.20)`;
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(0, vy);
+    ctx.lineTo(W, vy);
+    ctx.stroke();
+  }
+
+  function renderNeuralBloomPreview(ctx, W, H, t, color) {
+    const rgb = hexToRgb(color);
+    const mod = getAudioMod();
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2;
+    const baseR = Math.min(W, H) * 0.18;
+    const breath = baseR * (1.0 + 0.10 * Math.sin(t * 0.8) + mod.voiceEnvelope * 0.20);
+    // Halo around the central orb
+    const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, breath * 3.2);
+    halo.addColorStop(0, `rgba(${rgb},${(0.30 + mod.voiceEnvelope * 0.20).toFixed(3)})`);
+    halo.addColorStop(0.5, `rgba(${rgb},${(0.10 + mod.voiceEnvelope * 0.10).toFixed(3)})`);
+    halo.addColorStop(1, 'transparent');
+    ctx.fillStyle = halo;
+    ctx.fillRect(cx - breath * 3.2, cy - breath * 3.2, breath * 6.4, breath * 6.4);
+    // Central orb
+    const orbGrad = ctx.createRadialGradient(cx - breath * 0.3, cy - breath * 0.3, 0, cx, cy, breath);
+    orbGrad.addColorStop(0, `rgba(255,255,255,0.85)`);
+    orbGrad.addColorStop(0.6, `rgba(${rgb},0.70)`);
+    orbGrad.addColorStop(1, `rgba(${rgb},0.20)`);
+    ctx.fillStyle = orbGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, breath, 0, Math.PI * 2);
+    ctx.fill();
+    // Particle ring — small dots orbiting at radius ~breath * 2.2
+    const ringR = breath * 2.2 + mod.bass * 6;
+    const PARTICLES = 36;
+    ctx.fillStyle = `rgba(${rgb},${(0.55 + mod.pulse * 0.30).toFixed(3)})`;
+    for (let i = 0; i < PARTICLES; i++) {
+      const angle = (i / PARTICLES) * Math.PI * 2 + t * 0.4;
+      const wobble = 0.85 + 0.15 * Math.sin(t * 1.7 + i * 0.6);
+      const px = cx + Math.cos(angle) * ringR * wobble;
+      const py = cy + Math.sin(angle) * ringR * wobble;
+      ctx.beginPath();
+      ctx.arc(px, py, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   const VIZ_RENDERERS = {
     tunnel: renderTunnel,
     'pendulum-viz': renderPendulumViz,
@@ -21669,6 +21853,14 @@ ${messages}
     'pocket-watch': renderPocketWatch,
     'spinning-coin': renderSpinningCoin,
     'hand-pendulum': renderHandPendulum,
+    // Mini-preview-only canvas-2D approximations of the DOM/WebGL viz
+    // (added Round 26). Session-time setupVisual() takes a different
+    // code path for these types and returns early before checking the
+    // map, so these entries only affect the Step 5 mini-preview.
+    spiral: renderSpiralPreview,
+    pulse: renderPulsePreview,
+    highway: renderHighwayPreview,
+    'neural-bloom': renderNeuralBloomPreview,
   };
 
   // Phase-based speed multipliers for visuals
@@ -36018,9 +36210,11 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     { id: 'micro', icon: '⚡', name: 'Micro Reset', desc: '2-min state shift',
       persona: 'driver', method: 'highway', intention: 'trance', length: 'micro', soundscape: 'drone', vizOverride: 'highway' },
     { id: 'anxiety', icon: '🌊', name: 'Anxiety Relief', desc: 'Calm the nervous system',
-      persona: 'yoga-teacher', method: 'breath-478', intention: 'release', length: 'medium', soundscape: 'underwater', vizOverride: 'smoke' },
+      persona: 'yoga-teacher', method: 'breath-478', intention: 'release', length: 'medium', soundscape: 'underwater', vizOverride: 'smoke',
+      phaseExtras: ['praise'] /* Validating the user's effort — anxiety work needs the explicit "you're doing this right" beat */ },
     { id: 'confidence', icon: '🦁', name: 'Confidence', desc: 'Unshakable self-belief',
-      persona: 'commander', method: 'staircase', intention: 'emotional', length: 'medium', soundscape: 'drone', vizOverride: 'tunnel' },
+      persona: 'commander', method: 'staircase', intention: 'emotional', length: 'medium', soundscape: 'drone', vizOverride: 'tunnel',
+      phaseExtras: ['praise','reward'] /* Confidence work hinges on guide-validated effort + felt-sense reward — the whole point */ },
     { id: 'flow', icon: '🏆', name: 'Peak Flow', desc: 'Sports & performance',
       persona: 'martial-artist', method: 'ericksonian', intention: 'performance', length: 'medium', soundscape: 'heartbeat', vizOverride: 'mandala',
       phaseExtras: ['goal'] /* Future-pacing anchor — somatic rehearsal of the performance state */ },
@@ -36038,21 +36232,34 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     { id: 'journey', icon: '🚂', name: 'Train Journey', desc: 'Rhythmic drift into trance',
       persona: 'driver', method: 'highway', intention: 'trance', length: 'medium', soundscape: 'train', vizOverride: 'rain' },
     { id: 'temple', icon: '🕉️', name: 'Temple Sit', desc: 'Deep stillness meditation',
-      persona: 'mystic', method: 'breath-478', intention: 'trance', length: 'extended', soundscape: 'temple', vizOverride: 'sacred-geo' },
+      persona: 'mystic', method: 'breath-478', intention: 'trance', length: 'extended', soundscape: 'temple', vizOverride: 'sacred-geo',
+      phaseExtras: ['introduction'] /* Set the contemplative tone with a brief naming of the practice before settling in */ },
     /* New opt-in presets demonstrating the new phase types. Each has a single
        defining extra phase that distinguishes it from a vanilla preset. */
     { id: 'method-intro', icon: '📖', name: 'Method Intro', desc: 'First-time? Start here',
       persona: 'therapist', method: 'progressive', intention: 'trance', length: 'medium', soundscape: 'rain', vizOverride: 'breathing',
-      phaseExtras: ['teaching'] /* Psychoeducation primer for first-timers — explains trance plainly before going under */ },
+      phaseExtras: ['introduction','permission','teaching'] /* First-timer onboarding: name the guide, ask for consent, then explain the method plainly before going under */ },
     { id: 'skill-build', icon: '⚙️', name: 'Skill Builder', desc: 'Train one skill in trance',
       persona: 'old-master', method: 'staircase', intention: 'behavior', length: 'medium', soundscape: 'temple', vizOverride: 'mandala',
-      phaseExtras: ['training'] /* Skill rehearsal — repeated practice in trance for one specific capacity */ },
+      phaseExtras: ['training','praise'] /* Skill rehearsal + validating ratification — "yes, like that" lands harder after each rep */ },
     { id: 'mission-brief', icon: '➤', name: 'Mission Brief', desc: 'Short with a posthypnotic task',
       persona: 'commander', method: 'dave-elman', intention: 'behavior', length: 'short', soundscape: 'drone',
       phaseExtras: ['mission'] /* Posthypnotic homework focus — the whole session points to one concrete waking-life task */ },
     { id: 'goal-lock', icon: '◎', name: 'Goal Lock-in', desc: 'Anchor a desired outcome',
       persona: 'martial-artist', method: 'ericksonian', intention: 'performance', length: 'medium', soundscape: 'heartbeat', vizOverride: 'tunnel',
-      phaseExtras: ['goal'] /* Outcome anchor — vivid sensory future-pacing as the primary therapeutic mechanism */ },
+      phaseExtras: ['goal','reward'] /* Outcome anchor + felt-sense reward — the body-memory of success carried forward */ },
+    /* Round-26 presets that lead with the new Introduction / Permission /
+       Praise / Reward types. Designed as gateway presets for users who
+       haven't yet discovered those block types in the editor. */
+    { id: 'welcoming', icon: '👋', name: 'Welcoming Session', desc: 'Warm onboarding for first-time users',
+      persona: 'therapist', method: 'progressive', intention: 'trance', length: 'medium', soundscape: 'rain', vizOverride: 'breathing',
+      phaseExtras: ['introduction','permission','praise'] /* Maximum care for someone new — guide names themselves, asks consent, validates the user during work */ },
+    { id: 'self-compassion', icon: '🤍', name: 'Self-Compassion', desc: 'Praise + felt-sense reward for the work you do',
+      persona: 'therapist', method: 'progressive', intention: 'emotional', length: 'medium', soundscape: 'underwater', vizOverride: 'breathing',
+      phaseExtras: ['praise','reward'] /* The two new reinforcement blocks together — both halves of the "you did it / here's something to keep" pattern */ },
+    { id: 'consented-deep', icon: '✋', name: 'Consented Deep Trance', desc: 'Marathon depth with full ethical preamble',
+      persona: 'old-master', method: 'staircase', intention: 'trance', length: 'extended', soundscape: 'cave', vizOverride: 'tunnel',
+      phaseExtras: ['introduction','permission','teaching'] /* Goes deep — needs the introduction + explicit consent + theory primer before descent */ },
   ];
 
   function renderPresets() {
@@ -36137,58 +36344,68 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     { id: 'sleep-7', name: '7-Day Sleep', icon: '🌙', days: 7, desc: 'Progressive sleep improvement',
       persona: 'therapist', method: 'progressive', intention: 'sleep', length: 'long', soundscape: 'ocean', vizOverride: 'aurora',
       arc: ['Body scan & breath awareness', 'Staircase descent into dream space', 'Safe place construction', 'Anchor word installation', 'Deepening the anchor', 'Dream rehearsal', 'Integration & autonomous sleep'],
-      dayOverrides: { 1: { soundscape: 'rain' }, 3: { soundscape: 'underwater' }, 5: { soundscape: 'cave' }, 7: { soundscape: 'ocean', vizOverride: 'smoke' } } },
+      dayOverrides: {
+        1: { soundscape: 'rain', phaseExtras: ['introduction','permission'] /* Welcome the user to the program; sleep work especially needs explicit consent */ },
+        3: { soundscape: 'underwater' },
+        5: { soundscape: 'cave' },
+        7: { soundscape: 'ocean', vizOverride: 'smoke', phaseExtras: ['praise','reward'] /* Closing day: validate the work + felt-sense reward they carry forward */ }
+      } },
     { id: 'anxiety-14', name: '14-Day Calm', icon: '🍃', days: 14, desc: 'Systematic anxiety reduction',
       persona: 'therapist', method: 'breath-478', intention: 'release', length: 'medium', soundscape: 'rain', vizOverride: 'breathing',
       arc: ['Breath awareness & safety','Safe place visualization','Calm anchor installation','Body tension release','Worry containment','Trigger desensitization','Expanding calm + daily mission','Social ease + daily mission','Confidence layering + daily mission','Automatic calm response + daily mission','Stress inoculation + daily mission','Resilience building + daily mission','Future pacing + goal anchor','Integration & autonomy'],
       dayOverrides: {
+        1:  { phaseExtras: ['introduction','permission'] /* First day of anxiety work — name the guide, ask consent before going under */ },
+        2:  { phaseExtras: ['praise'] /* Validate showing up for day 2 — anxiety work needs the explicit "you're doing this" beat */ },
         4:  { soundscape: 'underwater', vizOverride: 'smoke' },
         7:  { phaseExtras: ['mission'] },
-        8:  { soundscape: 'forest', phaseExtras: ['mission'] },
+        8:  { soundscape: 'forest', phaseExtras: ['mission','praise'] /* Mid-program ratification */ },
         9:  { phaseExtras: ['mission'] },
         10: { phaseExtras: ['mission'] },
         11: { soundscape: 'temple', vizOverride: 'sacred-geo', phaseExtras: ['mission'] },
         12: { phaseExtras: ['mission'] },
         13: { phaseExtras: ['goal'] },
-        14: { phaseExtras: ['goal','mission'] }
+        14: { phaseExtras: ['goal','mission','reward'] /* Final day: outcome anchor + posthypnotic + felt-sense reward */ }
       } },
     { id: 'confidence-10', name: '10-Day Confidence', icon: '🦁', days: 10, desc: 'Build unshakable self-belief',
       persona: 'commander', method: 'staircase', intention: 'emotional', length: 'medium', soundscape: 'drone', vizOverride: 'tunnel',
       arc: ['Baseline + theory primer','Inner critic observation','Resourceful memory access','Posture & presence anchor','Voice of authority','Social confidence + skill rehearsal','Challenge reframe + skill rehearsal','Peak performance state + skill rehearsal','Identity integration + future-pace anchor','Future self embodiment + outcome lock-in'],
       dayOverrides: {
-        1:  { phaseExtras: ['teaching'] },
-        6:  { phaseExtras: ['training'] },
-        7:  { phaseExtras: ['training'] },
-        8:  { phaseExtras: ['training'] },
+        1:  { phaseExtras: ['introduction','permission','teaching'] /* Day 1: meet the guide, give consent, learn the method — confidence work especially benefits from agency framing */ },
+        3:  { phaseExtras: ['praise'] /* Resourceful-memory work needs explicit validation */ },
+        6:  { phaseExtras: ['training','praise'] },
+        7:  { phaseExtras: ['training','praise'] },
+        8:  { phaseExtras: ['training','reward'] /* Peak day: training + felt-sense reward */ },
         9:  { phaseExtras: ['goal'] },
-        10: { phaseExtras: ['goal','mission'] }
+        10: { phaseExtras: ['goal','mission','reward'] }
       } },
     { id: 'pain-6', name: '6-Week Pain', icon: '💊', days: 42, desc: 'Structured pain management (clinical model)',
       persona: 'bodyworker', method: 'pain-dial', intention: 'pain', length: 'medium', soundscape: 'bowls', vizOverride: 'waveform',
       arc: null,
-      phaseExtras: ['training'] /* Every day rehearses the pain-dial skill — clinical protocol */ },
+      phaseExtras: ['training','praise'] /* Every day rehearses the pain-dial skill + validates the user's effort — clinical protocol */ },
     { id: 'focus-7', name: '7-Day Focus', icon: '🎯', days: 7, desc: 'Deep concentration training',
       persona: 'scientist', method: 'betty-erickson', intention: 'focus', length: 'medium', soundscape: 'brown', vizOverride: 'waveform',
       arc: ['Attention narrowing','Distraction dismissal','Time compression','Flow state entry','Sustained immersion','Automatic focus trigger','Integration + outcome anchor'],
       dayOverrides: {
-        7: { phaseExtras: ['goal'] }
+        1: { phaseExtras: ['introduction','teaching'] /* Day 1: meet the guide + explain attention training plainly */ },
+        7: { phaseExtras: ['goal','reward'] }
       } },
     { id: 'depth-7', name: '7-Day Depth', icon: '🌀', days: 7, desc: 'Progressive trance depth training',
       persona: 'old-master', method: 'staircase', intention: 'trance', length: 'medium', soundscape: 'cave', vizOverride: 'tunnel',
       arc: ['Light trance familiarity + theory primer','Deepening through breath','Fractionation cycling','Somnambulism approach','Time distortion','Autonomous depth trigger + skill rehearsal','Integration & self-hypnosis + skill rehearsal'],
       dayOverrides: {
-        1: { phaseExtras: ['teaching'] },
+        1: { phaseExtras: ['introduction','permission','teaching'] /* Going deep requires explicit ethical preamble */ },
         2: { method: 'breath-478' },
         3: { method: 'fractionation', vizOverride: 'aurora' },
         5: { soundscape: 'underwater', vizOverride: 'smoke' },
-        6: { phaseExtras: ['training'] },
-        7: { phaseExtras: ['training'] }
+        6: { phaseExtras: ['training','praise'] },
+        7: { phaseExtras: ['training','reward'] }
       } },
     { id: 'stress-5', name: '5-Day Stress Reset', icon: '🧘', days: 5, desc: 'Decompress from burnout',
       persona: 'yoga-teacher', method: 'progressive', intention: 'release', length: 'medium', soundscape: 'underwater', vizOverride: 'smoke',
       arc: ['Body awareness & tension map','Breath as release valve','Safe place construction','Stress container visualization','Integration & resilience anchor + outcome'],
       dayOverrides: {
-        5: { phaseExtras: ['goal'] }
+        1: { phaseExtras: ['introduction','praise'] /* Burnout users need explicit warmth + validation from day 1 */ },
+        5: { phaseExtras: ['goal','reward'] }
       } },
   ];
 
