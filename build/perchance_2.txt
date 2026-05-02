@@ -4269,6 +4269,29 @@ padding: 6px 10px; font-size: 1.1rem;
   }
   /* Section header for sub-panels — sits in a flex row with action button. */
   .panel-section-title { font-size: 0.82rem; color: var(--text); }
+  /* Round 26 — speed preset chips for the haptic live-control panel.
+     Small monospace pills under the speed slider, matching the existing
+     dim-foreground / accent-on-active vocabulary used elsewhere. */
+  .speed-preset-chip {
+    background: transparent;
+    color: var(--text-faint);
+    border: 1px solid rgba(255,255,255,0.10);
+    padding: 2px 8px;
+    font-family: monospace;
+    font-size: 0.62rem;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    border-radius: 2px;
+  }
+  .speed-preset-chip:hover {
+    color: var(--text-dim);
+    border-color: rgba(255,255,255,0.25);
+  }
+  .speed-preset-chip.active {
+    color: var(--neon-cyan);
+    border-color: rgba(0,212,230,0.5);
+    background: rgba(0,212,230,0.06);
+  }
 </style>
 
 <div class="container">
@@ -5741,6 +5764,19 @@ I return to myself easily"></textarea>
             <span id="funscriptStatus" style="font-style:italic">no track loaded</span>
             <button type="button" id="funscriptClearBtn" class="btn secondary" style="display:none;padding:2px 10px;font-size:0.66rem">clear</button>
           </div>
+          <!-- Round 26 — Funscript heatmap. Color-coded intensity bar
+               showing the loaded track's energy distribution at a
+               glance: cold blues = sparse / slow, warm reds = dense /
+               fast. Standard funscript-utils convention used by
+               ScriptAxis, funscript.io, OFS, etc. Hidden until a track
+               (or pattern) loads; redrawn via _renderFunscriptHeatmap()
+               from the setOnTrackChange handler. The playhead overlay
+               (a thin vertical line) ticks during session playback. -->
+          <div id="funscriptHeatmapWrap" style="display:none;position:relative;margin-top:6px;border:0.5px solid rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;background:rgba(0,0,0,0.35)">
+            <canvas id="funscriptHeatmap" style="display:block;width:100%;height:22px;cursor:default" title="Track intensity heatmap — blue = sparse/slow, red = dense/fast"></canvas>
+            <div id="funscriptHeatmapPlayhead" style="position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.85);box-shadow:0 0 4px rgba(255,255,255,0.6);left:0;display:none;pointer-events:none"></div>
+            <div id="funscriptHeatmapLabel" style="position:absolute;top:1px;right:4px;font-family:monospace;font-size:0.58rem;color:rgba(255,255,255,0.7);text-shadow:0 0 3px rgba(0,0,0,0.9);pointer-events:none"></div>
+          </div>
           <div class="hint" style="font-size:0.62rem;line-height:1.45;margin-top:4px">
             Time-coded position script — plays through the connected device alongside the session. Built-in patterns are math-generated and meditation-aligned. Max 5 MB.
           </div>
@@ -5753,6 +5789,19 @@ I return to myself easily"></textarea>
               <label style="color:var(--text-dim)">speed</label>
               <input id="liveCtrlSpeed" type="range" min="0.25" max="4" step="0.05" value="1" style="width:100%">
               <span id="liveCtrlSpeedV" style="font-family:monospace;text-align:right">1.00×</span>
+              <!-- Round 26 — speed preset chips. Span the slider + value
+                   columns; the leading empty cell keeps them aligned
+                   under the slider rather than the label. Each chip
+                   snaps the slider to the named speed and re-fires
+                   the input event so the engine picks it up. Patterned
+                   after funscript-io's quick-speed UX. -->
+              <span></span>
+              <div class="haptic-speed-presets" style="grid-column:2/4;display:flex;gap:4px;margin-top:-4px;font-size:0.6rem">
+                <button type="button" class="speed-preset-chip" data-speed="0.5" title="Half speed — gentler / longer-form sessions">0.5×</button>
+                <button type="button" class="speed-preset-chip" data-speed="1"   title="Original tempo">1×</button>
+                <button type="button" class="speed-preset-chip" data-speed="1.5" title="Slightly faster — adds urgency without disrupting rhythm">1.5×</button>
+                <button type="button" class="speed-preset-chip" data-speed="2"   title="Double speed">2×</button>
+              </div>
               <label style="color:var(--text-dim)">randomness</label>
               <input id="liveCtrlRandom" type="range" min="0" max="1" step="0.05" value="0" style="width:100%">
               <span id="liveCtrlRandomV" style="font-family:monospace;text-align:right">0%</span>
@@ -29741,6 +29790,10 @@ Start immediately:`;
     // haptic but no device showed up. Position output begins at session
     // time 0; pause/resume tracking is automatic.
     try { funscriptEngine.start(); } catch {}
+    // Round 26 — kick off the heatmap playhead overlay so the user sees
+    // their position march across the energy bar. Self-quiesces in the
+    // tick when no track is playing — no cleanup needed here.
+    try { _startHeatmapPlayhead(); } catch {}
     // Estimated total runtime for completedFraction metric (used by rules/triggers).
     // Pulled from script metrics × 60. Null-safe — defaults to 0 if unknown.
     const _estMetrics = getScriptMetrics(state.fullScript || '');
@@ -31701,6 +31754,9 @@ Start immediately:`;
     // disconnects so the engine doesn't keep ticking position commands
     // into a dead socket.
     try { funscriptEngine.stop(); } catch {}
+    // Round 26 — pair the heatmap playhead loop with the engine's
+    // lifecycle. _stopHeatmapPlayhead hides the overlay tick.
+    try { _stopHeatmapPlayhead(); } catch {}
     // Round 25, Pass 17 — reset live-control runtime state. Sliders snap
     // back to 1× / 0% on next session start (LIVE_CONTROL_DEFAULTS).
     // Ramp settings (state.rampSettings) survive — those are user prefs.
@@ -41119,18 +41175,32 @@ Begin:`;
       return v;
     } catch { return null; }
   }
-  const HAPTIC_BUTTPLUG_CDN = 'https://cdn.jsdelivr.net/npm/buttplug@3.2.2/+esm';
+  // Round 26 — bumped from buttplug@3.2.2 to v4.0.1. v4 is largely a
+  // rewrite: device control moves from one-shot helpers (`dev.vibrate(i)`,
+  // `dev.linear(p,d)`) to a typed command builder (`dev.runOutput(
+  // DeviceOutput.Vibrate.percent(i))`). It also exposes proper feature
+  // capability checks (`dev.hasOutput(OutputType.X)`) and battery / RSSI
+  // input reading. Modern Intiface Central (≥ 2.5) speaks the v4 spec; an
+  // older Intiface install will fail at the handshake — the connect()
+  // path catches that and surfaces a guiding error.
+  const HAPTIC_BUTTPLUG_CDN = 'https://cdn.jsdelivr.net/npm/buttplug@4.0.1/+esm';
 
   const hapticBridge = (() => {
     let _client      = null;       // ButtplugClient instance once loaded
     let _connector   = null;       // Connector instance
     let _loadingMod  = null;       // Promise for the dynamic import
+    let _bpMod       = null;       // The loaded module — exposes OutputType, InputType, DeviceOutput
     let _connected   = false;
     let _enabled     = false;      // user opt-in for THIS session
     let _devices     = [];         // ButtplugClientDevice[]
     let _lastError   = null;
     let _level       = 0;          // last sustained level set via setLevel
     let _activeUntil = 0;          // wallclock ms when current pulse ends
+    // Round 26 — cached battery readings, refreshed every BATTERY_POLL_MS
+    // when at least one device exposes a battery input. Map<deviceIndex, 0..1>.
+    let _batteries   = new Map();
+    let _batteryTimer = null;
+    const BATTERY_POLL_MS = 60_000;  // once a minute is plenty — battery moves slowly
 
     function _setStatus(state, text) {
       const dot = document.getElementById('hapticStatusDot');
@@ -41140,12 +41210,21 @@ Begin:`;
       const row = document.getElementById('hapticStatusRow');
       if (!dot || !txt || !row) return;
       row.style.display = _enabled ? '' : 'none';
+      // Round 26 — append battery summary to the "ready" status line when
+      // we have any cached readings. Format: "ready · 2 devices · 78% 🔋".
+      // Lowest battery wins so users see the urgent number, not the average.
+      let readyText = text;
+      if (state === 'ready' && !text && _batteries.size) {
+        const lowest = Math.min(..._batteries.values());
+        const pct = Math.round(lowest * 100);
+        readyText = `ready · ${_devices.length} device${_devices.length === 1 ? '' : 's'} · ${pct}% 🔋`;
+      }
       const palette = {
         idle:        ['#888',                  text || 'not connected'],
         connecting:  ['var(--neon-amber)',    text || 'connecting…'],
         connected:   ['#7dc87a',              text || 'connected'],
         scanning:    ['var(--neon-amber)',    text || 'scanning for devices…'],
-        ready:       ['#7dc87a',              text || `ready · ${_devices.length} device${_devices.length === 1 ? '' : 's'}`],
+        ready:       ['#7dc87a',              readyText || `ready · ${_devices.length} device${_devices.length === 1 ? '' : 's'}`],
         error:       ['#ff6b6b',              text || (_lastError || 'error')],
       }[state] || palette?.idle;
       dot.style.background = palette[0];
@@ -41168,11 +41247,61 @@ Begin:`;
       return _loadingMod;
     }
 
+    /** Return true if `dev` claims support for OutputType.<name>.
+     *  Defensive: missing OutputType enum or missing hasOutput method
+     *  reads as "unknown — assume yes" so we still attempt the call
+     *  rather than silently dropping output on devices we can't probe. */
+    function _devHasOutput(dev, name) {
+      try {
+        const OT = _bpMod?.OutputType;
+        if (!OT || typeof dev?.hasOutput !== 'function') return true;
+        return dev.hasOutput(OT[name]);
+      } catch { return true; }
+    }
+    function _devHasInput(dev, name) {
+      try {
+        const IT = _bpMod?.InputType;
+        if (!IT || typeof dev?.hasInput !== 'function') return false;
+        return dev.hasInput(IT[name]);
+      } catch { return false; }
+    }
+
+    /** Refresh _batteries by reading from every battery-capable device.
+     *  All errors swallowed — battery reading can fail mid-session if the
+     *  device sleeps, and that's expected, not a bug. */
+    async function _refreshBatteries() {
+      if (!_connected || !_devices.length) return;
+      const next = new Map();
+      for (const dev of _devices) {
+        if (!_devHasInput(dev, 'Battery')) continue;
+        try {
+          const v = await dev.battery();
+          if (Number.isFinite(v)) next.set(dev.index, Math.max(0, Math.min(1, v)));
+        } catch { /* device asleep / no battery / etc. — skip silently */ }
+      }
+      _batteries = next;
+      // Re-render status so the "78% 🔋" suffix updates
+      if (_devices.length) _setStatus('ready');
+    }
+
+    function _startBatteryPoll() {
+      if (_batteryTimer) return;
+      // Kick off an initial read after a short delay so we don't spam the
+      // server during the post-connect device-discovery storm.
+      setTimeout(() => { _refreshBatteries().catch(() => {}); }, 2000);
+      _batteryTimer = setInterval(() => { _refreshBatteries().catch(() => {}); }, BATTERY_POLL_MS);
+    }
+    function _stopBatteryPoll() {
+      if (_batteryTimer) { clearInterval(_batteryTimer); _batteryTimer = null; }
+      _batteries.clear();
+    }
+
     async function connect() {
       if (_connected) return true;
       _setStatus('connecting');
       try {
         const mod = await _loadButtplugMod();
+        _bpMod = mod;
         const { ButtplugClient, ButtplugBrowserWebsocketClientConnector } = mod;
         if (!ButtplugClient || !ButtplugBrowserWebsocketClientConnector) {
           throw new Error('Buttplug client not available in module');
@@ -41184,10 +41313,11 @@ Begin:`;
         });
         _client.addListener('deviceremoved', (dev) => {
           _devices = _devices.filter(d => d.index !== dev.index);
+          _batteries.delete(dev.index);
           _setStatus(_devices.length ? 'ready' : 'connected');
         });
         _client.addListener('disconnect', () => {
-          _connected = false; _devices = []; _setStatus('idle');
+          _connected = false; _devices = []; _stopBatteryPoll(); _setStatus('idle');
         });
         _connector = new ButtplugBrowserWebsocketClientConnector(_hapticUrlOverride() || HAPTIC_INTIFACE_URL);
         await _client.connect(_connector);
@@ -41199,23 +41329,68 @@ Begin:`;
         setTimeout(async () => {
           try { if (_client?.isScanning) await _client.stopScanning(); } catch {}
           _setStatus(_devices.length ? 'ready' : 'connected', _devices.length ? null : 'connected · no devices');
+          // Round 26 — kick off battery polling once scanning settles. If
+          // no battery-capable devices showed up, _refreshBatteries() is
+          // a near-no-op (one Map.size check per device).
+          if (_devices.length) _startBatteryPoll();
         }, 5000);
         return true;
       } catch (e) {
         console.warn('[haptic] connect failed:', e);
         _lastError = (e && e.message) ? e.message : 'connect failed';
         _connected = false;
-        _setStatus('error', _lastError.includes('WebSocket') || _lastError.includes('connect')
-          ? 'no Intiface server (install + run intiface.com/central)'
-          : _lastError);
+        // Round 26 — v4 protocol negotiation rejects older Intiface.
+        // Surface a more specific hint when the error wording suggests
+        // a version mismatch rather than a network-level failure.
+        let hint;
+        const lower = _lastError.toLowerCase();
+        if (lower.includes('websocket') || lower.includes('connect') || lower.includes('econnrefused')) {
+          hint = 'no Intiface server (install + run intiface.com/central)';
+        } else if (lower.includes('version') || lower.includes('spec') || lower.includes('init')) {
+          hint = 'Intiface too old for protocol v4 — update intiface.com/central';
+        } else {
+          hint = _lastError;
+        }
+        _setStatus('error', hint);
         return false;
       }
     }
 
     async function disconnect() {
+      _stopBatteryPoll();
       try { if (_client && _connected) await _client.disconnect(); } catch {}
       _client = null; _connector = null; _connected = false; _devices = []; _level = 0;
       _setStatus('idle');
+    }
+
+    /** Send vibrate at the given intensity to a single device, using the
+     *  v4 fluent builder when available. Defensive: if `runOutput` is
+     *  somehow missing (unexpected on v4 client) fall back to the v3
+     *  one-shot helper so we don't silently drop output. All errors
+     *  swallowed — this is hot-path code that runs every funscript tick. */
+    function _devVibrate(dev, i) {
+      try {
+        const DO = _bpMod?.DeviceOutput;
+        if (DO && typeof dev?.runOutput === 'function') {
+          const cmd = DO.Vibrate.percent(i);
+          const r = dev.runOutput(cmd);
+          if (r && typeof r.catch === 'function') r.catch(() => {});
+          return;
+        }
+        // Fallback for v3-style API or stubs in tests
+        if (typeof dev?.vibrate === 'function') {
+          const r = dev.vibrate(i);
+          if (r && typeof r.catch === 'function') r.catch(() => {});
+        }
+      } catch {}
+    }
+    function _devStop(dev) {
+      try {
+        if (typeof dev?.stop === 'function') {
+          const r = dev.stop();
+          if (r && typeof r.catch === 'function') r.catch(() => {});
+        }
+      } catch {}
     }
 
     /** Fire a single pulse on all devices for `durationMs`, at intensity
@@ -41227,16 +41402,20 @@ Begin:`;
       const expiry = Date.now() + d;
       _activeUntil = Math.max(_activeUntil, expiry);
       for (const dev of _devices) {
-        try { dev.vibrate?.(i).catch(() => {}); }
-        catch {}
+        // Vibrate is the broadest output type — every motor-driven device
+        // (~95% of supported hardware) advertises it. Skip devices that
+        // explicitly don't to avoid spurious "feature not supported" errors.
+        if (_devHasOutput(dev, 'Vibrate')) _devVibrate(dev, i);
       }
       // Auto-stop after duration unless overridden by a sustained level
       setTimeout(() => {
         if (Date.now() < _activeUntil - 5) return;
         if (_level > 0) {
-          for (const dev of _devices) { try { dev.vibrate?.(_level).catch(() => {}); } catch {} }
+          for (const dev of _devices) {
+            if (_devHasOutput(dev, 'Vibrate')) _devVibrate(dev, _level);
+          }
         } else {
-          for (const dev of _devices) { try { dev.stop?.().catch(() => {}); } catch {} }
+          for (const dev of _devices) _devStop(dev);
         }
       }, d);
     }
@@ -41248,43 +41427,51 @@ Begin:`;
       const i = Math.max(0, Math.min(1, Number(intensity) || 0));
       _level = i;
       for (const dev of _devices) {
-        try { (i > 0 ? dev.vibrate?.(i) : dev.stop?.())?.catch(() => {}); }
-        catch {}
+        if (i > 0) {
+          if (_devHasOutput(dev, 'Vibrate')) _devVibrate(dev, i);
+        } else {
+          _devStop(dev);
+        }
       }
     }
 
     /** Send a linear stroke command — pos in [0..1], target reach time in
      *  ms. Used by the FunScript engine (Round 25, Pass 7) for time-coded
-     *  position playback. Falls back gracefully on devices without linear
-     *  actuators: maps absolute deviation from 0.5 to a vibration intensity
-     *  proxy so the user still feels SOMETHING with vibrate-only hardware.
-     *
-     *  Buttplug.js v3 exposes both `linear(speed, position)` and a
-     *  unified `linear([{ duration, position }])` form depending on
-     *  device. We probe the device for `messageAttributes` once and
-     *  cache the chosen path; the per-call cost is then a single method
-     *  invocation. */
+     *  position playback. v4 routes through DeviceOutput.PositionWithDuration
+     *  for stroker-class devices; falls back to a vibration-intensity proxy
+     *  on devices without a linear actuator so the user still feels SOMETHING
+     *  with vibrate-only hardware. */
     function linear(pos01, durationMs) {
       if (!_connected || !_devices.length) return;
       const p = Math.max(0, Math.min(1, Number(pos01) || 0));
       const d = Math.max(20, Math.min(2000, Number(durationMs) || 100));
+      const DO = _bpMod?.DeviceOutput;
       for (const dev of _devices) {
         try {
-          // Prefer the linear/stroke command. Buttplug.js client method
-          // signatures: dev.linear(position, duration) per docs. We
-          // .catch on each call so a single failing device doesn't
-          // break iteration over the rest.
-          if (typeof dev.linear === 'function') {
-            const r = dev.linear(p, d);
+          // Prefer the v4 PositionWithDuration command for proper stroker
+          // hardware (Handy, OSR2, SR6, etc.). The v4 builder takes
+          // (percent, durationMs) and the device translates internally
+          // to the appropriate native command.
+          if (DO && typeof dev.runOutput === 'function' && _devHasOutput(dev, 'HwPositionWithDuration')) {
+            const r = dev.runOutput(DO.PositionWithDuration.percent(p, d));
             if (r && typeof r.catch === 'function') r.catch(() => {});
-          } else if (typeof dev.vibrate === 'function') {
-            // Vibrate fallback — translate position deviation from
-            // mid-stroke to a vibration proxy. Position 0.5 = no
-            // vibration (the device is at its natural rest); positions
-            // near 0 or 1 vibrate proportionally to the extreme.
+            continue;
+          }
+          // Some linear devices expose plain Position (no duration) — we
+          // can still use it; the device won't honor our timing but will
+          // at least seek toward the target.
+          if (DO && typeof dev.runOutput === 'function' && _devHasOutput(dev, 'Position')) {
+            const r = dev.runOutput(DO.Position.percent(p));
+            if (r && typeof r.catch === 'function') r.catch(() => {});
+            continue;
+          }
+          // Vibrate fallback — translate position deviation from
+          // mid-stroke to a vibration proxy. Position 0.5 = no
+          // vibration (the device is at its natural rest); positions
+          // near 0 or 1 vibrate proportionally to the extreme.
+          if (_devHasOutput(dev, 'Vibrate')) {
             const intensity = Math.min(1, Math.abs(p - 0.5) * 2);
-            const r = dev.vibrate(intensity);
-            if (r && typeof r.catch === 'function') r.catch(() => {});
+            _devVibrate(dev, intensity);
           }
         } catch {}
       }
@@ -41295,10 +41482,234 @@ Begin:`;
     function isReady() { return _connected && _devices.length > 0; }
     function isEnabled() { return _enabled; }
     function setEnabled(v) { _enabled = !!v; _setStatus(_connected ? (_devices.length ? 'ready' : 'connected') : 'idle'); }
-    function getDevices() { return _devices.map(d => ({ index: d.index, name: d.name || 'device' })); }
+    /** Round 26 — surface per-device capability info to the UI so the
+     *  device row in the haptic status panel can show "Vibrate · Position ·
+     *  Battery: 78%" instead of an opaque list. Caller side wires this
+     *  into the device list rendering. */
+    function getDevices() {
+      return _devices.map(d => ({
+        index: d.index,
+        name: d.name || 'device',
+        outputs: {
+          vibrate:  _devHasOutput(d, 'Vibrate'),
+          rotate:   _devHasOutput(d, 'Rotate'),
+          oscillate: _devHasOutput(d, 'Oscillate'),
+          constrict: _devHasOutput(d, 'Constrict'),
+          position: _devHasOutput(d, 'Position') || _devHasOutput(d, 'HwPositionWithDuration'),
+        },
+        inputs: {
+          battery: _devHasInput(d, 'Battery'),
+          rssi:    _devHasInput(d, 'RSSI'),
+        },
+        battery: _batteries.has(d.index) ? _batteries.get(d.index) : null,
+      }));
+    }
 
-    return { connect, disconnect, pulse, setLevel, linear, stop, isReady, isEnabled, setEnabled, getDevices };
+    /** Round 26 — manually trigger a battery refresh. Returns the cached
+     *  Map after the read completes. Used by the test-pulse handler so
+     *  the user can click "test" and see an updated battery reading
+     *  instead of waiting for the 60s poll. */
+    async function refreshBatteries() {
+      await _refreshBatteries();
+      return new Map(_batteries);
+    }
+
+    return {
+      connect, disconnect, pulse, setLevel, linear, stop,
+      isReady, isEnabled, setEnabled, getDevices, refreshBatteries,
+    };
   })();
+
+  // ====================================================================
+  // FUNSCRIPT HEATMAP RENDER — Round 26
+  // ====================================================================
+  // Color-coded intensity bar above the funscript timeline. Standard
+  // visualization convention used across the funscript ecosystem
+  // (ScriptAxis / funscript.io / OFS / The Handy app). Renders to a
+  // generic <canvas> so callers can drop it into the status row, the
+  // pattern editor preview, or anywhere else.
+  //
+  // Algorithm:
+  //   1. Slice the timeline into one bucket per canvas pixel column.
+  //   2. For each bucket, sum |Δpos| over all action intervals that
+  //      overlap the bucket, weighted by the overlap fraction. Divide
+  //      by the total weight → average stroke speed in pos-units/sec
+  //      across the bucket.
+  //   3. Normalize against HEATMAP_MAX_SPEED (~4 full strokes/sec)
+  //      and map to a blue→cyan→green→yellow→red gradient.
+  //
+  // O(n × cssW) per render — fine for one-shot draws on track-change
+  // and resize. We don't redraw every tick; the playhead is a CSS
+  // overlay that just translates an absolute-positioned div.
+  //
+  // Adapted from funscript-utils' renderHeatmap (MIT) — re-implemented
+  // inline to avoid pulling a 50KB+ dependency for one function.
+  const HEATMAP_MAX_SPEED = 400; // pos-units/sec → red. ~4 full strokes/sec.
+  const HEATMAP_STOPS = Object.freeze([
+    [0.00, [ 30,  60, 120]],   // deep blue
+    [0.20, [ 40, 130, 180]],   // mid blue
+    [0.40, [ 60, 200, 200]],   // cyan-green
+    [0.55, [ 90, 220, 100]],   // green
+    [0.70, [240, 220,  60]],   // yellow
+    [0.85, [240, 130,  40]],   // orange
+    [1.00, [220,  60,  60]],   // red
+  ]);
+  /** Map a [0..1] intensity to a CSS rgb() color via the standard
+   *  funscript heatmap palette. Linear interpolation between named
+   *  stops; clamps at both ends. */
+  function _heatmapColor(t) {
+    t = Math.max(0, Math.min(1, t));
+    for (let i = 0; i < HEATMAP_STOPS.length - 1; i++) {
+      const [p0, c0] = HEATMAP_STOPS[i];
+      const [p1, c1] = HEATMAP_STOPS[i + 1];
+      if (t <= p1) {
+        const u = p1 > p0 ? (t - p0) / (p1 - p0) : 0;
+        const r = Math.round(c0[0] + (c1[0] - c0[0]) * u);
+        const g = Math.round(c0[1] + (c1[1] - c0[1]) * u);
+        const b = Math.round(c0[2] + (c1[2] - c0[2]) * u);
+        return `rgb(${r},${g},${b})`;
+      }
+    }
+    const last = HEATMAP_STOPS[HEATMAP_STOPS.length - 1][1];
+    return `rgb(${last[0]},${last[1]},${last[2]})`;
+  }
+
+  /** Draw a funscript heatmap onto a canvas. Track in canonical
+   *  { actions: [{at, pos}] } shape. Caller is responsible for
+   *  showing/hiding the wrapper element — this just paints. */
+  function _renderFunscriptHeatmap(track, canvas) {
+    if (!canvas || !canvas.getContext) return;
+    const dpr  = window.devicePixelRatio || 1;
+    const cssW = Math.max(1, canvas.clientWidth  || 600);
+    const cssH = Math.max(1, canvas.clientHeight ||  22);
+    canvas.width  = Math.max(1, Math.round(cssW * dpr));
+    canvas.height = Math.max(1, Math.round(cssH * dpr));
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    const a = track && Array.isArray(track.actions) ? track.actions : null;
+    if (!a || a.length < 2) {
+      // Empty / single-point — faint placeholder so the bar reads as
+      // "present but inactive" rather than a missing element.
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      ctx.fillRect(0, 0, cssW, cssH);
+      return;
+    }
+
+    const t0 = a[0].at;
+    const t1 = a[a.length - 1].at;
+    const totalMs = t1 - t0;
+    if (totalMs <= 0) return;
+
+    // Pre-compute per-interval speed in pos-units/sec. Skip degenerate
+    // (zero-duration) intervals — they'd divide by zero and contribute
+    // nothing meaningful anyway.
+    const intervals = [];
+    for (let i = 0; i < a.length - 1; i++) {
+      const dt = a[i + 1].at - a[i].at;
+      if (dt <= 0) continue;
+      const dp = Math.abs(a[i + 1].pos - a[i].pos);
+      intervals.push({ start: a[i].at, end: a[i + 1].at, speed: (dp / dt) * 1000 });
+    }
+    if (!intervals.length) {
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      ctx.fillRect(0, 0, cssW, cssH);
+      return;
+    }
+
+    const bucketMs = totalMs / cssW;
+    let ivStart = 0; // sliding-window start; intervals sorted ascending
+    for (let col = 0; col < cssW; col++) {
+      const bStart = t0 + col * bucketMs;
+      const bEnd   = bStart + bucketMs;
+      // Advance the window past intervals fully behind the current bucket.
+      while (ivStart < intervals.length && intervals[ivStart].end <= bStart) ivStart++;
+      let weightedSpeed = 0;
+      let totalWeight   = 0;
+      for (let j = ivStart; j < intervals.length; j++) {
+        const iv = intervals[j];
+        if (iv.start >= bEnd) break;
+        const overlap = Math.min(iv.end, bEnd) - Math.max(iv.start, bStart);
+        if (overlap <= 0) continue;
+        weightedSpeed += iv.speed * overlap;
+        totalWeight   += overlap;
+      }
+      const speed = totalWeight > 0 ? weightedSpeed / totalWeight : 0;
+      const t = Math.max(0, Math.min(1, speed / HEATMAP_MAX_SPEED));
+      ctx.fillStyle = _heatmapColor(t);
+      ctx.fillRect(col, 0, 1, cssH);
+    }
+  }
+
+  /** Repaint the inline status-row heatmap from the engine's currently
+   *  loaded track. Safe to call when no track is loaded — hides the
+   *  wrapper. Used by the track-change handler and the resize listener. */
+  function _refreshFunscriptHeatmap() {
+    const wrap   = document.getElementById('funscriptHeatmapWrap');
+    const canvas = document.getElementById('funscriptHeatmap');
+    const label  = document.getElementById('funscriptHeatmapLabel');
+    if (!wrap || !canvas) return;
+    const track = funscriptEngine?.getTrack?.();
+    if (!track || !track.actions || track.actions.length < 2) {
+      wrap.style.display = 'none';
+      return;
+    }
+    wrap.style.display = '';
+    _renderFunscriptHeatmap(track, canvas);
+    if (label) {
+      const dur = _funscriptDuration(track);
+      const m = Math.floor(dur / 60), s = Math.round(dur % 60);
+      label.textContent = `${m}:${String(s).padStart(2, '0')} · ${track.actions.length}pt`;
+    }
+  }
+
+  // Repaint on resize so the bar stays crisp when the panel reflows.
+  // Throttled with a debounce so dragging the window doesn't redraw on
+  // every pixel — 120ms is well below human reflow-perception threshold.
+  let _heatmapResizeTimer = null;
+  window.addEventListener('resize', () => {
+    if (_heatmapResizeTimer) clearTimeout(_heatmapResizeTimer);
+    _heatmapResizeTimer = setTimeout(_refreshFunscriptHeatmap, 120);
+  });
+
+  // Playhead update loop — translates the absolute-positioned playhead
+  // div across the heatmap based on the engine's current elapsed time.
+  // Runs at ~10Hz which is well within smooth-perception threshold for
+  // a thin vertical line and ~3% of the cost of a per-tick redraw. The
+  // loop self-quiesces when no track is playing so idle CPU is zero.
+  let _heatmapPlayheadTimer = null;
+  function _heatmapPlayheadTick() {
+    const playhead = document.getElementById('funscriptHeatmapPlayhead');
+    const wrap     = document.getElementById('funscriptHeatmapWrap');
+    if (!playhead || !wrap) return;
+    const track = funscriptEngine?.getTrack?.();
+    const playing = funscriptEngine?.isPlaying?.();
+    if (!track || !track.actions || track.actions.length < 2 || !playing) {
+      playhead.style.display = 'none';
+      return;
+    }
+    const dur = (track.actions[track.actions.length - 1].at - track.actions[0].at) || 1;
+    const elapsed = funscriptEngine.getElapsedMs?.() || 0;
+    // Loop the playhead across track duration if elapsed exceeds it —
+    // matches funscript-utils convention where the heatmap displays the
+    // full track and longer sessions wrap. Clamp negative values to 0.
+    const t = Math.max(0, (elapsed % dur) / dur);
+    playhead.style.display = '';
+    playhead.style.left = (t * 100).toFixed(2) + '%';
+  }
+  function _startHeatmapPlayhead() {
+    if (_heatmapPlayheadTimer) return;
+    _heatmapPlayheadTimer = setInterval(_heatmapPlayheadTick, 100);
+  }
+  function _stopHeatmapPlayhead() {
+    if (_heatmapPlayheadTimer) {
+      clearInterval(_heatmapPlayheadTimer);
+      _heatmapPlayheadTimer = null;
+    }
+    const playhead = document.getElementById('funscriptHeatmapPlayhead');
+    if (playhead) playhead.style.display = 'none';
+  }
 
   // ====================================================================
   // FUNSCRIPT ENGINE — Round 25, Pass 7
@@ -41718,6 +42129,16 @@ Begin:`;
       loadTrack, clearTrack, getTrack, getFilename, setOnTrackChange, setOnInjection,
       start, stop, pause, resume, isPlaying, isInjecting,
       injectMacro, cancelInjection,
+      // Round 26 — playhead accessor for the inline heatmap overlay.
+      // Returns the engine's current speed-scaled elapsed ms relative
+      // to track start, or 0 when not playing. Same math as _tick uses
+      // internally, kept in sync if that ever drifts.
+      getElapsedMs() {
+        if (!_tickHandle) return 0;
+        const now = _pauseStartedAt || Date.now();
+        const raw = now - _startMs - _pausedAccumMs;
+        return _liveSpeedAdjustedMs(raw);
+      },
     };
   })();
 
@@ -41853,6 +42274,141 @@ Begin:`;
         icon: '⏳',
         description: 'Smooth cosine pendulum, 3s period. Hypnotic, even tempo for deep induction.',
         generate: () => sample(t => 50 + 48 * Math.cos((t * 60_000 / 3_000) * Math.PI * 2), 60_000, 60),
+      },
+      // Round 26 — three Cycler-style patterns ported from funscript-io's
+      // procedural Cycler. The original Cycler animates speed/stroke
+      // parameters at runtime; ported here as static 60s curves with
+      // frequency-modulated sine waves (the period itself shifts over
+      // time rather than being fixed). Distinct from existing patterns
+      // which all hold tempo constant. Constant amplitude across each
+      // pattern so the "feel" is purely tempo-based.
+      {
+        id: 'edging-cycle',
+        name: 'Edging Cycle',
+        icon: '🔄',
+        description: 'Tempo cycles slow→fast→slow over 60s, constant 15–85% amplitude. Frequency-modulated rather than amplitude-modulated.',
+        generate: () => {
+          const out = [];
+          const cycleDur = 60_000;
+          const minPeriodMs = 1500;  // fastest stroke = 1.5s
+          const maxPeriodMs = 8000;  // slowest stroke = 8s
+          const lo = 15, hi = 85;
+          const amp = (hi - lo) / 2, mid = lo + amp;
+          let phase = 0;
+          const stepMs = 50;
+          for (let t = 0; t <= cycleDur; t += stepMs) {
+            // Cosine over the full duration: 1 at the ends (slow), 0 at
+            // the midpoint (fast). Mapping that to period gives the
+            // slow→fast→slow shape.
+            const cyclePos = (t / cycleDur) * Math.PI * 2;
+            const slowness = 0.5 + 0.5 * Math.cos(cyclePos);  // 1..0..1
+            const period = minPeriodMs + (maxPeriodMs - minPeriodMs) * slowness;
+            phase += (stepMs / period) * Math.PI * 2;
+            out.push({ at: t, pos: clamp(mid + amp * Math.sin(phase)) });
+          }
+          return out;
+        },
+      },
+      {
+        id: 'tempo-build',
+        name: 'Tempo Build',
+        icon: '⏫',
+        description: 'Frequency monotonically increases — starts at 6s/stroke, ends at 1.2s/stroke. Different feel from the amplitude-based Slow Build.',
+        generate: () => {
+          const out = [];
+          const cycleDur = 60_000;
+          const startPeriodMs = 6000;
+          const endPeriodMs   = 1200;
+          const lo = 20, hi = 80;
+          const amp = (hi - lo) / 2, mid = lo + amp;
+          let phase = 0;
+          const stepMs = 50;
+          for (let t = 0; t <= cycleDur; t += stepMs) {
+            const f = t / cycleDur;
+            // Quadratic ease — feels more "earned" than linear; the
+            // last 10s ramps fast where the perceptual difference
+            // between 1.5s and 1.2s strokes is most noticeable.
+            const eased = f * f;
+            const period = startPeriodMs + (endPeriodMs - startPeriodMs) * eased;
+            phase += (stepMs / period) * Math.PI * 2;
+            out.push({ at: t, pos: clamp(mid + amp * Math.sin(phase)) });
+          }
+          return out;
+        },
+      },
+      {
+        id: 'session-arc',
+        name: 'Session Arc',
+        icon: '⛰',
+        description: 'Warm-up → peak → wind-down across 60s. Both amplitude and tempo follow the arc — designed as a session-shape pattern rather than a uniform loop.',
+        generate: () => {
+          const out = [];
+          const cycleDur = 60_000;
+          const stepMs = 50;
+          // Hat-shape envelope across [0..1]: 0→1 over first 25%,
+          // hold at 1 for middle 50%, 1→0 over last 25%. Used to
+          // modulate both amplitude and tempo in lockstep.
+          const envelope = (f) => {
+            if (f < 0.25) return f / 0.25;
+            if (f < 0.75) return 1;
+            return (1 - f) / 0.25;
+          };
+          let phase = 0;
+          for (let t = 0; t <= cycleDur; t += stepMs) {
+            const f = t / cycleDur;
+            const env = envelope(f);
+            // Amplitude: 5 (rest, edges) → 90 (peak)
+            const ampSpan = 5 + 85 * env;
+            const mid = 50;
+            // Period: 6s at edges, 1.5s at peak
+            const period = 6000 - 4500 * env;
+            phase += (stepMs / period) * Math.PI * 2;
+            out.push({ at: t, pos: clamp(mid + (ampSpan / 2) * Math.sin(phase)) });
+          }
+          return out;
+        },
+      },
+      // Round 26 — Organic Jitter. Adapted from funscript-io's runtime
+      // Randomizer (which jitters speed/stroke at random intervals) by
+      // baking the randomization into a 60s static curve. Period and
+      // amplitude smoothly drift toward random new targets every 2–4s,
+      // so the curve feels alive rather than mechanical. Uses a fixed
+      // PRNG seed so the pattern is deterministic — the heatmap preview
+      // always matches the curve that plays, and share-links resolve to
+      // the same waveform across browsers.
+      {
+        id: 'organic-jitter',
+        name: 'Organic Jitter',
+        icon: '🍃',
+        description: 'Period + amplitude drift toward random targets every 2–4s. Less mechanical than steady oscillation — meant to feel alive, not predictable.',
+        generate: () => {
+          const out = [];
+          // Park-Miller LCG — small, deterministic, no Math.random.
+          let seed = 1234567;
+          const rng = () => { seed = (seed * 48271) % 2147483647; return seed / 2147483647; };
+          const totalMs = 60_000;
+          const stepMs = 50;
+          let phase = 0;
+          let curPeriod  = 2200, targetPeriod  = 2200;
+          let curAmpSpan = 50,   targetAmpSpan = 50;
+          let nextRetargetMs = 0;
+          for (let t = 0; t <= totalMs; t += stepMs) {
+            if (t >= nextRetargetMs) {
+              targetPeriod  = 1500 + rng() * 2500;   // 1.5s..4s
+              targetAmpSpan = 30   + rng() * 55;     // 30..85 amp span
+              nextRetargetMs = t + 2000 + rng() * 2000;
+            }
+            // Exponential smoothing toward the target — 4% per tick gives
+            // a ~1.25s time-constant, slow enough to feel like genuine
+            // drift, fast enough that the user notices the changes
+            // landing rather than them blurring into noise.
+            curPeriod  += (targetPeriod  - curPeriod)  * 0.04;
+            curAmpSpan += (targetAmpSpan - curAmpSpan) * 0.04;
+            phase += (stepMs / curPeriod) * Math.PI * 2;
+            out.push({ at: t, pos: clamp(50 + (curAmpSpan / 2) * Math.sin(phase)) });
+          }
+          return out;
+        },
       },
     ];
   })();
@@ -42244,12 +42800,20 @@ Begin:`;
     } else {
       // Stop any running funscript playback before tearing down the bridge.
       try { funscriptEngine.stop(); } catch {}
+      // Round 26 — also stop the heatmap playhead loop here. The session-
+      // end path also calls this, but the user can disable the haptic
+      // toggle mid-session without ending the session.
+      try { _stopHeatmapPlayhead(); } catch {}
       await hapticBridge.disconnect();
     }
   });
   $('hapticTestBtn')?.addEventListener('click', () => {
     hapticBridge.pulse(0.5, 800);
     notify.info('Test pulse sent.');
+    // Round 26 — opportunistic battery refresh on user-initiated test.
+    // Avoids waiting for the 60s background poll when the user wants to
+    // see "is the device responsive AND how charged is it?" in one click.
+    try { hapticBridge.refreshBatteries?.().catch(() => {}); } catch {}
   });
   $('hapticReconnectBtn')?.addEventListener('click', async () => {
     await hapticBridge.disconnect();
@@ -42279,6 +42843,10 @@ Begin:`;
       status.style.color = 'var(--text-faint)';
       if (clear) clear.style.display = 'none';
     }
+    // Round 26 — refresh the inline heatmap after every load/clear so
+    // users see the new track's energy distribution at a glance. Hides
+    // the wrapper when there's no track.
+    try { _refreshFunscriptHeatmap(); } catch {}
   });
   $('funscriptFile')?.addEventListener('change', async e => {
     const file = e.target.files?.[0];
@@ -42318,6 +42886,21 @@ Begin:`;
     catch (e) { notify.error('Pattern editor unavailable: ' + (e?.message || e)); }
   });
 
+  // Round 26 — keep the speed preset chip highlight in sync with the
+  // current slider value. Tolerance of 0.025 covers the slider's
+  // 0.05 step quantization without falsely matching adjacent presets
+  // when the user drags between them.
+  function _refreshSpeedPresetChips() {
+    const slider = document.getElementById('liveCtrlSpeed');
+    if (!slider) return;
+    const cur = parseFloat(slider.value);
+    document.querySelectorAll('.speed-preset-chip').forEach(chip => {
+      const v = parseFloat(chip.getAttribute('data-speed'));
+      const active = Math.abs(v - cur) < 0.025;
+      chip.classList.toggle('active', active);
+    });
+  }
+
   // ── Live control + ramp wiring (Pass 17) ───────────────────────────────
   // Sliders are session-scoped; ramp settings persist across sessions.
   function _initLiveControlPanel() {
@@ -42342,6 +42925,24 @@ Begin:`;
       lc.speedScale = parseFloat(e.target.value);
       setLabel(e.target, v => v.toFixed(2) + '×');
     });
+    // Round 26 — speed preset chips. Each snaps the slider to its
+    // declared value and dispatches an `input` event so the slider
+    // handler above re-runs (updates label, lc.speedScale, downstream
+    // engine clock). Active state is restamped on every chip click so
+    // the visually-selected chip matches the slider.
+    document.querySelectorAll('.speed-preset-chip').forEach(chip => {
+      chip.addEventListener('click', e => {
+        const v = parseFloat(e.currentTarget.getAttribute('data-speed'));
+        if (!Number.isFinite(v)) return;
+        speed.value = v;
+        speed.dispatchEvent(new Event('input', { bubbles: true }));
+        _refreshSpeedPresetChips();
+      });
+    });
+    // Also restamp on direct slider changes so the chip highlight stays
+    // synced when the user drags rather than clicks.
+    speed.addEventListener('input', _refreshSpeedPresetChips);
+    _refreshSpeedPresetChips();
     random.addEventListener('input', e => {
       lc.randomness = parseFloat(e.target.value);
       setLabel(e.target, v => Math.round(v * 100) + '%');
@@ -42568,6 +43169,16 @@ Begin:`;
         <button class="btn secondary" id="_pe_reverse" style="font-size:0.62rem;padding:3px 8px" title="Reverse the curve so it plays backwards">reverse</button>
         <button class="btn secondary" id="_pe_invert_y" style="font-size:0.62rem;padding:3px 8px" title="Flip positions vertically (high becomes low)">flip</button>
         <button class="btn secondary" id="_pe_smooth" style="font-size:0.62rem;padding:3px 8px" title="Insert intermediate points to smooth sharp transitions">smooth</button>
+        <!-- Round 26 — track-level modifiers ported from funscript-io.
+             Offset shifts every action by a fixed time delta (sync
+             correction). Remap rescales the position range from
+             0..100 to a new sub-range (e.g. 30..80 for a gentler
+             session). Limit caps stroke velocity so no transition
+             exceeds N pos-units/sec — useful as a safety / comfort
+             ceiling. All three operate in-place on _ceActions. -->
+        <button class="btn secondary" id="_pe_offset" style="font-size:0.62rem;padding:3px 8px" title="Shift all actions by a fixed time delta in ms (positive = later, negative = earlier)">offset…</button>
+        <button class="btn secondary" id="_pe_remap" style="font-size:0.62rem;padding:3px 8px" title="Rescale the position range — e.g. compress 0–100 to 30–80 for a gentler session">remap…</button>
+        <button class="btn secondary" id="_pe_limit" style="font-size:0.62rem;padding:3px 8px" title="Cap stroke velocity (pos-units per second). Reduces intensity without changing rhythm.">limit…</button>
         <button class="btn secondary" id="_pe_clear" style="font-size:0.62rem;padding:3px 8px" title="Clear all points (keeps two anchor points)">clear</button>
         <button class="btn secondary" id="_pe_paste_fs" style="font-size:0.62rem;padding:3px 8px" title="Replace curve with points from a .funscript file">↻ paste from .funscript</button>
       </div>
@@ -43027,6 +43638,97 @@ Begin:`;
       }
       _ceActions = out;
       _ceClearSelection();  // selection refs survive (b's), but new midpoints aren't included so behavior is clearer if we just clear
+      _ceSyncToJson(); _ceRender();
+    });
+    // Round 26 — Offset modifier. Prompts for a millisecond delta and
+    // shifts every action's `at` by that amount. Negative deltas pull
+    // earlier; values that would push the first action below 0 cause
+    // the whole sequence to be re-anchored to t=0 (preserves shape).
+    $$('_pe_offset').addEventListener('click', () => {
+      if (_ceActions.length < 1) return;
+      const raw = window.prompt('Time offset in milliseconds (positive = later, negative = earlier):', '0');
+      if (raw == null) return;
+      const ms = parseInt(raw, 10);
+      if (!Number.isFinite(ms) || ms === 0) return;
+      // Apply offset, then re-anchor if any action would land below 0.
+      const shifted = _ceActions.map(a => ({ at: a.at + ms, pos: a.pos }));
+      const minAt = Math.min(...shifted.map(a => a.at));
+      const correction = minAt < 0 ? -minAt : 0;
+      _ceActions = shifted.map(a => ({ at: a.at + correction, pos: a.pos })).sort((a, b) => a.at - b.at);
+      // Expand duration if shifting pushed the last action past it.
+      const lastAt = _ceActions.at(-1).at;
+      if (lastAt > _ceDuration) {
+        _ceDuration = lastAt;
+        const dInput = $$('_pe_duration'); if (dInput) dInput.value = _ceDuration;
+      }
+      _ceClearSelection();
+      _ceSyncToJson(); _ceRender();
+    });
+    // Round 26 — Remap modifier. Linearly rescales every action's
+    // position from the full 0..100 range into a user-specified
+    // sub-range. Common use: compress to 30..80 for a less intense
+    // session, or expand a low-amplitude track to use the full range.
+    $$('_pe_remap').addEventListener('click', () => {
+      if (_ceActions.length < 1) return;
+      const rawMin = window.prompt('Remap — new minimum position (0–100):', '20');
+      if (rawMin == null) return;
+      const rawMax = window.prompt('Remap — new maximum position (0–100):', '80');
+      if (rawMax == null) return;
+      const newMin = Math.max(0, Math.min(100, parseFloat(rawMin)));
+      const newMax = Math.max(0, Math.min(100, parseFloat(rawMax)));
+      if (!Number.isFinite(newMin) || !Number.isFinite(newMax) || newMax <= newMin) {
+        notify.warn('Remap: max must be greater than min, both in 0–100.');
+        return;
+      }
+      const span = newMax - newMin;
+      _ceActions = _ceActions.map(a => ({
+        at: a.at,
+        pos: Math.round(newMin + (a.pos / 100) * span),
+      }));
+      _ceClearSelection();
+      _ceSyncToJson(); _ceRender();
+    });
+    // Round 26 — Velocity limiter. Caps the rate of position change so
+    // no transition exceeds the user-specified pos-units/sec ceiling.
+    // Implementation: walk the action list keeping the prior accepted
+    // point; if the next transition exceeds maxPosPerMs, clamp the
+    // next point's position rather than its timestamp. This preserves
+    // rhythm/duration and just reduces stroke depth where needed —
+    // matches the comfort-ceiling intent of the funscript-utils
+    // limiter. Default 400 = ~4 full strokes/sec, the same threshold
+    // the heatmap uses for "red".
+    $$('_pe_limit').addEventListener('click', () => {
+      if (_ceActions.length < 2) return;
+      const raw = window.prompt('Velocity limit in position-units per second (typical: 200–600). Above this, stroke depth is clamped to keep rhythm intact:', '400');
+      if (raw == null) return;
+      const maxSpeed = parseFloat(raw);
+      if (!Number.isFinite(maxSpeed) || maxSpeed <= 0) {
+        notify.warn('Limit: speed must be a positive number.');
+        return;
+      }
+      const maxPosPerMs = maxSpeed / 1000;
+      const limited = [{ at: _ceActions[0].at, pos: _ceActions[0].pos }];
+      for (let i = 1; i < _ceActions.length; i++) {
+        const prev = limited[limited.length - 1];
+        const cur  = _ceActions[i];
+        const dt = cur.at - prev.at;
+        if (dt <= 0) {
+          // Degenerate (zero/negative interval) — pass through, the
+          // sort-on-write below will reorder if needed.
+          limited.push({ at: cur.at, pos: cur.pos });
+          continue;
+        }
+        const dp = cur.pos - prev.pos;
+        const maxDp = maxPosPerMs * dt;
+        if (Math.abs(dp) <= maxDp) {
+          limited.push({ at: cur.at, pos: cur.pos });
+        } else {
+          const newPos = prev.pos + Math.sign(dp) * maxDp;
+          limited.push({ at: cur.at, pos: Math.max(0, Math.min(100, Math.round(newPos))) });
+        }
+      }
+      _ceActions = limited;
+      _ceClearSelection();
       _ceSyncToJson(); _ceRender();
     });
     $$('_pe_clear').addEventListener('click', async () => {
