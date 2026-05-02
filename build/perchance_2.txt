@@ -2245,6 +2245,77 @@ min-width: 28px; min-height: 0;
   body.in-session.controls-hidden .method-indicator,
   body.in-session.controls-hidden .persona-indicator,
   body.in-session.controls-hidden .audio-indicator { opacity: 0; pointer-events: none; }
+  body.in-session.controls-hidden .hud-enrichment { opacity: 0; pointer-events: none; }
+  /* Round 28 — HUD enrichment overlay. Top-right corner; vertical stack
+     of subsections. Soft glass background per subsection so text stays
+     readable even on bright visualizers. Hidden when no session is
+     active (default — only .in-session shows it). */
+  .hud-enrichment {
+    position: fixed; top: 14px; right: 14px;
+    display: none; flex-direction: column; gap: 8px;
+    z-index: 10; pointer-events: none;
+    transition: opacity 0.4s ease;
+    max-width: 240px;
+  }
+  body.in-session .hud-enrichment { display: flex; }
+  .hud-slot-pills {
+    display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end;
+    pointer-events: auto;
+  }
+  .hud-slot-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 6px; font-size: 0.62rem; font-family: monospace;
+    background: rgba(0, 0, 0, 0.4); border: 0.5px solid rgba(255, 255, 255, 0.18);
+    border-radius: 3px; color: var(--text-dim);
+    backdrop-filter: blur(4px);
+    cursor: pointer; transition: all 0.15s;
+    max-width: 110px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .hud-slot-pill.bound {
+    color: var(--neon-cyan);
+    border-color: rgba(0, 212, 230, 0.3);
+    background: rgba(0, 212, 230, 0.08);
+  }
+  .hud-slot-pill.bound:hover { background: rgba(0, 212, 230, 0.15); transform: scale(1.05); }
+  .hud-slot-pill .key {
+    color: var(--neon-cyan); font-weight: 600;
+    border-right: 0.5px solid rgba(255, 255, 255, 0.15);
+    padding-right: 4px; margin-right: 2px;
+  }
+  .hud-slot-pill.unbound { opacity: 0.32; cursor: default; }
+  .hud-slot-pill.unbound .key { color: var(--text-faint); }
+  .hud-metric-bars {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.4); border: 0.5px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+    font-family: monospace; font-size: 0.6rem;
+    color: var(--text-dim);
+  }
+  .hud-metric-bars:empty { display: none; }
+  .hud-metric-row {
+    display: grid; grid-template-columns: 60px 1fr 26px; gap: 6px; align-items: center;
+  }
+  .hud-metric-bar-track {
+    height: 4px; background: rgba(255, 255, 255, 0.08); border-radius: 2px; overflow: hidden;
+  }
+  .hud-metric-bar-fill {
+    height: 100%; background: var(--neon-cyan); transition: width 0.4s ease;
+    border-radius: 2px;
+  }
+  .hud-metric-bar-fill.attention { background: var(--accent-warm, #c9a855); }
+  .hud-metric-bar-value { font-variant-numeric: tabular-nums; text-align: right; color: var(--text); }
+  .hud-phase-chip {
+    align-self: flex-end;
+    padding: 3px 8px; font-size: 0.62rem; font-family: monospace;
+    background: rgba(0, 0, 0, 0.4); border: 0.5px solid rgba(255, 255, 255, 0.12);
+    border-radius: 3px; color: var(--text-faint);
+    backdrop-filter: blur(4px);
+    letter-spacing: 0.04em;
+  }
+  .hud-phase-chip:empty { display: none; }
   .phase-indicator { font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 20px; }
   .stage { position: relative; width: 100%; height: 360px; margin: 0 auto 30px;overflow: hidden; background: #000; transition: background 1s; }
   /* Background layer & stage are siblings at z-index 0; stage paints later in
@@ -4292,28 +4363,55 @@ padding: 6px 10px; font-size: 1.1rem;
     border-color: rgba(0,212,230,0.5);
     background: rgba(0,212,230,0.06);
   }
+  /* Round 27 — pattern editor tool toggle pills. Same visual vocabulary
+     as speed-preset-chip but slightly larger for click-target comfort. */
+  .pe-tool-btn {
+    background: transparent;
+    color: var(--text-faint);
+    border: 1px solid rgba(255,255,255,0.10);
+    padding: 3px 9px;
+    font-family: monospace;
+    font-size: 0.66rem;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    border-radius: 3px;
+    user-select: none;
+  }
+  .pe-tool-btn:hover {
+    color: var(--text-dim);
+    border-color: rgba(255,255,255,0.25);
+  }
+  .pe-tool-btn.active {
+    color: var(--neon-cyan);
+    border-color: rgba(0,212,230,0.55);
+    background: rgba(0,212,230,0.08);
+  }
 </style>
 
 <div class="container">
-  <h1>· advanced hypnosis narration engine · </h1>
+  <h1>· advanced guided narration engine · </h1>
 
-  <!-- Themed intro panel — pitch + concrete uses + getting-started pointer.
-       Replaces the hastily-tacked description div. Collapsible so returning
-       users (any completed sessions) see the compact summary by default;
-       new users get the full pitch open. State persists in localStorage. -->
+  <!-- Round 27 — Framing reframed from hypnosis-only to a broader
+       "guided personal sessions" platform. Hypnosis remains a major
+       use case but no longer the only one — meditation, sleep aid,
+       focus practice, partner experiences, and other guided arcs all
+       sit on the same engine. Themed intro panel — pitch + concrete uses
+       + getting-started pointer. Collapsible so returning users (any
+       completed sessions) see the compact summary by default; new
+       users get the full pitch open. State persists in localStorage. -->
   <details class="app-intro" id="appIntro">
     <summary class="app-intro-summary">
-      <span class="app-intro-pitch">A complete browser-based hypnosis studio.</span>
+      <span class="app-intro-pitch">A complete browser-based guided session studio.</span>
       <span class="app-intro-toggle-hint">tap for what this is &amp; how to use it</span>
     </summary>
     <div class="app-intro-body">
       <blockquote class="app-intro-quote">
-        <span class="app-intro-quote-text">"The <em>single-most</em> complete hypnosis app on the planet. And it's free."</span>
-        <span class="app-intro-quote-attr">— me, with appropriate humility</span>
+        <span class="app-intro-quote-text">"Generate, narrate, and adapt any kind of guided personal session — your script, your voice, your body, your terms."</span>
+        <span class="app-intro-quote-attr">— the project, more or less</span>
       </blockquote>
 
       <p class="app-intro-lede">
-        Generate, narrate, visualize, and adapt guided hypnosis, mindfulness, focus, or meditation sessions. Everything runs locally in your browser — your profile, scripts, and history never leave the device unless you explicitly turn on remote features.
+        Generate, narrate, visualize, and adapt guided personal sessions of any kind — meditation, focus, sleep aid, hypnosis, body scan, partner experiences, breathwork, or any guided arc you can describe. Everything runs locally in your browser — your profile, scripts, and history never leave the device unless you explicitly turn on remote features.
       </p>
 
       <div class="app-intro-uses">
@@ -4434,14 +4532,34 @@ padding: 6px 10px; font-size: 1.1rem;
             <select id="pfPronouns" class="pf-select"><option value="">prefer not to say</option><option value="he/him">he / him</option><option value="she/her">she / her</option><option value="they/them">they / them</option><option value="other">other</option></select>
           </div>
           <div class="pf-row"><label class="pf-label">Age Range</label>
-            <select id="pfAge" class="pf-select"><option value="">prefer not to say</option><option value="18-24">18–24</option><option value="25-34">25–34</option><option value="35-44">35–44</option><option value="45-54">45–54</option><option value="55-64">55–64</option><option value="65+">65+</option></select>
+            <select id="pfAge" class="pf-select"><option value="">prefer not to say</option><option value="18-20">18–20</option><option value="21-24">21–24</option><option value="25-34">25–34</option><option value="35-44">35–44</option><option value="45-54">45–54</option><option value="55-64">55–64</option><option value="65+">65+</option></select>
           </div>
-          <div class="pf-row"><label class="pf-label">Meditation Experience</label>
+          <!-- Round 27 — Adult-content unlock. Independent opt-in toggle
+               that's ONLY enabled when age is 21+ (i.e. one of the
+               brackets that excludes anyone potentially under 21). The
+               toggle defaults off for everyone; users have to (a) set
+               an age bracket of 21-24 or higher AND (b) explicitly check
+               this. Both are required; either alone leaves adult content
+               hidden. The eligibility predicate is _userIsAdultEligible. -->
+          <div class="pf-row"><label class="pf-label">Mature content</label>
+            <div style="display:flex;align-items:flex-start;gap:8px;flex-direction:column">
+              <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:0.78rem;color:var(--text)" id="pfAdultUnlockLabel">
+                <input type="checkbox" id="pfAdultUnlock" style="margin-top:2px;flex-shrink:0">
+                <span>
+                  Show sensual / mildly erotic content
+                  <span class="hint" id="pfAdultUnlockHint" style="display:block;font-size:0.66rem;margin-top:2px;line-height:1.5">
+                    Requires Age Range of 21–24 or older. Unlocks additional session modes (training, surrender, pleasure-training, etc.) and adult-tagged content. Off by default; flips off automatically if your age bracket changes to under-21 or "prefer not to say".
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
+          <div class="pf-row"><label class="pf-label">Practice Experience</label>
             <select id="pfExperience" class="pf-select"><option value="beginner">Beginner — first time</option><option value="some">Some experience</option><option value="experienced">Experienced practitioner</option><option value="professional">Professional / trained</option></select>
           </div>
           <div class="pf-row"><label class="pf-label">About You</label><textarea id="pfAbout" class="pf-textarea" rows="2" maxlength="300" placeholder="Anything you'd like to share..."></textarea></div>
           <div class="pf-row"><label class="pf-label">Your Appearance</label><textarea id="pfAppearance" class="pf-textarea" rows="2" maxlength="300" placeholder="Hair, eyes, build... for AI personalization"></textarea></div>
-          <div class="pf-row"><label class="pf-label">Goals</label><textarea id="pfGoals" class="pf-textarea" rows="2" maxlength="300" placeholder="What do you want from hypnosis?"></textarea></div>
+          <div class="pf-row"><label class="pf-label">Goals</label><textarea id="pfGoals" class="pf-textarea" rows="2" maxlength="300" placeholder="What do you want from your sessions?"></textarea></div>
           <!-- ── Extended profile signals (Round 16) ─────────────────────
                These fields give the Smart Director and AI prompts richer
                personalization material. Default values are blank/neutral
@@ -4844,6 +4962,20 @@ padding: 6px 10px; font-size: 1.1rem;
         </summary>
         <div class="sublabel" style="margin-top:8px;margin-bottom:6px">One click — sets guide, method, intention, soundscape, and length.</div>
         <div class="preset-grid" id="presetGrid"></div>
+      </details>
+      <!-- Round 28 — Content Packs. Curated end-to-end session bundles
+           that lock in mode + method + length + intent type + visualizer
+           + intention text. Adapted from ASS's content-packs.js. Three
+           packs are adult-gated (conditioning, partner, surrender) and
+           filter out for users who haven't unlocked mature content. -->
+      <details class="presets-collapsible" id="contentPacksDetails" style="margin-bottom:12px">
+        <summary>
+          <span class="presets-chevron">▸</span>
+          <span class="presets-title">📦 Content Packs <span style="font-weight:normal;color:var(--text-faint);font-size:0.7rem;text-transform:none;letter-spacing:0">(curated bundles)</span></span>
+          <span class="presets-hint">tap to expand · pre-configured experiences</span>
+        </summary>
+        <div class="sublabel" style="margin-top:8px;margin-bottom:6px">End-to-end session bundles. Each pack sets mode, method, length, visualizer, and pre-fills your intention text. Tap "use this pack" to advance to the final step.</div>
+        <div class="preset-grid" id="contentPacksGrid"></div>
       </details>
       <details class="presets-collapsible" id="structuredProgramsDetails" style="margin-bottom:16px">
         <summary>
@@ -5761,6 +5893,8 @@ I return to myself easily"></textarea>
             <button type="button" id="funscriptPatternBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem">✨ load pattern</button>
             <button type="button" id="funscriptEditorBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem" title="Open the canvas-based pattern editor — draw your own haptic curve directly">📈 pattern editor</button>
             <button type="button" id="funscriptSessionAutoBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem" title="Auto-generate a haptic track shaped to the current session — uses the phase blueprint and selected length. Track plays once at session length (no loop), tapering through wake / reintroduction.">🎯 fit to session</button>
+            <button type="button" id="funscriptBpmBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem" title="Generate a tempo-locked haptic track from a BPM and waveform shape. Useful for music sync, breathwork pacing, or rhythm-driven sessions.">🥁 BPM…</button>
+            <button type="button" id="funscriptFromAudioBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem" title="Generate a haptic track from an audio file's energy envelope. RMS analysis with onset detection — the haptic pulse follows the audio's loudness in real time.">🎵 from audio…</button>
             <button type="button" id="hapticMacroLibraryBtn" class="btn secondary" style="padding:3px 12px;font-size:0.66rem" title="Browse + manage haptic macros (short reusable clips fired via \[HAPTIC:macro=name\] sentinels or rule actions)">🎬 macros</button>
             <span id="funscriptStatus" style="font-style:italic">no track loaded</span>
             <button type="button" id="funscriptClearBtn" class="btn secondary" style="display:none;padding:2px 10px;font-size:0.66rem">clear</button>
@@ -5781,6 +5915,34 @@ I return to myself easily"></textarea>
           <div class="hint" style="font-size:0.62rem;line-height:1.45;margin-top:4px">
             Time-coded position script — plays through the connected device alongside the session. Built-in patterns are math-generated and meditation-aligned. Max 5 MB.
           </div>
+          <!-- Round 27 — Secondary tracks. The main funscript drives the
+               linear (stroke) axis. Optional secondary tracks can drive
+               the vibrate, rotate, or oscillate axes simultaneously, all
+               sharing the main playhead. Useful when you want a stroke
+               pattern PLUS a vibration pattern at different rates. The
+               panel is hidden until at least one secondary is loaded;
+               the "+ secondary" button is the entry point. -->
+          <details id="funscriptSecondariesDetails" style="margin-top:8px;padding:5px 8px;background:rgba(255,255,255,0.025);border:0.5px solid rgba(255,255,255,0.08);border-radius:4px">
+            <summary style="font-size:0.66rem;color:var(--text-dim);cursor:pointer">▸ secondary axes <span id="funscriptSecondariesCount" style="color:var(--text-faint)">— none</span></summary>
+            <div class="hint" style="font-size:0.62rem;line-height:1.45;margin-top:6px;margin-bottom:8px">
+              Add a track on a non-stroke axis (vibrate / rotate / oscillate). Secondary tracks share the main playhead — they start, stop, pause, and seek with the primary track. Useful for layered haptics: stroke from one curve, vibration intensity from another. Each axis can hold one secondary track; loading a new one to that axis replaces the previous.
+            </div>
+            <div id="funscriptSecondariesList" style="font-size:0.66rem;margin-bottom:6px"></div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <select id="funscriptSecondaryAxis" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem">
+                <option value="vibrate">vibrate</option>
+                <option value="rotate">rotate</option>
+                <option value="oscillate">oscillate</option>
+              </select>
+              <select id="funscriptSecondarySource" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem">
+                <option value="">choose source…</option>
+              </select>
+              <button type="button" id="funscriptSecondaryLoadBtn" class="btn secondary" style="padding:2px 10px;font-size:0.62rem">+ add</button>
+              <label for="funscriptSecondaryFile" class="btn secondary" style="padding:2px 10px;font-size:0.62rem;cursor:pointer;margin:0">📁 from .funscript</label>
+              <input type="file" id="funscriptSecondaryFile" accept=".funscript,.json,application/json" style="display:none">
+              <button type="button" id="funscriptSecondaryClearAllBtn" class="btn secondary" style="padding:2px 10px;font-size:0.62rem">clear all</button>
+            </div>
+          </details>
           <details id="liveControlDetails" style="margin-top:10px;padding:6px 8px;background:rgba(255,255,255,0.025);border:0.5px solid rgba(255,255,255,0.08);border-radius:4px">
             <summary style="font-size:0.7rem;color:var(--text-dim);cursor:pointer">▸ live control + intensity ramp</summary>
             <div style="margin-top:8px;display:grid;grid-template-columns:90px 1fr 60px;gap:6px 12px;align-items:center;font-size:0.66rem">
@@ -5841,6 +6003,38 @@ I return to myself easily"></textarea>
                   <span></span><span></span>
                 </div>
                 <div id="rampStatusLine" style="margin-top:6px;font-size:0.62rem;color:var(--text-faint);font-family:monospace"></div>
+              </div>
+            </div>
+            <!-- Round 27 — Dynamic Pacing panel. Sibling of the ramp
+                 panel — same shape (toggle + collapsible details), same
+                 visual vocabulary. Engagement-driven speed modulation:
+                 when enabled, the speed slider tracks the engagement
+                 score in real time between minSpeed and maxSpeed. -->
+            <div style="margin-top:10px;padding-top:8px;border-top:0.5px solid rgba(255,255,255,0.06)">
+              <label style="display:flex;align-items:center;gap:6px;font-size:0.7rem;color:var(--text);cursor:pointer">
+                <input type="checkbox" id="pacingEnable">
+                dynamic pacing
+                <span class="hint" style="font-size:0.6rem">— speed tracks engagement; needs webcam or sensor input</span>
+              </label>
+              <div id="pacingPanel" style="display:none;margin-top:6px;font-size:0.66rem">
+                <div style="display:grid;grid-template-columns:80px 1fr 80px 1fr;gap:6px 10px;align-items:center">
+                  <label style="color:var(--text-dim)">min speed</label>
+                  <input id="pacingMin" type="number" min="0.25" max="4" step="0.05" value="0.5" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem;font-family:monospace" title="Speed when engagement is at 0">
+                  <label style="color:var(--text-dim)">max speed</label>
+                  <input id="pacingMax" type="number" min="0.25" max="4" step="0.05" value="2.0" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem;font-family:monospace" title="Speed when engagement is at 1">
+                  <label style="color:var(--text-dim)">curve</label>
+                  <select id="pacingCurve" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem">
+                    <option value="linear">linear</option>
+                    <option value="exponential">exponential</option>
+                    <option value="sine">sine</option>
+                  </select>
+                  <label style="color:var(--text-dim)">smoothing</label>
+                  <input id="pacingSmooth" type="number" min="0" max="30" step="0.5" value="4" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem;font-family:monospace" title="EMA time constant in seconds — larger = smoother but slower to react">
+                  <label style="color:var(--text-dim)">lock for</label>
+                  <input id="pacingLock" type="number" min="0" max="60" step="1" value="0" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem;font-family:monospace" title="Hold speed for N seconds after a change — debounce">
+                  <span></span><span></span>
+                </div>
+                <div id="pacingStatusLine" style="margin-top:6px;font-size:0.62rem;color:var(--text-faint);font-family:monospace"></div>
               </div>
             </div>
           </details>
@@ -5981,6 +6175,31 @@ I return to myself easily"></textarea>
           </div>
           <div id="sessionVariablesList" style="margin-top:8px;font-size:0.74rem">
             <div style="color:var(--text-faint);font-style:italic;padding:6px 0">No variables defined.</div>
+          </div>
+        </details>
+
+        <!-- Round 27 — Session quality suggestions. Heuristic checks
+             that flag configuration issues (no engagement source for
+             pacing, intent/setting mismatches, voice unavailability,
+             etc.) BEFORE the user starts the session. Adapted from
+             /mnt/user-data/uploads/Adaptive-Session-Studio —
+               js/suggestions.js (15 checks; HNE redefines them around
+               method/intent/profile/personalization rather than
+               block-timeline structure).
+             Auto-collapses when there are no warnings; expands when
+             warn/error suggestions exist so users see them. -->
+        <details class="presets-collapsible" id="sessionSuggestionsDetails" style="margin-bottom:14px">
+          <summary>
+            <span class="presets-chevron">▸</span>
+            <span class="presets-title">Session Quality <span id="sessionSuggestionsCount" style="font-weight:normal;color:var(--text-faint);font-size:0.7rem;text-transform:none;letter-spacing:0">— ready</span></span>
+            <span class="presets-hint">configuration check before you begin</span>
+          </summary>
+          <div class="sublabel" style="margin-top:8px;margin-bottom:8px">
+            Heuristic review of your current settings. <span style="color:#f0a04a">⚠</span> warnings flag configuration that may not work as expected; <span style="color:#5fa0dc">ℹ</span> info notes are tips. None block the session — they're suggestions, not gates.
+          </div>
+          <div id="sessionSuggestionsList" style="font-size:0.74rem"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <button type="button" id="sessionSuggestionsRefreshBtn" class="btn secondary" style="padding:3px 10px;font-size:0.66rem" title="Re-run the checks against current settings">↻ refresh</button>
           </div>
         </details>
 
@@ -6331,6 +6550,22 @@ I return to myself easily"></textarea>
       <button class="transcript-toggle" id="liveSettingsBtn">⚙ settings</button>
     </div>
     <div class="kb-hint"><kbd>Space</kbd> pause/resume · <kbd>Esc</kbd> safe pause (twice to end)</div>
+    <!-- Round 28 — HUD enrichment overlay. Sits in the top-right of the
+         session screen during playback. Three subsections, each
+         conditionally rendered:
+           1. macro slot pills (when any of slots 1-5 are bound)
+           2. live metric bars (when engagement + attention signals are
+              available — i.e. webcam tracking and/or voice envelope
+              are providing data)
+           3. phase mini-chip (always shown — current phase + time)
+         All elements respect .controls-hidden auto-hide along with the
+         rest of the HUD. Re-renders on a 1s interval during playback;
+         tear-down lives in the same code path that ends a session. -->
+    <div class="hud-enrichment" id="hudEnrichment" aria-live="polite">
+      <div class="hud-slot-pills" id="hudSlotPills"></div>
+      <div class="hud-metric-bars" id="hudMetricBars"></div>
+      <div class="hud-phase-chip" id="hudPhaseChip"></div>
+    </div>
   </div>
 
   <!-- ============ SOFT-PAUSE OVERLAY ============
@@ -9245,6 +9480,11 @@ I return to myself easily"></textarea>
       // Playback dynamics — independent opt-in flag (state.playbackDynamics.enabled).
       // No-op when disabled, so safe to call unconditionally.
       tickPlaybackDynamics(frameSec);
+      // Round 27 — Dynamic pacing: engagement-driven speed modulation.
+      // Reads state.pacingSettings.enabled internally, so calling
+      // unconditionally is cheap. Pairs with the intensity ramp:
+      // ramp drives intensity, pacing drives speed.
+      _tickDynamicPacing(frameSec);
       a._rafHandle = requestAnimationFrame(tick);
     };
     a._rafHandle = requestAnimationFrame(tick);
@@ -10920,13 +11160,428 @@ I return to myself easily"></textarea>
         maxSessionMinutes:    30,     // short by default
       },
     },
+    // ── Round 27 — ASS-derived modes ──────────────────────────────────────
+    // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio —
+    //   js/session-modes.js. ASS modes use rampSettings/pacingSettings
+    //   keys per mode that get applied alongside rules. HNE adds these
+    //   optional keys to its mode shape; applySessionMode picks them up
+    //   when present and writes them through to state.rampSettings /
+    //   state.pacingSettings + the corresponding UI panels.
+    //   Action types translated from ASS to HNE vocabulary:
+    //     showMessage → notifyMessage; sessionTime → sessionSec.
+    //   Numeric values rescaled for HNE's intensity-multiplier semantics
+    //   (HNE: 0.5..1.5 nominal range; ASS uses 0..1 normalized).
+    {
+      id:          'mindfulness',
+      name:        'Mindfulness / Focus',
+      icon:        '🧘',
+      description: 'Low-intensity stable session. Rewards sustained attention; reduces intensity on drift. Best for beginners or cooldown sessions. Auto-engages a gentle ramp + slow pacing curve when applied.',
+      rampSettings: {
+        enabled:   true,
+        mode:      'engagement',
+        startVal:  0.7,
+        endVal:    1.0,
+        curve:     'sine',
+        blendMode: 'replace',  // mindfulness mode INVERTS the slider (intentional)
+      },
+      pacingSettings: {
+        enabled:       true,
+        minSpeed:      0.85,
+        maxSpeed:      1.05,
+        smoothingSec:  8,
+        curve:         'sine',
+        lockDuringSec: 3,
+      },
+      rules: [
+        // Pause on distraction — attention drops below threshold for 4s.
+        // attention metric only fires when webcam tracking is on; otherwise
+        // this rule is benign (always-false condition).
+        { name: '[Mindfulness] Pause on distraction',
+          enabled: true,
+          condition: { metric: 'attention', op: '<', value: 0.3 },
+          durationSec: 4, cooldownSec: 30,
+          action: { type: 'pause', param: null } },
+        { name: '[Mindfulness] Reduce intensity on drift',
+          enabled: true,
+          condition: { metric: 'engagement', op: '<', value: 0.35 },
+          durationSec: 6, cooldownSec: 45,
+          action: { type: 'setIntensity', param: 0.7 } },
+      ],
+      triggers: [],
+      safetyOverrides: {
+        maxSpeechRate:       1.1,    // never push fast in mindfulness
+        maxSoundscapeVolume: 0.7,
+      },
+    },
+    {
+      id:          'deep-focus',
+      name:        'Deep Focus',
+      icon:        '🎯',
+      description: 'Balanced adaptive session. Rewards sustained engagement, corrects attention breaks, escalates for peak performance. Best for cognitive enhancement or skill-building intentions.',
+      rampSettings: {
+        enabled:   true,
+        mode:      'adaptive',
+        startVal:  0.8,
+        endVal:    1.4,
+        curve:     'sine',
+        blendMode: 'max',
+      },
+      pacingSettings: {
+        enabled:       true,
+        minSpeed:      0.9,
+        maxSpeed:      1.3,
+        smoothingSec:  5,
+        curve:         'exponential',
+        lockDuringSec: 2,
+      },
+      rules: [
+        { name: '[Focus] Pause on attention break',
+          enabled: true,
+          condition: { metric: 'attention', op: '<', value: 0.3 },
+          durationSec: 3, cooldownSec: 30,
+          action: { type: 'pause', param: null } },
+        { name: '[Focus] Escalate on peak engagement',
+          enabled: true,
+          condition: { metric: 'engagement', op: '>=', value: 0.85 },
+          durationSec: 12, cooldownSec: 90,
+          action: { type: 'setIntensity', param: 1.4 } },
+        { name: '[Focus] Recover from disengagement',
+          enabled: true,
+          condition: { metric: 'engagement', op: '<', value: 0.25 },
+          durationSec: 8, cooldownSec: 60,
+          action: { type: 'setIntensity', param: 0.9 } },
+      ],
+      triggers: [],
+      safetyOverrides: null,  // use defaults — focus needs full operating range
+    },
+    {
+      id:          'asmr',
+      name:        'ASMR / Deep Relaxation',
+      icon:        '🕯',
+      description: 'Minimal stimulation mode for sleep-adjacent states or ASMR content. Very low intensity, slow pacing, no escalation rules — gentle drift only. Like deep-sleep but with audio cap relaxed and a subtle ramp.',
+      rampSettings: {
+        enabled:   true,
+        mode:      'time',
+        startVal:  0.5,
+        endVal:    0.9,
+        curve:     'linear',  // gentle subtle climb
+        blendMode: 'max',
+      },
+      pacingSettings: {
+        enabled:       true,
+        minSpeed:      0.7,
+        maxSpeed:      0.95,
+        smoothingSec:  12,    // very slow EMA — speed barely fluctuates
+        curve:         'linear',
+        lockDuringSec: 0,
+      },
+      rules: [
+        // No pause-on-attention — ASMR users often have eyes closed or away.
+        // Soft intensity reduction only; no waking interventions.
+        { name: '[ASMR] Reduce intensity on attention loss',
+          enabled: true,
+          condition: { metric: 'attention', op: '<', value: 0.2 },
+          durationSec: 5, cooldownSec: 60,
+          action: { type: 'setIntensity', param: 0.5 } },
+        { name: '[ASMR] Soft duck during silences',
+          enabled: true,
+          condition: { metric: 'voiceEnvelope', op: '<', value: 0.05 },
+          durationSec: 4, cooldownSec: 30,
+          action: { type: 'duckAudio', param: 0.2 } },
+        { name: '[ASMR] Restore on voice activity',
+          enabled: true,
+          condition: { metric: 'voiceEnvelope', op: '>', value: 0.15 },
+          durationSec: 1, cooldownSec: 5,
+          action: { type: 'unduckAudio', param: null } },
+      ],
+      triggers: [],
+      safetyOverrides: {
+        maxSpeechRate:       1.0,    // never exceed natural pace
+        maxSoundscapeVolume: 0.55,
+        maxSessionMinutes:   90,
+      },
+    },
+    {
+      id:          'freerun',
+      name:        'Free Run',
+      icon:        '▶',
+      description: 'No automation. Manual control only — clears all rules, triggers, ramp, and pacing. The narrator runs straight through; you drive every parameter via Live Controls.',
+      rampSettings:   null,    // explicitly clear ramp on apply
+      pacingSettings: null,    // explicitly clear pacing on apply
+      rules:          [],      // no rules
+      triggers:       [],      // no triggers
+      safetyOverrides: null,   // use safety defaults
+    },
+    // ── Round 27 — Additional ASS-derived modes ──────────────────────
+    // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio —
+    //   js/session-modes.js. Five modes; induction is broadly applicable
+    //   (hypnosis OR meditation OR trance practice OR deep focus arc)
+    //   so it ships ungated. The other four are tonally adult-leaning:
+    //   conditioning + training are partner / behavioral-conditioning
+    //   contexts; surrender + pleasure_training are adult-themed. All
+    //   four carry adultGated:true and only appear in the dropdown
+    //   when the user has set their age bracket to 21+ AND ticked the
+    //   mature-content opt-in. The applySessionMode gate is a defensive
+    //   second layer — even a stale localStorage id can't bypass.
+    {
+      id:          'induction',
+      name:        'Guided Induction',
+      icon:        '🌀',
+      description: 'Slow, deep guided arc with very gentle engagement ramp. Pauses softly on attention breaks rather than disrupting the descent. Works for hypnosis, deep meditation, trance practice, or any session that benefits from sustained inward focus.',
+      rampSettings: {
+        enabled:   true,
+        mode:      'engagement',
+        startVal:  0.6,
+        endVal:    0.9,        // stays gentle even at peak
+        curve:     'sine',
+        blendMode: 'replace',
+      },
+      pacingSettings: {
+        enabled:       true,
+        minSpeed:      0.7,
+        maxSpeed:      0.95,
+        smoothingSec:  12,
+        curve:         'sine',
+        lockDuringSec: 8,
+      },
+      rules: [
+        { name: '[Induction] Slow down on attention break',
+          enabled: true,
+          condition: { metric: 'attention', op: '<', value: 0.2 },
+          durationSec: 8, cooldownSec: 60,
+          action: { type: 'setSpeed', param: 0.85 } },
+        { name: '[Induction] Deepen on sustained focus',
+          enabled: true,
+          condition: { metric: 'attention', op: '>=', value: 0.8 },
+          durationSec: 15, cooldownSec: 90,
+          action: { type: 'setIntensity', param: 1.05 } },
+      ],
+      triggers: [],
+      safetyOverrides: {
+        maxSpeechRate: 1.05,    // induction needs measured pace
+      },
+    },
+    {
+      id:          'conditioning',
+      name:        'Behavioral Conditioning',
+      icon:        '⚙',
+      description: 'Reward-and-correction loop. Escalates intensity for sustained focus, reduces during attention breaks. Builds consistent focus-response patterns over repeat sessions. Suited to practice where you want to associate sustained attention with positive feedback.',
+      adultGated:  true,
+      rampSettings: {
+        enabled:   true,
+        mode:      'adaptive',
+        startVal:  0.7,
+        endVal:    1.3,
+        curve:     'exponential',
+        blendMode: 'max',
+      },
+      pacingSettings: {
+        enabled:       true,
+        minSpeed:      0.85,
+        maxSpeed:      1.5,
+        smoothingSec:  4,
+        curve:         'exponential',
+        lockDuringSec: 2,
+      },
+      rules: [
+        { name: '[Conditioning] Reward sustained attention',
+          enabled: true,
+          condition: { metric: 'attention', op: '>=', value: 0.75 },
+          durationSec: 10, cooldownSec: 45,
+          action: { type: 'setIntensity', param: 1.2 } },
+        { name: '[Conditioning] Correct attention break',
+          enabled: true,
+          condition: { metric: 'attention', op: '<', value: 0.3 },
+          durationSec: 4, cooldownSec: 30,
+          action: { type: 'setIntensity', param: 0.7 } },
+        { name: '[Conditioning] Escalate on peak compliance',
+          enabled: true,
+          condition: { metric: 'engagement', op: '>=', value: 0.9 },
+          durationSec: 12, cooldownSec: 90,
+          action: { type: 'setIntensity', param: 1.4 } },
+      ],
+      triggers: [],
+      safetyOverrides: null,
+    },
+    {
+      id:          'training',
+      name:        'Operator-Led Training',
+      icon:        '🎛',
+      description: 'For partner sessions. Conservative automation — your partner / operator controls intensity and pacing manually via Live Controls. Auto-safety pauses only on complete attention loss. Designed for two-person consensual experiences.',
+      adultGated:  true,
+      rampSettings: {
+        enabled:   true,
+        mode:      'time',
+        startVal:  0.7,
+        endVal:    1.1,
+        curve:     'linear',
+        blendMode: 'replace',
+      },
+      pacingSettings: {
+        enabled:       false,    // operator drives pacing manually
+        minSpeed:      0.5,
+        maxSpeed:      1.8,
+        smoothingSec:  3,
+        curve:         'linear',
+        lockDuringSec: 0,
+      },
+      rules: [
+        { name: '[Training] Safety pause on full attention loss',
+          enabled: true,
+          condition: { metric: 'attention', op: '<', value: 0.15 },
+          durationSec: 6, cooldownSec: 60,
+          action: { type: 'pause', param: null } },
+      ],
+      triggers: [],
+      safetyOverrides: null,
+    },
+    {
+      id:          'surrender',
+      name:        'Deep Surrender',
+      icon:        '🌊',
+      description: 'High-trust, full-escalation experience. Continuous intensity climb with no automatic pauses or interruptions. Use the emergency stop (ESC) if you need to break the arc. Solo mode designed for committed, intentional sessions.',
+      adultGated:  true,
+      rampSettings: {
+        enabled:   true,
+        mode:      'time',
+        startVal:  0.5,
+        endVal:    1.5,
+        curve:     'exponential',
+        blendMode: 'max',
+      },
+      pacingSettings: {
+        enabled:       true,
+        minSpeed:      0.7,
+        maxSpeed:      1.6,
+        smoothingSec:  6,
+        curve:         'exponential',
+        lockDuringSec: 0,
+      },
+      rules: [],     // intentional — no auto-pauses or auto-corrections
+      triggers: [],  // no engagement check-ins; surrender is committed
+      safetyOverrides: null,
+    },
+    {
+      id:          'pleasure_training',
+      name:        'Pleasure Training',
+      icon:        '🎯',
+      description: 'Reward-based haptic conditioning. Intensity rises with sustained attention, drops during drift; the curve escalates as the session progresses. Builds focus-arousal association over repeat sessions. Requires haptic device for full effect.',
+      adultGated:  true,
+      rampSettings: {
+        enabled:   true,
+        mode:      'adaptive',
+        startVal:  0.6,
+        endVal:    1.5,
+        curve:     'exponential',
+        blendMode: 'max',
+      },
+      pacingSettings: {
+        enabled:       true,
+        minSpeed:      0.7,
+        maxSpeed:      1.8,
+        smoothingSec:  3,
+        curve:         'linear',
+        lockDuringSec: 0,
+      },
+      rules: [
+        { name: '[Pleasure] Reward peak attention',
+          enabled: true,
+          condition: { metric: 'attention', op: '>=', value: 0.88 },
+          durationSec: 5, cooldownSec: 45,
+          action: { type: 'setIntensity', param: 1.45 } },
+        { name: '[Pleasure] Edge on drift — reduce intensity',
+          enabled: true,
+          condition: { metric: 'attention', op: '<', value: 0.35 },
+          durationSec: 3, cooldownSec: 20,
+          action: { type: 'setIntensity', param: 0.6 } },
+        // ASS's pleasure_training also has an "Inject reward macro on
+        // sustained focus" rule with action injectMacro:1 and a
+        // loop-count escalation rule. HNE's rules engine doesn't
+        // support either action type; replaced with a sustained-focus
+        // intensity boost which is functionally similar.
+        { name: '[Pleasure] Sustained-focus intensity boost',
+          enabled: true,
+          condition: { metric: 'attention', op: '>=', value: 0.92 },
+          durationSec: 12, cooldownSec: 90,
+          action: { type: 'setIntensity', param: 1.55 } },
+      ],
+      triggers: [],
+      safetyOverrides: null,
+    },
   ];
 
   /** Apply a session mode by id. Replaces runtimeRules + runtimeTriggers + merges
    *  safetyOverrides into safetyConfig. Idempotent. Persists. */
+  // ════════════════════════════════════════════════════════════════════
+  // ADULT-CONTENT ELIGIBILITY — Round 27
+  // ════════════════════════════════════════════════════════════════════
+  // Two-factor gate: an eligible age bracket AND an explicit opt-in
+  // toggle. Both required; either alone is insufficient. The eligible
+  // brackets exclude '18-20' (might be under 21) and '' (prefer-not-to-
+  // say or unset). Predicate is pure and reads from the DOM, so it
+  // re-evaluates on every call rather than caching — important because
+  // the user can toggle either factor at any time.
+  const ADULT_ELIGIBLE_BRACKETS = new Set(['21-24','25-34','35-44','45-54','55-64','65+']);
+  function _userIsAdultEligible() {
+    try {
+      const ageEl = $('pfAge');
+      if (!ageEl || !ADULT_ELIGIBLE_BRACKETS.has(ageEl.value)) return false;
+      const adultEl = $('pfAdultUnlock');
+      return !!adultEl?.checked;
+    } catch { return false; }
+  }
+
+  /** Rebuild the session-mode dropdown options from the SESSION_MODES
+   *  array, filtering out adult-gated modes when the user isn't eligible.
+   *  Preserves the currently-selected mode if it's still visible;
+   *  otherwise falls back to 'standard'. Called once at init and again
+   *  whenever profile age or adult-unlock changes. */
+  function _renderSessionModeDropdown() {
+    const sel = $('sessionModeSelect');
+    if (!sel) return;
+    const eligible = _userIsAdultEligible();
+    const cur = sel.value || 'standard';
+    sel.innerHTML = '';
+    for (const mode of SESSION_MODES) {
+      if (mode.adultGated && !eligible) continue;
+      const opt = document.createElement('option');
+      opt.value = mode.id;
+      opt.textContent = `${mode.icon || '○'} ${mode.name}`;
+      // Visually mark adult-gated entries in the dropdown so users
+      // know what they unlocked. Native <option> styling is limited;
+      // a textual " · 🔞" suffix is the most reliable approach.
+      if (mode.adultGated) opt.textContent += ' · 🔞';
+      sel.appendChild(opt);
+    }
+    // Restore selection if the previous choice is still in the list;
+    // otherwise apply 'standard' (which always exists and is ungated).
+    const stillVisible = Array.from(sel.options).some(o => o.value === cur);
+    sel.value = stillVisible ? cur : 'standard';
+    if (!stillVisible && cur !== 'standard') {
+      // The active mode disappeared (probably because adult-unlock got
+      // toggled off mid-session-config). Apply standard so we don't
+      // leave state.activeSessionMode pointing at a hidden entry.
+      try { applySessionMode('standard'); } catch {}
+    }
+    // Sync the icon + description chips that sit next to the select.
+    const m = SESSION_MODES.find(x => x.id === sel.value);
+    if (m) {
+      const ic = $('sessionModeIcon');        if (ic) ic.textContent = m.icon || '○';
+      const desc = $('sessionModeDescription'); if (desc) desc.textContent = m.description || '';
+    }
+  }
+
   function applySessionMode(modeId) {
     const mode = SESSION_MODES.find(m => m.id === modeId);
     if (!mode) { notify.warn(`Unknown session mode: ${modeId}`); return; }
+    // Round 27 — adult-content gate. Defensive even though the dropdown
+    // already filters: a stale localStorage modeId, a share-link import,
+    // or a programmatic call could otherwise bypass. Falls back to
+    // 'standard' instead of leaving the user without a mode.
+    if (mode.adultGated && !_userIsAdultEligible()) {
+      notify.warn(`Session mode "${mode.name}" requires age 21+ and the mature-content opt-in. Falling back to Standard.`);
+      return applySessionMode('standard');
+    }
 
     state.activeSessionMode = mode.id;
 
@@ -10960,6 +11615,62 @@ I return to myself easily"></textarea>
       // Standard mode resets safety to defaults — explicit return-to-baseline path.
       state.safetyConfig = { ...SAFETY_DEFAULTS };
       _renderSafetyPanel();
+    }
+
+    // Round 27 — apply ramp + pacing settings if the mode declares them.
+    // Tri-state semantics, mirrored across both fields:
+    //   undefined       → mode doesn't touch this setting; leave alone
+    //   null            → mode explicitly CLEARS (sets to disabled defaults)
+    //   { object }      → mode applies these values
+    // 'standard' mode also resets to defaults so the user has a clean "back to neutral" path.
+    if (Object.prototype.hasOwnProperty.call(mode, 'rampSettings')) {
+      const target = (mode.rampSettings === null)
+        ? { ...RAMP_DEFAULTS }                            // explicit clear (freerun, etc.)
+        : { ...RAMP_DEFAULTS, ...mode.rampSettings };     // partial override on top of defaults
+      saveRampSettings(target);
+      state.rampSettings = loadRampSettings();
+      // Re-sync the ramp UI controls so the user sees the change immediately.
+      try {
+        const r = state.rampSettings;
+        const en = $('rampEnable'); if (en) en.checked = !!r.enabled;
+        const mp = $('rampPanel');  if (mp) mp.style.display = r.enabled ? '' : 'none';
+        const md = $('rampMode');   if (md) md.value = r.mode;
+        const cv = $('rampCurve');  if (cv) cv.value = r.curve;
+        const sv = $('rampStart');  if (sv) sv.value = r.startVal;
+        const ev = $('rampEnd');    if (ev) ev.value = r.endVal;
+        const bl = $('rampBlend');  if (bl) bl.value = r.blendMode;
+      } catch {}
+    } else if (mode.id === 'standard') {
+      // 'standard' implicitly resets ramp to defaults — explicit "back to neutral" path.
+      saveRampSettings({ ...RAMP_DEFAULTS });
+      state.rampSettings = loadRampSettings();
+    }
+    if (Object.prototype.hasOwnProperty.call(mode, 'pacingSettings')) {
+      const target = (mode.pacingSettings === null)
+        ? { ...PACING_DEFAULTS }
+        : _normalizePacingSettings({ ...PACING_DEFAULTS, ...mode.pacingSettings });
+      savePacingSettings(target);
+      state.pacingSettings = loadPacingSettings();
+      // Re-sync pacing UI
+      try {
+        const p = state.pacingSettings;
+        const en = $('pacingEnable'); if (en) en.checked = !!p.enabled;
+        const mp = $('pacingPanel');  if (mp) mp.style.display = p.enabled ? '' : 'none';
+        const set = (id, v) => { const el = $(id); if (el) el.value = v; };
+        set('pacingMin',    p.minSpeed);
+        set('pacingMax',    p.maxSpeed);
+        set('pacingCurve',  p.curve);
+        set('pacingSmooth', p.smoothingSec);
+        set('pacingLock',   p.lockDuringSec);
+      } catch {}
+      // Reset the EMA accumulator so the new settings take effect from a
+      // clean slider value rather than carrying over the previous mode's
+      // smoothed state.
+      _resetDynamicPacing();
+    } else if (mode.id === 'standard') {
+      savePacingSettings({ ...PACING_DEFAULTS });
+      state.pacingSettings = loadPacingSettings();
+      _resetDynamicPacing();
     }
 
     // Clear any in-flight rule state — prior mode's accumulators are no longer valid
@@ -13006,10 +13717,22 @@ I return to myself easily"></textarea>
       const savedMode = typeof s.activeSessionMode === 'string' ? s.activeSessionMode : 'standard';
       const modeExists = SESSION_MODES.some(m => m.id === savedMode);
       const finalMode = modeExists ? savedMode : 'standard';
-      const modeSel = $('sessionModeSelect'); if (modeSel) modeSel.value = finalMode;
+      // Round 27 — populate the dropdown options dynamically from
+      // SESSION_MODES, filtered by adult-gating eligibility. Has to
+      // happen AFTER applyProfileToForm restored the age + adult-unlock
+      // values (caller order guarantees that).
+      try {
+        if (typeof _renderSessionModeDropdown === 'function') _renderSessionModeDropdown();
+      } catch {}
+      // If the saved mode is adult-gated and the user is no longer
+      // eligible (legacy profile, lapsed unlock), force back to standard.
+      const savedModeObj = SESSION_MODES.find(m => m.id === finalMode);
+      const eligibleAtBoot = (typeof _userIsAdultEligible === 'function') ? _userIsAdultEligible() : false;
+      const finalModeAdjusted = (savedModeObj?.adultGated && !eligibleAtBoot) ? 'standard' : finalMode;
+      const modeSel = $('sessionModeSelect'); if (modeSel) modeSel.value = finalModeAdjusted;
       // Apply silently — but don't notify on initial load (would be noise on every page load).
       // Replicate applySessionMode's effects without the notify call.
-      const mode = SESSION_MODES.find(m => m.id === finalMode);
+      const mode = SESSION_MODES.find(m => m.id === finalModeAdjusted);
       if (mode) {
         state.activeSessionMode = mode.id;
         if (mode.rules === null)    state.runtimeRules = null;
@@ -13386,6 +14109,10 @@ I return to myself easily"></textarea>
       useFirstName: !!$('pfUseFirstName')?.checked,
       pronouns: $('pfPronouns')?.value || '',
       age: $('pfAge')?.value || '',
+      // Round 27 — adult-content unlock state. The eligibility predicate
+      // _userIsAdultEligible() reads BOTH this and the age bracket; this
+      // alone (without an eligible age) does nothing.
+      adultUnlock: !!$('pfAdultUnlock')?.checked,
       experience: $('pfExperience')?.value || 'beginner',
       about: $('pfAbout')?.value?.trim() || '',
       appearance: $('pfAppearance')?.value?.trim() || '',
@@ -13482,7 +14209,27 @@ I return to myself easily"></textarea>
     const useName = $('pfUseFirstName');
     if (useName) useName.checked = !!p.useFirstName;
     setVal('pfPronouns', p.pronouns, '');
-    setVal('pfAge', p.age, '');
+    // Round 27 — migrate legacy '18-24' bracket. The single 18-24 bracket
+    // was split into 18-20 and 21-24 to enable precise gating. Stored
+    // profiles that pre-date the split are mapped to the conservative
+    // 18-20 (effectively under-21) so the user is forced to actively
+    // re-select if they want to enable adult content. Other values pass
+    // through unchanged.
+    let _migratedAge = p.age;
+    if (_migratedAge === '18-24') _migratedAge = '18-20';
+    setVal('pfAge', _migratedAge, '');
+    // Adult content unlock — boolean. Auto-flips to false during this
+    // restore if the saved age is now ineligible (e.g. someone bumped
+    // their age bracket back down to '18-20'). Never flips on
+    // automatically; user must explicitly tick the box.
+    const adultEl = $('pfAdultUnlock');
+    if (adultEl) {
+      const ageEligible = ['21-24','25-34','35-44','45-54','55-64','65+'].includes(_migratedAge);
+      adultEl.checked = !!p.adultUnlock && ageEligible;
+      adultEl.disabled = !ageEligible;
+      const lbl = $('pfAdultUnlockLabel');
+      if (lbl) lbl.style.opacity = ageEligible ? '1' : '0.5';
+    }
     setVal('pfExperience', p.experience, 'beginner');
     setVal('pfAbout', p.about, '');
     setVal('pfAppearance', p.appearance, '');
@@ -15061,6 +15808,20 @@ I return to myself easily"></textarea>
     );
     await markFeatureUsed?.(FEAT.SHARE);
   });
+
+  // Round 27 — suggestions refresh button. Re-runs the analyzer so users
+  // can iterate: tweak settings on earlier steps, click refresh, see if
+  // the warning cleared. Cheap (pure synchronous analysis).
+  $('sessionSuggestionsRefreshBtn')?.addEventListener('click', () => {
+    try { _renderSessionSuggestions(); }
+    catch (e) { console.warn('[suggestions refresh]', e); }
+  });
+  // Track user-driven toggles so the auto-expand-on-warning behavior
+  // doesn't fight the user. Once they explicitly close or open the
+  // panel, we stop auto-toggling it on subsequent re-renders.
+  $('sessionSuggestionsDetails')?.addEventListener('toggle', e => {
+    e.currentTarget.dataset.userToggled = '1';
+  });
   $('sessionVarImportBtn')?.addEventListener('click', async () => {
     const choice = await confirmAsync('Import variables from a file or paste JSON?', { okText: 'file', cancelText: 'paste' });
     let parsed = null;
@@ -16493,6 +17254,9 @@ Practitioner profile (full, natural sentences):`;
       if (typeof renderPhaseEditor === 'function') {
         try { renderPhaseEditor(); } catch (e) { console.warn('[step6] phase editor render failed:', e); }
       }
+      // Round 27 — quality check. Refresh suggestions whenever the user
+      // arrives at step 6, so any tweaks made on earlier steps re-evaluate.
+      try { _renderSessionSuggestions(); } catch (e) { console.warn('[step6] suggestions render failed:', e); }
     }
   }
 
@@ -18190,6 +18954,84 @@ ${messages}
       // a rule that ducked but didn't unduck before backToEdit would leak
       // its 'rules' entry into the next session's first _recomputeDuckLevel.
       this._duckRequests.clear();
+    }
+
+    /** Round 28 — true overlapping crossfade between two soundscape types.
+     *  Builds a second engine instance running in parallel, ramps the
+     *  outgoing master toward 0 while the incoming master ramps from 0
+     *  to the target volume over `durationSec` seconds, then quietly
+     *  tears down the outgoing nodes and adopts the incoming engine's
+     *  state into this instance. Falls back to start() when not currently
+     *  running, and is a no-op when target type matches current type.
+     *
+     *  Why parallel engines instead of restructuring the existing start()
+     *  to support multiple parallel signal chains: this keeps the change
+     *  minimally invasive — start()'s giant switch over soundscape types
+     *  stays untouched and any new types added later automatically work
+     *  with crossfade. Trade-off: briefly creates a second AudioContext
+     *  (~25-50KB heap) for the duration of the fade. Acceptable. */
+    async crossfadeTo(type, durationSec = 1.5, volume = 0.35) {
+      if (!this.running) return this.start(volume, type);
+      if (this.type === type) return; // no-op
+      const dur = Math.max(0.3, Math.min(8, durationSec));
+      // Build the incoming engine. start() will ramp its master 0 → volume
+      // over 4s by default, but we want OUR ramp curve and duration to
+      // dominate, so we override the master gain immediately after start
+      // returns.
+      const incoming = new SoundscapeEngine();
+      try {
+        await incoming.start(0.0001, type);   // tiny non-zero to allow exponential ramp later if used
+      } catch (e) {
+        console.warn('[soundscape crossfade] incoming.start failed:', e);
+        // Fall back to old hard-switch behavior
+        try { await this.stop(); } catch {}
+        return this.start(volume, type);
+      }
+      // Override start()'s built-in 4-second ramp on the incoming engine —
+      // we want OUR fade curve.
+      try {
+        const t2 = incoming.ctx.currentTime;
+        incoming.master.gain.cancelScheduledValues(t2);
+        incoming.master.gain.setValueAtTime(0, t2);
+        incoming.master.gain.linearRampToValueAtTime(volume, t2 + dur);
+      } catch (e) { console.warn('[crossfade] incoming ramp failed:', e); }
+      // Outgoing fades to 0 over the same duration. Both ramps run in
+      // their own contexts but the user hears them mixed at the speakers.
+      try {
+        const t1 = this.ctx.currentTime;
+        this.master.gain.cancelScheduledValues(t1);
+        this.master.gain.setValueAtTime(this.master.gain.value, t1);
+        this.master.gain.linearRampToValueAtTime(0, t1 + dur);
+      } catch (e) { console.warn('[crossfade] outgoing ramp failed:', e); }
+      // Wait for the crossfade to complete + a 50ms buffer.
+      await new Promise(r => setTimeout(r, dur * 1000 + 50));
+      // Tear down outgoing nodes silently. Skip the 2-sec ramp in stop()
+      // — we already faded to 0.
+      try {
+        this.nodes.forEach(n => { try { n.stop?.(); n.disconnect?.(); } catch {} });
+        if (this.analyser) { try { this.analyser.disconnect(); } catch {} }
+        try { await this.ctx.suspend(); } catch {}
+      } catch (e) { console.warn('[crossfade] outgoing teardown:', e); }
+      // Adopt incoming's state. The state.audioReactive._fftBuffer was
+      // overwritten by incoming.start to point at incoming.analyser's
+      // buffer, which is exactly what we want — that's the buffer that's
+      // now live.
+      this.ctx          = incoming.ctx;
+      this.master       = incoming.master;
+      this.compressor   = incoming.compressor;
+      this._duckGain    = incoming._duckGain;
+      this.analyser     = incoming.analyser;
+      this.nodes        = incoming.nodes;
+      this.type         = incoming.type;
+      this.running      = true;
+      this._binauralRefs   = incoming._binauralRefs   || null;
+      this._isochronicRefs = incoming._isochronicRefs || null;
+      this._duckRequests   = new Map();
+      // Sever the temp engine's refs so it can't accidentally tear down
+      // the audio graph we just adopted.
+      incoming.ctx = null; incoming.master = null; incoming.compressor = null;
+      incoming._duckGain = null; incoming.analyser = null; incoming.nodes = [];
+      incoming.running = false;
     }
   }
   const drone = new SoundscapeEngine();
@@ -26269,6 +27111,7 @@ ${s.text.trim()}`).join('\n\n').trim();
           <div class="gen-step-row-actions">
             <button class="preview-btn phase-up" data-idx="${i}" ${i === 0 ? 'disabled' : ''} title="Move up">↑</button>
             <button class="preview-btn phase-down" data-idx="${i}" ${i === sections.length - 1 ? 'disabled' : ''} title="Move down">↓</button>
+            <button class="preview-btn phase-duplicate" data-idx="${i}" title="Duplicate this phase below">⎘</button>
             ${auditionBtn}
             ${reimagineBtn}
             ${genBtn}
@@ -26327,6 +27170,7 @@ ${s.text.trim()}`).join('\n\n').trim();
     }
     list.querySelectorAll('.phase-up').forEach(btn => btn.addEventListener('click', () => movePhaseSection(parseInt(btn.dataset.idx, 10), -1)));
     list.querySelectorAll('.phase-down').forEach(btn => btn.addEventListener('click', () => movePhaseSection(parseInt(btn.dataset.idx, 10), 1)));
+    list.querySelectorAll('.phase-duplicate').forEach(btn => btn.addEventListener('click', () => duplicatePhaseSection(parseInt(btn.dataset.idx, 10))));
     list.querySelectorAll('.phase-remove').forEach(btn => btn.addEventListener('click', () => removePhaseSection(parseInt(btn.dataset.idx, 10))));
     list.querySelectorAll('.phase-reimagine').forEach(btn => btn.addEventListener('click', () => reimagineCustomPhase(parseInt(btn.dataset.idx, 10))));
     list.querySelectorAll('.phase-audition').forEach(btn => btn.addEventListener('click', () => auditionPhase(parseInt(btn.dataset.idx, 10), btn)));
@@ -26427,6 +27271,29 @@ ${s.text.trim()}`).join('\n\n').trim();
     [sections[idx], sections[j]] = [sections[j], sections[idx]];
     setScriptFromSections(sections);
     commit();
+  }
+
+  /** Round 28 — duplicate a phase. The copy is inserted directly below
+   *  the source. Generated text (if any) duplicates with it; the new
+   *  phase is independently editable / regeneratable. Custom phases
+   *  duplicate cleanly because their text IS the source of truth.
+   *  Non-custom phases duplicate with whatever generated text was
+   *  already in the source — the user can re-generate either copy. */
+  function duplicatePhaseSection(idx) {
+    const sections = getScriptSectionsFromState();
+    if (idx < 0 || idx >= sections.length) return;
+    const src = sections[idx];
+    if (!src) return;
+    // structuredClone is safe: phase sections are pure data (id, text,
+    // optional metadata fields), no DOM/function refs.
+    let copy;
+    try { copy = structuredClone(src); }
+    catch { copy = JSON.parse(JSON.stringify(src)); }
+    const commit = history.beginChange();
+    sections.splice(idx + 1, 0, copy);
+    setScriptFromSections(sections);
+    commit();
+    notify.info?.('Phase duplicated.');
   }
 
   /** Absolute-index move. Used by drag-drop. dstIdx is the *final*
@@ -26995,6 +27862,280 @@ Start immediately:`;
     $('scriptPreview').classList.add('visible');
     renderPhaseEditor();
     renderDirectorWorkCard();
+  }
+
+  // ====================================================================
+  // SESSION QUALITY SUGGESTIONS — Round 27
+  // ====================================================================
+  // Heuristic configuration linter. Surfaces tips, warnings, and outright
+  // misconfigurations BEFORE session start so users can correct them
+  // rather than discovering issues at runtime. Each check is a pure
+  // function of state — no external calls, no async work — so the panel
+  // updates instantly when the user clicks "refresh".
+  //
+  // Severity vocabulary (shared with notify):
+  //   info  — note / nudge, things worth knowing
+  //   warn  — likely issue, would benefit from action
+  //   error — clearly broken, user should fix before starting
+  //
+  // Suggestions never block session start. The session-mode safety
+  // layer handles hard limits — these are advisory.
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio —
+  //   js/suggestions.js. ASS's checks target a block-timeline app
+  //   architecture that HNE doesn't share, so HNE's checks are
+  //   redefined around method / intent / profile / personalization /
+  //   adaptive-input availability instead.
+  // ====================================================================
+  function _analyzeSessionQuality() {
+    const out = [];
+    const method = state.method || null;
+    const intent = state.intentionType || null;
+    const intentText = ($('intentionInput')?.value || '').trim();
+    const length = state.length || 'medium';
+
+    // ── Required-content checks ──────────────────────────────────────
+    if (!method) {
+      out.push({
+        id: 'no_method',
+        severity: 'error',
+        title: 'No method selected',
+        detail: 'Pick a method on Step 2. The script generator needs one to shape the induction phase.',
+      });
+    }
+    if (!intent && !intentText) {
+      out.push({
+        id: 'no_intent',
+        severity: 'warn',
+        title: 'No intention set',
+        detail: 'Step 3 has both a category and a free-text intention. Either alone is fine — together gives the script the most direction. Without either, the session falls back to a generic deepening.',
+      });
+    }
+
+    // ── Method × intent compatibility ────────────────────────────────
+    // Hard mismatches: shock-induction or rapid methods with sleep
+    // intent; positive-hallucination etc with anxiety; energy + sleep.
+    const sleepIntents = new Set(['sleep']);
+    const energyIntents = new Set(['energy', 'performance']);
+    const rapidMethods = new Set(['handshake-interrupt', 'arm-drop', 'magnetic-gaze', 'shock-induction', 'dave-elman']);
+    const advancedDeepMethods = new Set(['somnambulism', 'hallucination-pos', 'hallucination-neg', 'regression', 'time-distortion']);
+    if (intent && method) {
+      if (sleepIntents.has(intent) && rapidMethods.has(method)) {
+        out.push({
+          id: 'mismatch_rapid_sleep',
+          severity: 'warn',
+          title: 'Rapid induction with sleep intent',
+          detail: `${method} is a fast/abrupt method. For sleep, slow inductions like progressive relaxation, 4-7-8 breath, or staircase descent track better with the body's wind-down rhythm.`,
+        });
+      }
+      if (energyIntents.has(intent) && method === 'highway') {
+        out.push({
+          id: 'mismatch_monotony_energy',
+          severity: 'warn',
+          title: 'Monotony method with energy intent',
+          detail: 'Highway induction works through sensory monotony — opposite of activation. For energy/performance intents, try eye-roll, breath-478 (used as activation), or Ericksonian.',
+        });
+      }
+      if (length === 'micro' && advancedDeepMethods.has(method)) {
+        out.push({
+          id: 'mismatch_advanced_micro',
+          severity: 'warn',
+          title: 'Advanced phenomenon in a 2-minute session',
+          detail: `${method} typically requires deep trance, which takes longer than 2 minutes to establish for most users. Consider a longer session or pair with a deepener.`,
+        });
+      }
+    }
+
+    // ── Adaptive-input availability ──────────────────────────────────
+    const webcamOn = !!$('webcamOptInThisSession')?.checked;
+    const sensorOn = !!$('sensorBridgeOptInThisSession')?.checked;
+    const micOn    = !!$('micOptInThisSession')?.checked;
+    const pacingEnabled = !!state.pacingSettings?.enabled;
+    if (pacingEnabled && !webcamOn && !sensorOn) {
+      out.push({
+        id: 'pacing_no_signal',
+        severity: 'warn',
+        title: 'Dynamic pacing has no engagement source',
+        detail: 'Dynamic pacing modulates speed from the engagement score. With neither webcam attention nor sensor bridge active, engagement stays at a default 0.5 and pacing won\'t track real signals — it\'ll just hold a midpoint speed.',
+        action: { label: 'Open Step 5 controls', fn: () => {
+          const stepBtn = document.querySelector('[data-step="5"]'); if (stepBtn) stepBtn.click();
+        }},
+      });
+    }
+    const rampMode = state.rampSettings?.mode;
+    if (state.rampSettings?.enabled && (rampMode === 'engagement' || rampMode === 'adaptive') && !webcamOn && !sensorOn) {
+      out.push({
+        id: 'ramp_no_signal',
+        severity: 'warn',
+        title: 'Engagement-driven ramp has no signal source',
+        detail: `Intensity ramp mode is "${rampMode}" but no engagement source is enabled. The ramp will use whatever default engagement value the engine reports (typically 0.5), which makes the curve degenerate. Switch to mode "time" or enable webcam / sensor bridge.`,
+      });
+    }
+
+    // ── Haptic configuration ─────────────────────────────────────────
+    const hapticOn = !!$('hapticOptInThisSession')?.checked;
+    if (hapticOn && !hapticBridge.isReady?.()) {
+      out.push({
+        id: 'haptic_no_device',
+        severity: 'warn',
+        title: 'Haptic enabled but no device connected',
+        detail: 'The haptic toggle is on but Intiface either isn\'t running or hasn\'t reported a device yet. Sentinels and patterns will silently no-op. Start Intiface Central, click "reconnect", or turn the toggle off if you don\'t want haptics.',
+      });
+    }
+    const hasFunscript = !!funscriptEngine?.getTrack?.();
+    if (hapticOn && !hasFunscript) {
+      out.push({
+        id: 'haptic_no_track',
+        severity: 'info',
+        title: 'Haptic enabled but no track loaded',
+        detail: 'Without a funscript, haptic output relies entirely on AI [HAPTIC:…] sentinels embedded in the script. To get continuous motion, load a pattern (✨), generate one with "🎯 fit to session", or load a .funscript file.',
+      });
+    }
+
+    // ── Voice availability ───────────────────────────────────────────
+    const voiceSel = $('voiceSelect');
+    if (voiceSel && voiceSel.value && voiceSel.value !== 'none' && voiceSel.value !== 'browser-default') {
+      try {
+        const voices = window.speechSynthesis?.getVoices?.() || [];
+        if (voices.length && !voices.some(v => v.name === voiceSel.value || v.voiceURI === voiceSel.value)) {
+          out.push({
+            id: 'voice_unavailable',
+            severity: 'warn',
+            title: 'Selected voice no longer available',
+            detail: `The voice "${voiceSel.value}" isn\'t in this browser\'s current voice list. The session will fall back to the system default. Pick a voice from the list to fix this.`,
+          });
+        }
+      } catch {}
+    }
+
+    // ── Sleep-intent / setting consistency ───────────────────────────
+    if (intent === 'sleep') {
+      const rate = parseFloat($('rateRange')?.value);
+      if (Number.isFinite(rate) && rate > 1.05) {
+        out.push({
+          id: 'sleep_brisk_rate',
+          severity: 'warn',
+          title: 'Sleep intent with brisk speech rate',
+          detail: `Speech rate is ${rate.toFixed(2)}× — likely too brisk for sleep induction. Sleep sessions track better at 0.85–1.0×. The slower rate gives the parasympathetic system room to engage.`,
+        });
+      }
+    }
+    if ((intent === 'energy' || intent === 'performance')) {
+      const rate = parseFloat($('rateRange')?.value);
+      if (Number.isFinite(rate) && rate < 0.9) {
+        out.push({
+          id: 'energy_slow_rate',
+          severity: 'warn',
+          title: 'Energy intent with slow speech rate',
+          detail: `Speech rate is ${rate.toFixed(2)}× — possibly too slow for activation. Energy / performance sessions benefit from rates around 1.05–1.2× to match the upward arc.`,
+        });
+      }
+    }
+
+    // ── Affirmations content ─────────────────────────────────────────
+    const userAff = ($('userAffirmations')?.value || '').trim();
+    const blueprint = (typeof getSessionPhaseBlueprint === 'function') ? getSessionPhaseBlueprint() : [];
+    const hasAffirmPhase = blueprint.some(p => /^affirm/.test(p));
+    if (hasAffirmPhase && !userAff) {
+      out.push({
+        id: 'affirm_phase_no_text',
+        severity: 'info',
+        title: 'Affirm phase scheduled but no affirmations entered',
+        detail: 'Step 4 lets you provide affirmation lines that get woven into affirm phases. Without any, the AI will draft generic ones — which works but is more impersonal than your own wording.',
+      });
+    }
+
+    // ── Session length warnings ──────────────────────────────────────
+    if ((length === 'extended' || length === 'deep' || length === 'marathon')) {
+      const safetyMaxIntensity = state.safetySettings?.maxIntensity;
+      if (Number.isFinite(safetyMaxIntensity) && safetyMaxIntensity >= 1.5) {
+        out.push({
+          id: 'long_no_safety_floor',
+          severity: 'info',
+          title: 'Long session with high intensity ceiling',
+          detail: `${length} sessions can drift in intensity over time. Your maxIntensity is ${safetyMaxIntensity}× — consider lowering to 1.2× or 1.3× for long sessions to keep the experience manageable.`,
+        });
+      }
+    }
+
+    // ── Profile-personalization gap ──────────────────────────────────
+    const personalizationOn = !!$('shareProfileWithAi')?.checked;
+    const hasProfileBio = ($('pfBio')?.value || '').trim().length > 10;
+    if (personalizationOn && !hasProfileBio) {
+      out.push({
+        id: 'personalize_no_bio',
+        severity: 'info',
+        title: 'AI personalization on but profile is sparse',
+        detail: 'You\'ve opted in to share profile details with the AI, but your profile bio is empty. Adding a few sentences (current life context, personal anchors, what\'s been working) gives the AI more material to personalize with.',
+      });
+    }
+
+    if (!out.length) {
+      out.push({
+        id: 'all_good',
+        severity: 'info',
+        title: 'No issues detected',
+        detail: 'Session configuration looks clean. Generate the script and you\'re good to go.',
+      });
+    }
+    return out;
+  }
+
+  /** Render suggestions list into the Step 6 panel. Updates the count
+   *  badge in the summary so collapsed users see "(2 warnings)" without
+   *  needing to expand. */
+  function _renderSessionSuggestions() {
+    const list = $('sessionSuggestionsList');
+    if (!list) return;
+    const items = _analyzeSessionQuality();
+    const ICONS  = { info: 'ℹ', warn: '⚠', error: '✕' };
+    const COLORS = {
+      info:  { icon: '#5fa0dc', bg: 'rgba(95,160,220,0.06)',  border: 'rgba(95,160,220,0.18)' },
+      warn:  { icon: '#f0a04a', bg: 'rgba(240,160,74,0.06)',  border: 'rgba(240,160,74,0.22)' },
+      error: { icon: '#e05050', bg: 'rgba(224,80,80,0.06)',   border: 'rgba(224,80,80,0.22)'  },
+    };
+    list.innerHTML = items.map((s, idx) => {
+      const c = COLORS[s.severity] || COLORS.info;
+      const safeTitle  = escapeHtml(s.title);
+      const safeDetail = escapeHtml(s.detail);
+      const actionHtml = s.action
+        ? `<button class="suggestion-action btn secondary" data-suggest-idx="${idx}" style="margin-top:6px;padding:2px 8px;font-size:0.62rem;color:${c.icon};border-color:${c.border}">${escapeHtml(s.action.label)}</button>`
+        : '';
+      return `<div style="border:0.5px solid ${c.border};background:${c.bg};border-radius:4px;padding:7px 9px;margin-bottom:5px">
+        <div style="display:flex;align-items:flex-start;gap:7px">
+          <span style="color:${c.icon};font-size:0.85rem;flex-shrink:0;margin-top:1px">${ICONS[s.severity]}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:0.74rem;font-weight:500;color:var(--text);margin-bottom:2px">${safeTitle}</div>
+            <div style="font-size:0.7rem;color:var(--text-dim);line-height:1.5">${safeDetail}</div>
+            ${actionHtml}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    // Bind action callbacks — unique per render, so we hold refs in closure.
+    list.querySelectorAll('.suggestion-action').forEach(btn => {
+      const idx = Number(btn.dataset.suggestIdx);
+      const s = items[idx];
+      if (s?.action?.fn) btn.addEventListener('click', () => {
+        try { s.action.fn(); } catch (e) { console.warn('[suggestion action]', e); }
+        _renderSessionSuggestions();  // re-render so the click takes effect immediately
+      });
+    });
+    // Update the summary badge with severity counts.
+    const badge = $('sessionSuggestionsCount');
+    if (badge) {
+      const errs  = items.filter(s => s.severity === 'error').length;
+      const warns = items.filter(s => s.severity === 'warn').length;
+      const infos = items.filter(s => s.severity === 'info').length;
+      if (errs)        badge.textContent = `— ${errs} error${errs === 1 ? '' : 's'}`;
+      else if (warns)  badge.textContent = `— ${warns} warning${warns === 1 ? '' : 's'}`;
+      else if (infos === 1 && items[0].id === 'all_good') badge.textContent = '— ready';
+      else             badge.textContent = `— ${infos} note${infos === 1 ? '' : 's'}`;
+      // Auto-expand when there's something the user should look at;
+      // remain user-controlled otherwise.
+      const det = $('sessionSuggestionsDetails');
+      if (det && (errs || warns) && !det.dataset.userToggled) det.open = true;
+    }
   }
 
   /** Render the "why this session was shaped this way" card on the script
@@ -28984,6 +30125,9 @@ Start immediately:`;
       // Round 25, Pass 17 — intensity ramp preferences (live-control
       // sliders are session-scoped, not backed up).
       rampSettings: await safe('rampSettings', () => loadRampSettings(), null),
+      // Round 27 — dynamic pacing preferences. Same reasoning as ramp:
+      // these are user prefs, not session-scoped performance tweaks.
+      pacingSettings: await safe('pacingSettings', () => loadPacingSettings(), null),
       // Round 25, Pass 18 — user-authored haptic macros.
       hapticMacros: await safe('hapticMacros', () => loadUserMacros(), []),
       // Round 25 fixation-dot position (Pass 4) — small but persists
@@ -29487,6 +30631,18 @@ Start immediately:`;
         if (isDefault) {
           saveRampSettings({ ...RAMP_DEFAULTS, ...backup.rampSettings });
           state.rampSettings = loadRampSettings();
+        }
+      }
+      // Round 27 — restore pacing settings using the same conservative
+      // policy as ramp: only apply backup values if the user hasn't
+      // already customised. Default detection: not enabled and default
+      // min/max speeds.
+      if (backup.pacingSettings && typeof backup.pacingSettings === 'object') {
+        const current = loadPacingSettings();
+        const isDefault = !current.enabled && current.minSpeed === 0.5 && current.maxSpeed === 2.0;
+        if (isDefault) {
+          savePacingSettings(_normalizePacingSettings({ ...PACING_DEFAULTS, ...backup.pacingSettings }));
+          state.pacingSettings = loadPacingSettings();
         }
       }
       // Round 25, Pass 18 — restore user macros. Merge by id; existing
@@ -30027,6 +31183,10 @@ Start immediately:`;
       const secs = elapsed % 60;
       const timeEl = $('sessionTime');
       if (timeEl) timeEl.textContent = `${mins}:${String(secs).padStart(2,'0')} elapsed`;
+      // Round 28 — HUD enrichment refresh. Cheap render — three small
+      // DOM updates per second. Skips silently if any element is missing
+      // (e.g. teardown happened mid-tick).
+      try { if (typeof _renderHudEnrichment === 'function') _renderHudEnrichment(); } catch {}
     }, 1000);
 
     // Filter to substantive phases only — drop both missing entries and
@@ -30370,20 +31530,29 @@ Start immediately:`;
     const liveSel = $('liveSoundscapeSelect'); if (liveSel) liveSel.value = type;
     const ssSelect = $('soundscapeSelect'); if (ssSelect) ssSelect.value = type;
     try { saveUserSettings?.(); } catch {}
-    try { await drone.stop(); } catch {}
-    if (type !== 'none') {
-      try {
-        await drone.start(state.droneVolume, type);
-        if (state._currentPhase) {
-          try { drone.setPhaseFreq(state._currentPhase); } catch {}
-        }
-        const ai = $('audioIndicator');
-        if (ai) ai.textContent = '· ' + type + ' ·';
-      } catch (e) { console.warn('[scene sentinel] drone start failed:', e); }
-    } else {
+    // Round 28 — use crossfade when available so transitions overlap
+    // smoothly instead of cutting through a silent gap. crossfadeTo is
+    // a no-op when the engine isn't running, so it falls through to a
+    // normal start() in that case.
+    if (type === 'none') {
+      try { await drone.stop(); } catch {}
       const ai = $('audioIndicator');
       if (ai) ai.textContent = '';
+      return;
     }
+    try {
+      if (drone.running && typeof drone.crossfadeTo === 'function') {
+        await drone.crossfadeTo(type, 1.8, state.droneVolume);
+      } else {
+        try { await drone.stop(); } catch {}
+        await drone.start(state.droneVolume, type);
+      }
+      if (state._currentPhase) {
+        try { drone.setPhaseFreq(state._currentPhase); } catch {}
+      }
+      const ai = $('audioIndicator');
+      if (ai) ai.textContent = '· ' + type + ' ·';
+    } catch (e) { console.warn('[scene sentinel] drone crossfade failed:', e); }
   }
 
   /** Live visual switch — wraps setupVisual with sentinel validation. */
@@ -30399,6 +31568,107 @@ Start immediately:`;
     try {
       if (typeof setupVisual === 'function') setupVisual(type);
     } catch (e) { console.warn('[scene sentinel] visual switch failed:', e); }
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // HUD ENRICHMENT — Round 28
+  // ════════════════════════════════════════════════════════════════════
+  // Top-right session overlay. Three subsections — slot pills, metric
+  // bars, phase chip — each conditionally rendered. Refreshes every 1s
+  // from the existing session timer interval. Cheap render: each tick
+  // does ~5 small DOM updates and bails early if elements are missing.
+  //
+  // Custom HNE implementation (does NOT directly port ASS's
+  // fullscreen-hud.js — different architecture). Uses the macro slot
+  // system from Round 28 #3 + the rules-engine metric resolver
+  // (getEngineMetric) for live values.
+  function _renderHudEnrichment() {
+    const root = $('hudEnrichment');
+    if (!root) return;
+    // ── Slot pills ────────────────────────────────────────────────
+    const pillsEl = $('hudSlotPills');
+    if (pillsEl) {
+      const slots = (typeof loadMacroSlots === 'function') ? loadMacroSlots() : {};
+      const anyBound = Object.keys(slots).some(k => slots[k]);
+      if (!anyBound) {
+        // Hide entirely when nothing is bound — no point cluttering the
+        // overlay with five empty placeholders for users who don't use
+        // the slot system.
+        pillsEl.innerHTML = '';
+      } else {
+        const html = [];
+        for (let s = 1; s <= 5; s++) {
+          const macroId = slots[s];
+          if (!macroId) {
+            html.push(`<span class="hud-slot-pill unbound" title="slot ${s} unbound"><span class="key">${s}</span><span>—</span></span>`);
+            continue;
+          }
+          const macro = (typeof _findHapticMacro === 'function') ? _findHapticMacro(macroId) : null;
+          if (!macro) {
+            // Bound to a now-deleted macro — render as unbound.
+            html.push(`<span class="hud-slot-pill unbound" title="slot ${s} bound to deleted macro"><span class="key">${s}</span><span>—</span></span>`);
+            continue;
+          }
+          const safeName = macro.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+          html.push(`<span class="hud-slot-pill bound" data-slot="${s}" data-macro="${macroId}" title="press ${s} or click to fire — ${safeName}"><span class="key">${s}</span><span>${safeName}</span></span>`);
+        }
+        pillsEl.innerHTML = html.join('');
+        // Wire click-to-fire on bound pills. Re-attaches each render —
+        // pillsEl is a fresh innerHTML each tick. Cheap (≤5 listeners).
+        pillsEl.querySelectorAll('.hud-slot-pill.bound').forEach(pill => {
+          pill.addEventListener('click', () => {
+            const id = pill.dataset.macro;
+            const m = (typeof _findHapticMacro === 'function') ? _findHapticMacro(id) : null;
+            if (m) {
+              try { funscriptEngine.injectMacro(m); }
+              catch (e) { console.warn('[HUD slot click]', e); }
+            }
+          });
+        });
+      }
+    }
+    // ── Metric bars ───────────────────────────────────────────────
+    // Only render bars when the underlying signals are actually being
+    // sampled — i.e. the user has the webcam on (provides attention) or
+    // voice processing on (provides engagement via voiceEnvelope). When
+    // neither is active, both metrics are constant 0 and a perma-zero
+    // bar is more noise than signal.
+    const barsEl = $('hudMetricBars');
+    if (barsEl) {
+      const webcamOn = !!(state._webcam && state._webcam.active);
+      // engagement is computed from voiceEnvelope EMA — exists whenever
+      // TTS is producing output, which during playback is near-always.
+      const sessionRunning = !!state._sessionStartTime && !state.abortFlag;
+      if (!webcamOn && !sessionRunning) {
+        barsEl.innerHTML = '';
+      } else {
+        const eng = (typeof getEngineMetric === 'function') ? Math.max(0, Math.min(1, getEngineMetric('engagement') || 0)) : 0;
+        const att = (typeof getEngineMetric === 'function') ? Math.max(0, Math.min(1, getEngineMetric('attention') || 0)) : 0;
+        const rows = [
+          `<div class="hud-metric-row"><span>engagement</span><span class="hud-metric-bar-track"><span class="hud-metric-bar-fill" style="width:${(eng*100).toFixed(0)}%"></span></span><span class="hud-metric-bar-value">${(eng*100).toFixed(0)}</span></div>`,
+        ];
+        // Only show attention row when webcam is active — otherwise it's
+        // always zero and confusing.
+        if (webcamOn) {
+          rows.push(`<div class="hud-metric-row"><span>attention</span><span class="hud-metric-bar-track"><span class="hud-metric-bar-fill attention" style="width:${(att*100).toFixed(0)}%"></span></span><span class="hud-metric-bar-value">${(att*100).toFixed(0)}</span></div>`);
+        }
+        barsEl.innerHTML = rows.join('');
+      }
+    }
+    // ── Phase mini-chip ───────────────────────────────────────────
+    const chipEl = $('hudPhaseChip');
+    if (chipEl) {
+      const phaseId = state._currentPhase;
+      const phaseSec = (typeof getEngineMetric === 'function') ? Math.round(getEngineMetric('phaseSec') || 0) : 0;
+      if (!phaseId) {
+        chipEl.textContent = '';
+      } else {
+        const label = (typeof getPhaseLabel === 'function') ? getPhaseLabel(phaseId) : phaseId;
+        const m = Math.floor(phaseSec / 60);
+        const s = phaseSec % 60;
+        chipEl.textContent = `${label.toLowerCase()} · ${m}:${String(s).padStart(2,'0')}`;
+      }
+    }
   }
 
   // ====================================================================
@@ -31768,6 +33038,11 @@ Start immediately:`;
       const li = $('liveCtrlIntensity'); if (li) { li.value = 1; const v = $('liveCtrlIntensityV'); if (v) v.textContent = '1.00×'; }
       const ls = $('liveCtrlSpeed');     if (ls) { ls.value = 1; const v = $('liveCtrlSpeedV');     if (v) v.textContent = '1.00×'; }
       const lr = $('liveCtrlRandom');    if (lr) { lr.value = 0; const v = $('liveCtrlRandomV');    if (v) v.textContent = '0%'; }
+      // Round 27 — reset dynamic pacing's per-tick smoothing so the
+      // next session starts clean. The user's pacingSettings (curve,
+      // bounds, smoothing time) are preserved — they're prefs, not
+      // session-scoped state.
+      _resetDynamicPacing();
     } catch {}
     try { hapticBridge.stop(); } catch {}
     try { await hapticBridge.disconnect(); } catch {}
@@ -35766,6 +37041,31 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       return;
     }
     if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+    // Round 28 — macro slot keys 1-5. During session playback, pressing
+    // a number key 1..5 injects whichever macro is bound to that slot
+    // via the macro library's slot panel. Bound macros are stored in
+    // localStorage so they persist across sessions. No-op when the slot
+    // is unbound or the macro can't be resolved (e.g. user deleted it
+    // after binding). Especially valuable for partner-led "training"
+    // mode where the operator wants instant manual triggers.
+    if (e.key >= '1' && e.key <= '5' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const slot = Number(e.key);
+      try {
+        const slots = (typeof loadMacroSlots === 'function') ? loadMacroSlots() : {};
+        const macroId = slots[slot];
+        if (macroId) {
+          const macro = _findHapticMacro(macroId);
+          if (macro) {
+            e.preventDefault();
+            funscriptEngine.injectMacro(macro);
+            // Brief visual confirmation so the operator/user knows the
+            // press registered. Notify uses the standard toast layer
+            // and auto-dismisses; cheap.
+            try { notify.info?.(`▶ slot ${slot}: ${macro.name}`); } catch {}
+          }
+        }
+      } catch (err) { console.warn('[macro-slot]', err); }
+    }
     showSessionControls(); // any key shows controls
   });
 
@@ -36392,6 +37692,215 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     notify.success(`Preset "${p.name}" loaded — configure and generate.`);
     // Notify bus — preset changed everything, derived UI must refresh.
     try { sessionBus.notifyChange('preset:' + (p.id || 'unknown')); } catch {}
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // CONTENT PACKS — Round 28
+  // ════════════════════════════════════════════════════════════════════
+  // Curated end-to-end session bundles. Adapted from the ASS project's
+  // js/content-packs.js — but where ASS packs ship their own
+  // blocks/scenes timeline, HNE packs configure the wizard (mode,
+  // method, length, intention type, visualizer, soundscape, suggested
+  // intention text, suggested persona) and let the AI generate the
+  // actual narration. This matches HNE's architecture cleanly and means
+  // packs adapt to the user's profile + each generation produces a
+  // fresh script in the desired arc shape.
+  //
+  // Three packs are adultGated:true and are filtered out for users who
+  // haven't unlocked mature content via the same predicate that gates
+  // session modes (_userIsAdultEligible). The non-gated packs (induction,
+  // grounding, spiral) work as broader-scope quick-starts.
+  const CONTENT_PACKS = [
+    // Ungated — broadly applicable
+    {
+      id:          'induction-classic',
+      name:        'Classic Induction',
+      icon:        '🌀',
+      category:    'Induction & Trance',
+      description: 'Calm progressive relaxation and focus induction. Suitable for beginners. ~5 minutes.',
+      adultGated:  false,
+      config: {
+        mode:           'induction',
+        persona:        'therapist',
+        method:         'progressive',
+        intentionType:  'trance',
+        length:         'quick',
+        soundscape:     'rain',
+        visualizer:     'spiral',
+        intentionText:  'A calm, grounded descent into trance. Each breath softens the body further; each count carries attention deeper. Safe, contained, slow.',
+      },
+    },
+    {
+      id:          'grounding-reset',
+      name:        'Grounding Reset',
+      icon:        '🧘',
+      category:    'Mindfulness',
+      description: 'Gentle come-down or reset. Calming anchors, low intensity. Good after an intense session or a long day.',
+      adultGated:  false,
+      config: {
+        mode:           'mindfulness',
+        persona:        'inner-voice',
+        method:         'body-awareness',
+        intentionType:  'release',
+        length:         'quick',
+        soundscape:     'rain',
+        visualizer:     'colorwash',
+        intentionText:  'Return to here. Notice tension and let it soften without forcing. The body is allowed to rest.',
+      },
+    },
+    {
+      id:          'spiral-descent',
+      name:        'Spiral Descent',
+      icon:        '🌀',
+      category:    'Induction & Trance',
+      description: 'Visual hypnotic induction using the spiral animation. Best experienced fullscreen.',
+      adultGated:  false,
+      config: {
+        mode:           'induction',
+        persona:        'mystic',
+        method:         'spiral',
+        intentionType:  'trance',
+        length:         'short',
+        soundscape:     'drone',
+        visualizer:     'spiral',
+        intentionText:  'Watch the spiral. Let your eyes soften and let the rotation carry your attention downward. Each turn a step deeper.',
+      },
+    },
+    // Adult-gated — same gating predicate as session modes
+    {
+      id:          'conditioning-foundation',
+      name:        'Conditioning Foundation',
+      icon:        '⚙',
+      category:    'Behavioral Conditioning',
+      description: 'Attention-reward loop. Builds focus through consistent positive reinforcement. Ideal first conditioning session.',
+      adultGated:  true,
+      config: {
+        mode:           'conditioning',
+        persona:        'therapist',
+        method:         'hand-heaviness',
+        intentionType:  'conditioning',
+        length:         'quick',
+        soundscape:     'drone',
+        visualizer:     'pulse',
+        intentionText:  'Sustained focus is rewarded; drift is gently corrected. The pattern strengthens with each session. The reinforcement is the message.',
+      },
+    },
+    {
+      id:          'partner-intro',
+      name:        'Partner Introduction',
+      icon:        '🤝',
+      category:    'Partner Sessions',
+      description: 'First shared session for operator + primary user. Clear guidance for both roles. Operator keeps manual control.',
+      adultGated:  true,
+      config: {
+        mode:           'training',
+        persona:        'therapist',
+        method:         'ericksonian',
+        intentionType:  'identity',
+        length:         'quick',
+        soundscape:     'drone',
+        visualizer:     'candle',
+        intentionText:  'A first session together. The operator observes and adjusts; the primary user receives. Both set the pace. No agenda beyond presence.',
+      },
+    },
+    {
+      id:          'surrender-solo',
+      name:        'Solo Surrender',
+      icon:        '🌊',
+      category:    'Solo Sessions',
+      description: 'High-trust solo experience. No pauses, full escalation. Configure safety parameters first, then let go.',
+      adultGated:  true,
+      config: {
+        mode:           'surrender',
+        persona:        'mystic',
+        method:         'staircase',
+        intentionType:  'surrender',
+        length:         'short',
+        soundscape:     'underwater',
+        visualizer:     'vortex',
+        intentionText:  'A descent without checkpoints. The arc builds and continues to build; there is no auto-pause. ESC remains available. Allow yourself to be taken.',
+      },
+    },
+  ];
+
+  /** Apply a content pack to the wizard. Configures mode, persona,
+   *  method, intent type, length, soundscape, visualizer, and pre-fills
+   *  intention text. Marks steps 1-5 complete and jumps to step 6
+   *  (final review / generate). Caller is responsible for verifying
+   *  eligibility before calling — the renderer hides gated packs but
+   *  the apply function double-checks defensively, falling back with a
+   *  notify rather than silently configuring forbidden state.
+   *
+   *  Differs from applyPreset (advances to step 4 since presets are
+   *  partial) — packs are end-to-end and skip directly to generate. */
+  function applyContentPack(packId) {
+    const pack = CONTENT_PACKS.find(p => p.id === packId);
+    if (!pack) { notify.warn?.(`Unknown content pack: ${packId}`); return; }
+    if (pack.adultGated && !_userIsAdultEligible()) {
+      notify.warn?.(`"${pack.name}" requires age 21+ and the mature-content opt-in.`);
+      return;
+    }
+    const c = pack.config;
+    // Apply session mode FIRST so its rampSettings/pacingSettings/rules
+    // get cleared/set correctly; the user can see the mode adjust in
+    // the side panel before everything else slots in.
+    try { applySessionMode(c.mode); } catch (e) { console.warn('[pack: mode]', e); }
+    // Wizard fields
+    state.selectedPersonaId = c.persona;
+    state.selectedMethodId  = c.method;
+    state.intentionType     = c.intentionType;
+    state.length            = c.length;
+    state.soundscape        = c.soundscape;
+    state.droneEnabled      = c.soundscape !== 'none';
+    state.vizOverride       = c.visualizer;
+    state._phaseExtras      = []; // packs don't currently use phase extras
+    // Sync DOM inputs so the UI reflects the new state on step navigation.
+    const setIfPresent = (id, val) => { const el = $(id); if (el) el.value = val; };
+    setIfPresent('intentionType', c.intentionType);
+    setIfPresent('lengthSelect',  c.length);
+    setIfPresent('soundscapeSelect', c.soundscape);
+    setIfPresent('vizSelect',     c.visualizer);
+    setIfPresent('intentionInput', c.intentionText || '');
+    // Re-render selection UIs since persona/method changed.
+    try { renderPersonaGrid(); renderPersonaDetail();
+          renderMethodGrid();  renderMethodDetail();
+          updateIntentionHint(); updateStepUI(); } catch {}
+    // All wizard steps are configured by the pack — mark complete and
+    // jump to the final review step where the user generates the script.
+    state.stepsCompleted = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: false };
+    try { goToStep(6); } catch {}
+    notify.success(`Pack "${pack.name}" loaded — review and generate.`);
+    try { sessionBus.notifyChange('content-pack:' + pack.id); } catch {}
+  }
+
+  /** Render the Content Packs grid in step 1. Filters out gated packs
+   *  for users without mature-content unlock. Re-runs whenever the
+   *  unlock toggle or age bracket changes (those callers go through
+   *  _renderSessionModeDropdown which we tail-call from). */
+  function _renderContentPacksGrid() {
+    const grid = $('contentPacksGrid');
+    if (!grid) return;
+    const eligible = (typeof _userIsAdultEligible === 'function') ? _userIsAdultEligible() : false;
+    const visible = CONTENT_PACKS.filter(p => !p.adultGated || eligible);
+    grid.innerHTML = '';
+    if (!visible.length) {
+      grid.innerHTML = '<div class="hint" style="grid-column:span 3;font-size:0.7rem;color:var(--text-faint);text-align:center;padding:12px">No packs available.</div>';
+      return;
+    }
+    for (const pack of visible) {
+      const card = document.createElement('div');
+      card.className = 'preset-card';
+      card.style.cursor = 'pointer';
+      const gatedTag = pack.adultGated ? '<span style="float:right;font-size:0.6rem;color:var(--neon-magenta);font-weight:600;letter-spacing:0.04em">🔞 21+</span>' : '';
+      card.innerHTML = `
+        <div class="preset-icon" style="font-size:1.6rem">${pack.icon}</div>
+        <div class="preset-name">${escapeHtml(pack.name)}${gatedTag}</div>
+        <div class="preset-desc" style="font-size:0.66rem;color:var(--text-faint);line-height:1.4;min-height:32px">${escapeHtml(pack.description)}</div>
+        <div style="font-size:0.6rem;color:var(--text-faint);margin-top:4px;font-style:italic">${escapeHtml(pack.category)}</div>
+      `;
+      card.addEventListener('click', () => applyContentPack(pack.id));
+      grid.appendChild(card);
+    }
   }
 
   // ====================================================================
@@ -41515,8 +43024,59 @@ Begin:`;
       return new Map(_batteries);
     }
 
+    /** Round 27 — axis-specific output for multi-track playback. Routes
+     *  to a single capability instead of broadcasting (setLevel) so a
+     *  vibrate-track can play simultaneously with a linear-track on the
+     *  same device. Each call writes only the named output and leaves
+     *  other outputs untouched. */
+    function vibrate(intensity01, _durationMs) {
+      if (!_connected || !_devices.length) return;
+      const i = Math.max(0, Math.min(1, Number(intensity01) || 0));
+      const DO = _bpMod?.DeviceOutput;
+      for (const dev of _devices) {
+        try {
+          if (DO && typeof dev.runOutput === 'function' && _devHasOutput(dev, 'Vibrate')) {
+            const r = dev.runOutput(DO.Vibrate.percent(i));
+            if (r && typeof r.catch === 'function') r.catch(() => {});
+          }
+        } catch {}
+      }
+    }
+    function rotate(speed01, _durationMs) {
+      if (!_connected || !_devices.length) return;
+      const s = Math.max(0, Math.min(1, Number(speed01) || 0));
+      const DO = _bpMod?.DeviceOutput;
+      for (const dev of _devices) {
+        try {
+          if (DO && typeof dev.runOutput === 'function' && _devHasOutput(dev, 'Rotate')) {
+            // Rotate takes a clockwise boolean + speed; we map values
+            // <0.5 to counterclockwise, >=0.5 to clockwise. For
+            // pattern-driven playback this lets a single track encode
+            // direction reversals as a position dip below 0.5.
+            const cw = s >= 0.5;
+            const speed = Math.abs(s - 0.5) * 2;  // 0..1
+            const r = dev.runOutput(DO.Rotate.percent(speed, cw));
+            if (r && typeof r.catch === 'function') r.catch(() => {});
+          }
+        } catch {}
+      }
+    }
+    function oscillate(speed01, _durationMs) {
+      if (!_connected || !_devices.length) return;
+      const s = Math.max(0, Math.min(1, Number(speed01) || 0));
+      const DO = _bpMod?.DeviceOutput;
+      for (const dev of _devices) {
+        try {
+          if (DO && typeof dev.runOutput === 'function' && _devHasOutput(dev, 'Oscillate')) {
+            const r = dev.runOutput(DO.Oscillate.percent(s));
+            if (r && typeof r.catch === 'function') r.catch(() => {});
+          }
+        } catch {}
+      }
+    }
+
     return {
-      connect, disconnect, pulse, setLevel, linear, stop,
+      connect, disconnect, pulse, setLevel, linear, vibrate, rotate, oscillate, stop,
       isReady, isEnabled, setEnabled, getDevices, refreshBatteries,
     };
   })();
@@ -41927,6 +43487,104 @@ Begin:`;
     state._rampActiveIntensity = Math.max(0, Math.min(2, result));
   }
 
+  // ====================================================================
+  // DYNAMIC PACING — Round 27
+  // ====================================================================
+  // Engagement-driven speed modulation. When enabled, reads the engagement
+  // score from state.engineState every tick and continuously slides the
+  // live-control speed slider between minSpeed and maxSpeed along a
+  // chosen curve. EMA smoothing prevents jittery speed jumps when
+  // engagement bounces around the threshold; lockDuringSec adds an
+  // optional debounce so the speed holds for N seconds after each change.
+  //
+  // Distinct from the intensity ramp: ramp drives intensity, pacing
+  // drives speed. Both can run simultaneously — ramp escalates over
+  // session time / engagement, pacing tracks engagement moment-to-moment.
+  // Both are non-destructive — the user can override via the slider
+  // (or 'R' shortcut) at any time, and pacing will resume from there.
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio —
+  //   js/dynamic-pacing.js (~7.7KB; HNE version reuses _applyRampCurve
+  //   and routes through the existing liveCtrlSpeed slider).
+  // ====================================================================
+  const PACING_DEFAULTS = Object.freeze({
+    enabled:       false,
+    minSpeed:      0.5,    // speed when engagement = 0
+    maxSpeed:      2.0,    // speed when engagement = 1
+    smoothingSec:  4,      // EMA time constant — higher = slower transitions
+    curve:         'linear',  // 'linear' | 'exponential' | 'sine'
+    lockDuringSec: 0,      // hold speed for N seconds after a change (debounce)
+  });
+  const HNE_PACING_KEY = 'hne_pacing_settings_v1';
+  function loadPacingSettings() {
+    try {
+      const raw = localStorage.getItem(HNE_PACING_KEY);
+      if (!raw) return { ...PACING_DEFAULTS };
+      const parsed = JSON.parse(raw);
+      return _normalizePacingSettings(parsed);
+    } catch { return { ...PACING_DEFAULTS }; }
+  }
+  function savePacingSettings(s) {
+    try { localStorage.setItem(HNE_PACING_KEY, JSON.stringify(s || {})); } catch {}
+  }
+  /** Validate + clamp incoming pacing settings. Identical structure to
+   *  the ASS normalizer — bounds: speeds 0.25..4 (matches the speed
+   *  slider's min/max), smoothing 0..30s, curve from the allowed set. */
+  function _normalizePacingSettings(p) {
+    if (!p || typeof p !== 'object') return { ...PACING_DEFAULTS };
+    const base = PACING_DEFAULTS;
+    return {
+      enabled:       p.enabled === true,
+      minSpeed:      Number.isFinite(p.minSpeed)      ? Math.max(0.25, Math.min(4,  p.minSpeed))      : base.minSpeed,
+      maxSpeed:      Number.isFinite(p.maxSpeed)      ? Math.max(0.25, Math.min(4,  p.maxSpeed))      : base.maxSpeed,
+      smoothingSec:  Number.isFinite(p.smoothingSec)  ? Math.max(0,    Math.min(30, p.smoothingSec))  : base.smoothingSec,
+      curve:         ['linear','exponential','sine'].includes(p.curve) ? p.curve : base.curve,
+      lockDuringSec: Number.isFinite(p.lockDuringSec) ? Math.max(0,    Math.min(60, p.lockDuringSec)) : base.lockDuringSec,
+    };
+  }
+  // Per-tick state — module-scoped, reset on session start.
+  let _pacingCurrentSpeed = 1.0;  // EMA-smoothed speed
+  let _pacingLastChangeAt = 0;    // session-time when speed was last changed (for lock window)
+  function _resetDynamicPacing() {
+    _pacingCurrentSpeed = 1.0;
+    _pacingLastChangeAt = 0;
+  }
+
+  /** Per-tick evaluator. Called from the main RAF tick alongside ramp
+   *  + rules + playback-dynamics. No-op when disabled, when there's no
+   *  engineState yet, or while inside a lockDuringSec hold window. */
+  function _tickDynamicPacing(frameSec) {
+    const ps = state.pacingSettings;
+    if (!ps?.enabled) return;
+    const es = state.engineState;
+    if (!es) return;
+    // Use the same engagement signal HNE's ramp uses (es.engagement is in 0..1).
+    const engagement = Math.max(0, Math.min(1, Number(es.engagement) || 0));
+    // Lock window — if we changed speed recently and lockDuringSec > 0,
+    // hold steady. sessionTime is in seconds; sessionSec is the canonical name.
+    const sessionTime = es.sessionSec ?? es.sessionTime ?? 0;
+    if (ps.lockDuringSec > 0 && (sessionTime - _pacingLastChangeAt) < ps.lockDuringSec) return;
+    // Map engagement → speed via curve
+    const t = _applyRampCurve(engagement, ps.curve);
+    const targetSpeed = ps.minSpeed + t * (ps.maxSpeed - ps.minSpeed);
+    // EMA smoothing — alpha proportional to frame duration / time constant
+    const alpha = ps.smoothingSec > 0 ? Math.min(1, frameSec / ps.smoothingSec) : 1;
+    const prevSpeed = _pacingCurrentSpeed;
+    _pacingCurrentSpeed += alpha * (targetSpeed - _pacingCurrentSpeed);
+    _pacingCurrentSpeed = Math.max(0.25, Math.min(4, _pacingCurrentSpeed));
+    // Only push to the slider when the change is meaningful — avoids
+    // event-spam back through the input handler at sub-perceptible deltas.
+    if (Math.abs(_pacingCurrentSpeed - prevSpeed) > 0.005) {
+      const speed = +_pacingCurrentSpeed.toFixed(3);
+      const slider = document.getElementById('liveCtrlSpeed');
+      if (slider) {
+        slider.value = speed;
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      if (ps.lockDuringSec > 0) _pacingLastChangeAt = sessionTime;
+    }
+  }
+
   const funscriptEngine = (() => {
     let _track       = null;     // currently loaded track or null
     let _tickHandle  = null;
@@ -41943,6 +43601,27 @@ Begin:`;
     // smoothly between two arbitrary positions.
     let _injection   = null;     // {actions, startMs, totalMs, name} or null
     let _onInjection = null;     // single subscriber (UI updater)
+    // Round 27 — secondary tracks. The primary _track drives the linear
+    // axis; secondaries each drive ONE non-linear axis (vibrate/rotate/
+    // oscillate). Map keyed by axis so we never double-assign the same
+    // axis. Each entry: { track, name, axis }. Axes other than 'linear'
+    // can have only one secondary; 'linear' uses _track and isn't stored
+    // here. Secondaries share start/stop/pause/seek with the main track.
+    const _secondaryTracks = new Map();
+    let _onSecondaryChange = null;   // (axis, track) → void; UI updater
+    function _setSecondary(axis, track, name) {
+      if (axis === 'linear') return;  // not allowed — main track owns linear
+      if (track) _secondaryTracks.set(axis, { track, name: name || '', axis });
+      else       _secondaryTracks.delete(axis);
+      if (typeof _onSecondaryChange === 'function') _onSecondaryChange(axis, track);
+    }
+    function _clearAllSecondaries() {
+      _secondaryTracks.clear();
+      if (typeof _onSecondaryChange === 'function') _onSecondaryChange(null, null);
+    }
+    function _listSecondaries() {
+      return Array.from(_secondaryTracks.values()).map(s => ({ axis: s.axis, name: s.name }));
+    }
 
     function loadTrack(parsed, filename) {
       _track = parsed;
@@ -42138,12 +43817,48 @@ Begin:`;
       const adjPos100 = _applyLiveControl(pos01 * 100);
       const adjPos01  = Math.max(0, Math.min(1, adjPos100 / 100));
       try { hapticBridge.linear(adjPos01, FUNSCRIPT_TICK_MS); } catch {}
+      // Round 27 — secondary tracks. Each one shares the main track's
+      // playhead (so they stay synchronized) and routes to its own
+      // axis on the haptic bridge. Live-control intensity affects them
+      // too — the user's master "intensity" slider should scale ALL
+      // axes, not just linear. Looping uses each track's own loop flag.
+      if (_secondaryTracks.size) {
+        for (const sec of _secondaryTracks.values()) {
+          const t = sec.track;
+          if (!t || !Array.isArray(t.actions) || t.actions.length < 1) continue;
+          let secMs = elapsedMs;
+          if (t.loop && t.actions.length >= 2) {
+            const dur = t.actions[t.actions.length - 1].at - t.actions[0].at;
+            if (dur > 0) secMs = ((secMs % dur) + dur) % dur;
+          }
+          const sPos01 = _funscriptInterpolate(t, secMs);
+          const sScaled = Math.max(0, Math.min(1, _applyLiveControl(sPos01 * 100) / 100));
+          try {
+            switch (sec.axis) {
+              case 'vibrate':   hapticBridge.vibrate(sScaled, FUNSCRIPT_TICK_MS); break;
+              case 'rotate':    hapticBridge.rotate(sScaled, FUNSCRIPT_TICK_MS); break;
+              case 'oscillate': hapticBridge.oscillate(sScaled, FUNSCRIPT_TICK_MS); break;
+              // Unknown axes silently dropped — keeps the engine forward-
+              // compatible with future axis additions.
+            }
+          } catch {}
+        }
+      }
     }
 
     return {
       loadTrack, clearTrack, getTrack, getFilename, setOnTrackChange, setOnInjection,
       start, stop, pause, resume, isPlaying, isInjecting,
       injectMacro, cancelInjection,
+      // Round 27 — secondary-track API. Lets callers add a track on a
+      // non-linear axis (vibrate/rotate/oscillate) that plays in lockstep
+      // with the main track. Pass null as the second arg to clearTrack-
+      // equivalent for that axis.
+      setSecondaryTrack(axis, track, name) { _setSecondary(axis, track, name); },
+      clearSecondaryTrack(axis)            { _setSecondary(axis, null, null); },
+      clearAllSecondaries()                { _clearAllSecondaries(); },
+      listSecondaries()                    { return _listSecondaries(); },
+      setOnSecondaryChange(fn)             { _onSecondaryChange = (typeof fn === 'function') ? fn : null; },
       // Round 26 — playhead accessor for the inline heatmap overlay.
       // Returns the engine's current speed-scaled elapsed ms relative
       // to track start, or 0 when not playing. Same math as _tick uses
@@ -42793,6 +44508,47 @@ Begin:`;
     catch (e) { notify.warn?.('Could not save macros: ' + (e.message || 'storage full')); }
   }
 
+  // Round 28 — macro slot bindings. Pressing keys 1-5 during session
+  // playback injects the bound macro. Storage is a small key-keyed map:
+  //   { 1: 'macroId', 2: 'otherMacroId', ... }
+  // Slots 1..5 only; other keys are dropped. Macro ids are resolved via
+  // _findHapticMacro at use time, so deleting a bound macro just makes
+  // the slot a no-op (no orphan cleanup needed).
+  const HNE_MACRO_SLOTS_KEY = 'hne_macro_slots_v1';
+  function loadMacroSlots() {
+    try {
+      const raw = localStorage.getItem(HNE_MACRO_SLOTS_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return {};
+      const out = {};
+      for (let s = 1; s <= 5; s++) {
+        const v = parsed[s] || parsed[String(s)];
+        if (typeof v === 'string' && v) out[s] = v;
+      }
+      return out;
+    } catch { return {}; }
+  }
+  function saveMacroSlots(slots) {
+    const clean = {};
+    for (let s = 1; s <= 5; s++) {
+      if (slots && typeof slots[s] === 'string' && slots[s]) clean[s] = slots[s];
+    }
+    try { localStorage.setItem(HNE_MACRO_SLOTS_KEY, JSON.stringify(clean)); }
+    catch (e) { notify.warn?.('Could not save slot bindings: ' + (e.message || 'storage full')); }
+  }
+  function setMacroSlot(slot, macroId) {
+    const n = Number(slot);
+    if (!Number.isInteger(n) || n < 1 || n > 5) return;
+    const slots = loadMacroSlots();
+    if (macroId) slots[n] = String(macroId);
+    else delete slots[n];
+    saveMacroSlots(slots);
+  }
+  function getMacroSlot(slot) {
+    return loadMacroSlots()[Number(slot)] || null;
+  }
+
   /** Normalize a user macro shape. Forces id prefix `u_` so user ids
    *  never accidentally shadow a built-in even on roundtrip. Validates
    *  actions array (required for injectMacro to function), clamps
@@ -43138,6 +44894,603 @@ Begin:`;
     }
   });
 
+  // ====================================================================
+  // BPM-SYNCED FUNSCRIPT GENERATOR — Round 28
+  // ====================================================================
+  // Generate a tempo-locked haptic track from a BPM, duration, and
+  // waveform shape. Useful for music-sync sessions, breathwork pacing
+  // (matched to a pulse rate), or rhythm-driven adult sessions.
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio —
+  //   js/viz-blocks.js (generateFromBPM). Algorithm preserved 1:1 —
+  //   sine / square / sawtooth / bounce shapes, NaN guards, BPM clamp
+  //   to [30..240], amplitude/baseline auto-swap if baseline > amp.
+  //   Returns an HNE-shaped track ready for funscriptEngine.loadTrack.
+  function buildBpmFunscript({
+    bpm         = 80,
+    durationSec = 60,
+    shape       = 'sine',
+    amplitude   = 90,
+    baseline    = 10,
+    barsPerBeat = 1,
+  } = {}) {
+    // Guard NaN/Infinity from parseInt('', 10) etc. before any math.
+    const safeBPM   = Number.isFinite(bpm)         ? bpm         : 80;
+    const safeDur   = Number.isFinite(durationSec) ? durationSec : 60;
+    const safeAmp   = Number.isFinite(amplitude)   ? amplitude   : 90;
+    const safeBase  = Number.isFinite(baseline)    ? baseline    : 10;
+    const safeBars  = Number.isFinite(barsPerBeat) ? barsPerBeat : 1;
+    const clampBPM  = Math.max(30,  Math.min(240, safeBPM));
+    const clampDur  = Math.max(1,   Math.min(7200, safeDur));   // 1s..2hr
+    const beatMs    = (60 / clampBPM) * 1000;
+    const stepMs    = beatMs / Math.max(1, Math.min(8, safeBars));
+    const totalMs   = clampDur * 1000;
+    // Auto-swap so amp > baseline regardless of caller order. Without
+    // this, baseline > amplitude inverts the waveform (still valid
+    // mathematically but probably not what the user typed).
+    const lo = Math.max(0, Math.min(100, Math.min(safeBase, safeAmp)));
+    const hi = Math.max(0, Math.min(100, Math.max(safeBase, safeAmp)));
+    const amp = hi - lo;
+    const SHAPES = {
+      sine:     frac => lo + amp * (0.5 - 0.5 * Math.cos(frac * Math.PI * 2)),
+      square:   frac => frac < 0.5 ? hi : lo,
+      // Sawtooth has an asymmetric rise (70%) → fall (30%) — closer to
+      // a stroke pattern than a textbook sawtooth, but feels more
+      // organic on stroker devices.
+      sawtooth: frac => frac < 0.7 ? lo + amp * (frac / 0.7) : hi - amp * ((frac - 0.7) / 0.3),
+      // Bounce: parabolic rise + small after-bounce. Good "drum hit"
+      // feel on vibrating devices.
+      bounce:   frac => {
+        const x = frac * 2;
+        if (x < 1) return lo + amp * (1 - (x - 1) * (x - 1));
+        return lo + amp * 0.3 * Math.sin((x - 1) * Math.PI);
+      },
+    };
+    const fn = SHAPES[shape] || SHAPES.sine;
+    const actions = [];
+    for (let t = 0; t <= totalMs; t += stepMs) {
+      const beatFrac = (t % beatMs) / beatMs;
+      const pos = Math.max(0, Math.min(100, Math.round(fn(beatFrac))));
+      actions.push({ at: Math.round(t), pos });
+    }
+    return {
+      version:  1,
+      inverted: false,
+      range:    100,
+      // BPM tracks loop because they're typically generated short
+      // (one bar / one minute) and meant to repeat throughout a session.
+      // Users who want a one-shot can switch loop off via the editor.
+      loop:     true,
+      actions,
+      _bpmMeta: { bpm: clampBPM, shape, amplitude: hi, baseline: lo, barsPerBeat: safeBars, durationSec: clampDur },
+    };
+  }
+
+  // BPM modal — minimal launcher. Reuses the existing modal-backdrop
+  // pattern so styling is consistent with the rest of HNE's modals.
+  $('funscriptBpmBtn')?.addEventListener('click', () => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop visible';
+    backdrop.innerHTML = `<div class="modal" style="max-width:480px">
+      <h2>🥁 BPM-synced track</h2>
+      <p style="font-size:0.74rem;color:var(--text-dim);line-height:1.5;margin-bottom:14px">
+        Generate a tempo-locked haptic curve. The track loops, so a 30-second pattern at 80 BPM will repeat for the duration of any session.
+      </p>
+      <div style="display:grid;grid-template-columns:120px 1fr 60px;gap:8px 12px;align-items:center;font-size:0.74rem">
+        <label for="_bpm_bpm">BPM</label>
+        <input type="range" id="_bpm_bpm" min="30" max="240" step="1" value="80" style="width:100%">
+        <span id="_bpm_bpm_v" style="font-family:monospace;text-align:right">80</span>
+
+        <label for="_bpm_duration">Duration (s)</label>
+        <input type="range" id="_bpm_duration" min="5" max="600" step="5" value="60" style="width:100%">
+        <span id="_bpm_duration_v" style="font-family:monospace;text-align:right">60</span>
+
+        <label for="_bpm_amp">Amplitude (peak)</label>
+        <input type="range" id="_bpm_amp" min="0" max="100" step="1" value="90" style="width:100%">
+        <span id="_bpm_amp_v" style="font-family:monospace;text-align:right">90</span>
+
+        <label for="_bpm_base">Baseline (low)</label>
+        <input type="range" id="_bpm_base" min="0" max="100" step="1" value="10" style="width:100%">
+        <span id="_bpm_base_v" style="font-family:monospace;text-align:right">10</span>
+
+        <label for="_bpm_shape">Waveform</label>
+        <select id="_bpm_shape" style="grid-column:span 2;padding:4px 8px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.78rem">
+          <option value="sine">Sine — smooth in/out</option>
+          <option value="square">Square — abrupt on/off</option>
+          <option value="sawtooth">Sawtooth — slow rise, quick fall</option>
+          <option value="bounce">Bounce — parabolic with after-tap</option>
+        </select>
+
+        <label for="_bpm_subdivision">Subdivision</label>
+        <select id="_bpm_subdivision" style="grid-column:span 2;padding:4px 8px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.78rem">
+          <option value="1">1× — one stroke per beat (quarter notes)</option>
+          <option value="2">2× — eighth notes</option>
+          <option value="4" selected>4× — sixteenth notes (smooth motion)</option>
+          <option value="8">8× — thirty-second notes (intense)</option>
+        </select>
+      </div>
+      <div class="modal-actions" style="margin-top:18px">
+        <button class="btn secondary" id="_bpm_cancel">cancel</button>
+        <button class="btn" id="_bpm_apply">generate &amp; load</button>
+      </div>
+    </div>`;
+    document.body.appendChild(backdrop);
+    const $$ = (id) => backdrop.querySelector('#' + id);
+    // Live label updates so users see what the sliders are doing.
+    const bind = (id, suffix = '') => {
+      const slider = $$(id);
+      const label  = $$(id + '_v');
+      if (!slider || !label) return;
+      const update = () => { label.textContent = slider.value + suffix; };
+      slider.addEventListener('input', update);
+      update();
+    };
+    bind('_bpm_bpm');
+    bind('_bpm_duration');
+    bind('_bpm_amp');
+    bind('_bpm_base');
+    const close = () => backdrop.remove();
+    $$('_bpm_cancel').addEventListener('click', close);
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+    $$('_bpm_apply').addEventListener('click', () => {
+      try {
+        const track = buildBpmFunscript({
+          bpm:         parseFloat($$('_bpm_bpm').value),
+          durationSec: parseFloat($$('_bpm_duration').value),
+          shape:       $$('_bpm_shape').value,
+          amplitude:   parseFloat($$('_bpm_amp').value),
+          baseline:    parseFloat($$('_bpm_base').value),
+          barsPerBeat: parseFloat($$('_bpm_subdivision').value),
+        });
+        const meta = track._bpmMeta || {};
+        const filename = `bpm · ${meta.bpm}@${meta.shape} · ${meta.durationSec}s`;
+        funscriptEngine.loadTrack(track, filename);
+        close();
+        notify.success(`BPM track loaded · ${meta.bpm} BPM ${meta.shape} · ${track.actions.length} points`);
+      } catch (e) {
+        console.warn('[bpm-funscript]', e);
+        notify.error('BPM generation failed: ' + (e?.message || e));
+      }
+    });
+  });
+
+  // ====================================================================
+  // AUDIO-DRIVEN FUNSCRIPT — Round 28
+  // ====================================================================
+  // Decode an audio file → mono RMS envelope → onset enhancement →
+  // smoothing → 0..1 normalisation → funscript actions. Lets users
+  // generate haptic tracks that follow the audio they're listening to:
+  // music, podcasts, ambient soundscapes, recorded narration, etc.
+  //
+  // Adapted from /mnt/user-data/uploads/Adaptive-Session-Studio —
+  //   js/audio-analyze.js. Algorithm preserved 1:1; the high-level
+  //   helper is restructured to skip ASS-specific track-shape code
+  //   and produce HNE's funscript shape directly. Progress callbacks
+  //   route to the modal's progress bar so multi-MB files stay responsive.
+  const _AUDIO_FS_DEFAULTS = Object.freeze({
+    windowMs:     80,    // RMS window length
+    smoothPasses:  5,    // moving-average iterations
+    basePct:       5,    // minimum funscript position (%)
+    peakPct:      95,    // maximum funscript position (%)
+    onsetBoost:  1.0,    // amplify rising edges (0..2)
+  });
+
+  /** Sliding-window RMS. Pure helper. */
+  function _audioRmsWindow(samples, start, len) {
+    let sum = 0;
+    const end = Math.min(start + len, samples.length);
+    for (let i = start; i < end; i++) sum += samples[i] * samples[i];
+    return Math.sqrt(sum / Math.max(1, end - start));
+  }
+  /** Symmetric moving average with edge clamping. Pure. */
+  function _audioMovingAverage(arr, radius) {
+    const out = new Float32Array(arr.length);
+    for (let i = 0; i < arr.length; i++) {
+      let s = 0, n = 0;
+      const lo = Math.max(0, i - radius);
+      const hi = Math.min(arr.length - 1, i + radius);
+      for (let j = lo; j <= hi; j++) { s += arr[j]; n++; }
+      out[i] = s / n;
+    }
+    return out;
+  }
+  /** Onset enhancement — amplify rising edges so transient hits punch
+   *  through. Boost = 0 disables; boost = 2 is aggressive. */
+  function _audioEnhanceOnsets(envelope, boost) {
+    if (boost <= 0) return envelope;
+    const out = new Float32Array(envelope.length);
+    for (let i = 0; i < envelope.length; i++) {
+      const delta = i > 0 ? Math.max(0, envelope[i] - envelope[i - 1]) : 0;
+      out[i] = envelope[i] + delta * boost;
+    }
+    return out;
+  }
+
+  /** Core analyzer. Returns { actions, durationMs, envelope, hopMs }.
+   *  Throws on decode failure (caller surfaces a notify). Async — the
+   *  caller should show a progress UI since multi-MB files take seconds. */
+  async function analyzeAudioBuffer(arrayBuffer, opts = {}, onProgress = null) {
+    const o = { ..._AUDIO_FS_DEFAULTS, ...opts };
+    onProgress?.('Decoding audio…', 5);
+    // Use a regular AudioContext for decode — OfflineAudioContext can't
+    // decodeAudioData reliably across browsers. The .slice(0) avoids
+    // ArrayBuffer detach on older Safari.
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) throw new Error('Web Audio API not available in this browser');
+    const ctx = new Ctor();
+    let decoded;
+    try { decoded = await ctx.decodeAudioData(arrayBuffer.slice(0)); }
+    finally { try { await ctx.close(); } catch {} }
+
+    const sampleRate  = decoded.sampleRate;
+    const durationMs  = Math.round(decoded.duration * 1000);
+    onProgress?.('Mixing to mono…', 15);
+    // Mix all channels equal-weight.
+    const numCh  = decoded.numberOfChannels;
+    const length = decoded.length;
+    const mono   = new Float32Array(length);
+    for (let ch = 0; ch < numCh; ch++) {
+      const data = decoded.getChannelData(ch);
+      for (let i = 0; i < length; i++) mono[i] += data[i] / numCh;
+    }
+    onProgress?.('Computing RMS envelope…', 30);
+    const windowSamples = Math.max(1, Math.round((o.windowMs / 1000) * sampleRate));
+    const hopSamples    = Math.max(1, Math.round(windowSamples / 2));   // 50% overlap
+    const frameCount    = Math.ceil(length / hopSamples);
+    const envelope      = new Float32Array(frameCount);
+    for (let f = 0; f < frameCount; f++) {
+      envelope[f] = _audioRmsWindow(mono, f * hopSamples, windowSamples);
+      if (f % 500 === 0) onProgress?.('Analysing energy…', 30 + Math.round((f / frameCount) * 30));
+    }
+    onProgress?.('Detecting onsets…', 65);
+    const boosted = _audioEnhanceOnsets(envelope, o.onsetBoost);
+    onProgress?.('Smoothing envelope…', 72);
+    let smoothed = boosted;
+    const radius = Math.max(1, Math.round(o.smoothPasses * 2));
+    const passes = Math.ceil(o.smoothPasses / 2);
+    for (let p = 0; p < passes; p++) smoothed = _audioMovingAverage(smoothed, radius);
+    onProgress?.('Normalising…', 82);
+    // Trim top/bottom 1% before normalising — keeps a single anomalous
+    // peak from compressing the rest into the noise floor.
+    const sorted = Float32Array.from(smoothed).sort();
+    const minVal = sorted[Math.floor(sorted.length * 0.01)] || 0;
+    const maxVal = sorted[Math.max(0, Math.floor(sorted.length * 0.99) - 1)] || 1e-6;
+    const range  = (maxVal - minVal) || 1e-6;
+    const normalised = new Float32Array(smoothed.length);
+    for (let i = 0; i < smoothed.length; i++) {
+      normalised[i] = Math.max(0, Math.min(1, (smoothed[i] - minVal) / range));
+    }
+    onProgress?.('Building funscript actions…', 90);
+    // Cap at 4000 points — typical funscripts are 500-2000 points;
+    // 4000 is plenty of fidelity and keeps the engine responsive.
+    const maxPoints  = 4000;
+    const stepFrames = Math.max(1, Math.ceil(frameCount / maxPoints));
+    const hopMs      = (hopSamples / sampleRate) * 1000;
+    const actions = [];
+    for (let f = 0; f < frameCount; f += stepFrames) {
+      const t   = Math.round(f * hopMs);
+      const val = normalised[f];
+      const pos = Math.round(o.basePct + (o.peakPct - o.basePct) * val);
+      actions.push({ at: t, pos: Math.max(0, Math.min(100, pos)) });
+    }
+    // Force endpoint at duration so the track length is accurate.
+    if (!actions.length || actions[actions.length - 1].at < durationMs - 50) {
+      actions.push({ at: durationMs, pos: Math.max(0, Math.min(100, Math.round(o.basePct))) });
+    }
+    onProgress?.('Done.', 100);
+    return { actions, durationMs, envelope: normalised, hopMs };
+  }
+
+  /** Render the analyzed envelope onto a canvas as a filled waveform.
+   *  Used as a preview after analysis completes — gives the user a
+   *  visual sense of how the haptic track will feel before they load
+   *  it. Pure function of (canvas, envelope). */
+  function _drawAudioEnvelopePreview(canvas, envelope) {
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(0, 0, W, H);
+    if (!envelope || !envelope.length) return;
+    // Fill area
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    for (let i = 0; i < envelope.length; i++) {
+      const x = (i / (envelope.length - 1)) * W;
+      const y = H - envelope[i] * (H - 2) - 1;
+      if (i === 0) ctx.moveTo(x, H);
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, 'rgba(127,176,255,0.7)');
+    grad.addColorStop(1, 'rgba(64,100,200,0.2)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    // Outline
+    ctx.beginPath();
+    for (let i = 0; i < envelope.length; i++) {
+      const x = (i / (envelope.length - 1)) * W;
+      const y = H - envelope[i] * (H - 2) - 1;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(127,176,255,0.9)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  }
+
+  // Audio-from-file modal — file picker + parameter sliders + preview canvas.
+  $('funscriptFromAudioBtn')?.addEventListener('click', () => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop visible';
+    backdrop.innerHTML = `<div class="modal" style="max-width:560px">
+      <h2>🎵 Generate from audio</h2>
+      <p style="font-size:0.74rem;color:var(--text-dim);line-height:1.5;margin-bottom:12px">
+        Drop an audio file (MP3, WAV, OGG, M4A, etc.) — the haptic track will follow its energy envelope. Music drives the strokes by loudness; quiet parts pull back, peaks push forward. Max 50 MB.
+      </p>
+      <label for="_aud_file" class="btn secondary" style="display:inline-block;padding:6px 14px;font-size:0.74rem;cursor:pointer;margin:0 0 12px 0">📁 choose audio file</label>
+      <input type="file" id="_aud_file" accept="audio/*" style="display:none">
+      <div id="_aud_filename" style="font-size:0.7rem;color:var(--text-faint);margin-bottom:10px;font-style:italic">no file selected</div>
+      <div style="display:grid;grid-template-columns:120px 1fr 60px;gap:8px 12px;align-items:center;font-size:0.74rem">
+        <label for="_aud_base">Base pos (%)</label>
+        <input type="range" id="_aud_base" min="0" max="100" step="1" value="5" style="width:100%">
+        <span id="_aud_base_v" style="font-family:monospace;text-align:right">5</span>
+        <label for="_aud_peak">Peak pos (%)</label>
+        <input type="range" id="_aud_peak" min="0" max="100" step="1" value="95" style="width:100%">
+        <span id="_aud_peak_v" style="font-family:monospace;text-align:right">95</span>
+        <label for="_aud_window">Window (ms)</label>
+        <input type="range" id="_aud_window" min="20" max="200" step="10" value="80" style="width:100%">
+        <span id="_aud_window_v" style="font-family:monospace;text-align:right">80</span>
+        <label for="_aud_onset">Onset boost</label>
+        <input type="range" id="_aud_onset" min="0" max="3" step="0.1" value="1.0" style="width:100%">
+        <span id="_aud_onset_v" style="font-family:monospace;text-align:right">1.0</span>
+      </div>
+      <div style="margin-top:12px">
+        <canvas id="_aud_preview" width="520" height="80" style="display:block;width:100%;height:80px;background:rgba(0,0,0,0.4);border:0.5px solid rgba(255,255,255,0.08);border-radius:3px"></canvas>
+      </div>
+      <div style="margin-top:10px;height:18px">
+        <div style="background:rgba(255,255,255,0.06);height:6px;border-radius:3px;overflow:hidden">
+          <div id="_aud_progress_bar" style="height:100%;width:0%;background:var(--neon-cyan);transition:width 0.2s"></div>
+        </div>
+        <div id="_aud_progress_label" style="font-size:0.62rem;color:var(--text-faint);margin-top:3px;font-family:monospace"></div>
+      </div>
+      <div class="modal-actions" style="margin-top:14px">
+        <button class="btn secondary" id="_aud_cancel">cancel</button>
+        <button class="btn" id="_aud_analyze" disabled>analyze &amp; load</button>
+      </div>
+    </div>`;
+    document.body.appendChild(backdrop);
+    const $$ = (id) => backdrop.querySelector('#' + id);
+    const bind = (id) => {
+      const slider = $$(id), label = $$(id + '_v');
+      if (!slider || !label) return;
+      const u = () => label.textContent = slider.value;
+      slider.addEventListener('input', u); u();
+    };
+    ['_aud_base', '_aud_peak', '_aud_window', '_aud_onset'].forEach(bind);
+
+    let _audFile = null;
+    const fileEl = $$('_aud_file');
+    const nameEl = $$('_aud_filename');
+    const analyzeBtn = $$('_aud_analyze');
+    fileEl.addEventListener('change', (e) => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      // Defensive cap — analysis allocates ~8 bytes per audio sample,
+      // so a 50MB file uses several hundred MB during decode. Anything
+      // larger is likely user error or a hostile file.
+      if (f.size > 50 * 1024 * 1024) {
+        notify.error('File too large (max 50 MB).');
+        fileEl.value = '';
+        return;
+      }
+      _audFile = f;
+      nameEl.textContent = `${f.name} · ${(f.size / 1024 / 1024).toFixed(1)} MB`;
+      analyzeBtn.disabled = false;
+    });
+
+    const close = () => backdrop.remove();
+    $$('_aud_cancel').addEventListener('click', close);
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+
+    analyzeBtn.addEventListener('click', async () => {
+      if (!_audFile) return;
+      analyzeBtn.disabled = true;
+      const progBar = $$('_aud_progress_bar');
+      const progLbl = $$('_aud_progress_label');
+      const onProgress = (label, pct) => {
+        progLbl.textContent = label || '';
+        progBar.style.width = Math.max(0, Math.min(100, pct || 0)) + '%';
+      };
+      try {
+        const arrayBuffer = await _audFile.arrayBuffer();
+        const opts = {
+          basePct:    parseFloat($$('_aud_base').value),
+          peakPct:    parseFloat($$('_aud_peak').value),
+          windowMs:   parseFloat($$('_aud_window').value),
+          onsetBoost: parseFloat($$('_aud_onset').value),
+        };
+        const result = await analyzeAudioBuffer(arrayBuffer, opts, onProgress);
+        // Auto-swap base/peak if the user inverted them — same auto-fix
+        // semantic as the BPM generator.
+        // Render preview
+        const canvas = $$('_aud_preview');
+        canvas.width = canvas.clientWidth || 520;
+        _drawAudioEnvelopePreview(canvas, result.envelope);
+        // Build HNE-shape track. Audio-derived tracks are SESSION-LENGTH
+        // (matched to the source file), so loop:false — wrapping a
+        // multi-minute track at the end would feel jarring.
+        const track = {
+          version: 1, inverted: false, range: 100, loop: false,
+          actions: result.actions,
+          _audioMeta: {
+            source: _audFile.name,
+            durationMs: result.durationMs,
+            opts,
+          },
+        };
+        const baseName = _audFile.name.replace(/\.[^.]+$/, '');
+        funscriptEngine.loadTrack(track, `audio: ${baseName}`);
+        const m = Math.floor(result.durationMs / 60000);
+        const s = Math.round((result.durationMs % 60000) / 1000);
+        notify.success(`Audio track loaded · ${m}:${String(s).padStart(2,'0')} · ${result.actions.length} points`);
+        // Leave the modal open for a moment so user sees the preview,
+        // then close. They can also click Cancel to dismiss earlier.
+        setTimeout(close, 800);
+      } catch (e) {
+        console.warn('[audio-funscript]', e);
+        notify.error('Audio analysis failed: ' + (e?.message || e));
+        analyzeBtn.disabled = false;
+        progLbl.textContent = '';
+        progBar.style.width = '0%';
+      }
+    });
+  });
+
+
+
+  // ====================================================================
+  // SECONDARY TRACK UI — Round 27
+  // ====================================================================
+  // Source dropdown is populated from FUNSCRIPT_PATTERNS + user patterns.
+  // Adding a track wraps it via _funscriptFromPattern (so it inherits
+  // loop:true) and registers it on the chosen axis. Loading from a
+  // .funscript file goes through _parseFunScript with loop:false (one-shot,
+  // matching player conventions). Removing a track unbinds it; the bridge
+  // stops sending output to that axis on the next tick.
+  function _populateSecondarySourceDropdown() {
+    const sel = $('funscriptSecondarySource');
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">choose source…</option>';
+    // Built-in patterns
+    const builtinGroup = document.createElement('optgroup');
+    builtinGroup.label = 'Built-in patterns';
+    for (const p of FUNSCRIPT_PATTERNS) {
+      const opt = document.createElement('option');
+      opt.value = 'builtin:' + p.id;
+      opt.textContent = `${p.icon || '🎵'} ${p.name}`;
+      builtinGroup.appendChild(opt);
+    }
+    sel.appendChild(builtinGroup);
+    // User patterns
+    const userPatterns = (typeof loadUserPatterns === 'function') ? loadUserPatterns() : [];
+    if (userPatterns.length) {
+      const userGroup = document.createElement('optgroup');
+      userGroup.label = 'Your patterns';
+      for (const p of userPatterns) {
+        const opt = document.createElement('option');
+        opt.value = 'user:' + p.id;
+        opt.textContent = `${p.icon || '🎵'} ${p.name}`;
+        userGroup.appendChild(opt);
+      }
+      sel.appendChild(userGroup);
+    }
+    sel.value = cur;  // restore selection if still valid
+  }
+
+  function _renderSecondaryTracksList() {
+    const list = $('funscriptSecondariesList');
+    const count = $('funscriptSecondariesCount');
+    if (!list) return;
+    const items = funscriptEngine.listSecondaries?.() || [];
+    if (count) count.textContent = items.length ? `— ${items.length} active` : '— none';
+    if (!items.length) {
+      list.innerHTML = '<div style="color:var(--text-faint);font-style:italic;padding:4px 0">No secondary tracks loaded.</div>';
+      return;
+    }
+    const AXIS_ICON = { vibrate: '〰', rotate: '↻', oscillate: '↔' };
+    list.innerHTML = items.map(s => {
+      const ico = AXIS_ICON[s.axis] || '·';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:0.5px solid rgba(255,255,255,0.05)">
+        <span style="font-family:monospace;color:var(--text-dim);min-width:14px">${ico}</span>
+        <span style="font-weight:500;text-transform:uppercase;font-size:0.6rem;letter-spacing:0.05em;color:var(--neon-cyan);min-width:54px">${escapeHtml(s.axis)}</span>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(s.name || '(unnamed)')}</span>
+        <button type="button" class="btn secondary fs-secondary-remove" data-axis="${escapeHtml(s.axis)}" style="padding:1px 8px;font-size:0.6rem">remove</button>
+      </div>`;
+    }).join('');
+    // Bind remove buttons
+    list.querySelectorAll('.fs-secondary-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const axis = btn.dataset.axis;
+        funscriptEngine.clearSecondaryTrack(axis);
+        _renderSecondaryTracksList();
+      });
+    });
+  }
+
+  // Subscribe to engine secondary-change events so the list re-renders
+  // whenever a track is added/removed (regardless of which UI did it).
+  try {
+    funscriptEngine.setOnSecondaryChange?.(() => { _renderSecondaryTracksList(); });
+  } catch {}
+
+  // Add from pattern selector — wraps the chosen pattern via the same
+  // _funscriptFromPattern helper as the main pattern picker.
+  $('funscriptSecondaryLoadBtn')?.addEventListener('click', () => {
+    const sel = $('funscriptSecondarySource');
+    const axisSel = $('funscriptSecondaryAxis');
+    if (!sel || !axisSel) return;
+    const sourceId = sel.value;
+    const axis = axisSel.value;
+    if (!sourceId) { notify.warn('Pick a source pattern first.'); return; }
+    if (!['vibrate','rotate','oscillate'].includes(axis)) { notify.warn('Invalid axis.'); return; }
+    let track = null, name = '';
+    if (sourceId.startsWith('builtin:')) {
+      const id = sourceId.slice(8);
+      track = _funscriptFromPattern(id);
+      const p = FUNSCRIPT_PATTERNS.find(x => x.id === id);
+      name = p ? p.name : id;
+    } else if (sourceId.startsWith('user:')) {
+      const id = sourceId.slice(5);
+      const userPatterns = (typeof loadUserPatterns === 'function') ? loadUserPatterns() : [];
+      const p = userPatterns.find(x => x.id === id);
+      if (p) { track = _trackFromAnyPattern(p); name = p.name; }
+    }
+    if (!track) { notify.error('Could not load that source.'); return; }
+    funscriptEngine.setSecondaryTrack(axis, track, name);
+    notify.success(`Secondary track loaded on ${axis}: ${name}`);
+  });
+
+  // Load from .funscript file. Uses the same parser as the main loader,
+  // forces loop:false (file-based tracks are session-length, not loops).
+  $('funscriptSecondaryFile')?.addEventListener('change', async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const axisSel = $('funscriptSecondaryAxis');
+    const axis = axisSel?.value || 'vibrate';
+    if (!['vibrate','rotate','oscillate'].includes(axis)) { notify.warn('Invalid axis.'); return; }
+    if (f.size > 5 * 1024 * 1024) { notify.error('File too large (max 5 MB).'); e.target.value = ''; return; }
+    try {
+      const text = await f.text();
+      const parsed = JSON.parse(text);
+      const track = _parseFunScript(parsed);
+      track.loop = false;  // file-based tracks are one-shot
+      const name = f.name.replace(/\.funscript$/i, '').slice(0, 60);
+      funscriptEngine.setSecondaryTrack(axis, track, name);
+      notify.success(`Secondary track loaded on ${axis}: ${name}`);
+    } catch (err) {
+      notify.error('Invalid funscript: ' + (err?.message || err));
+    } finally {
+      e.target.value = '';  // allow re-loading same file
+    }
+  });
+
+  $('funscriptSecondaryClearAllBtn')?.addEventListener('click', () => {
+    funscriptEngine.clearAllSecondaries();
+    notify.info('All secondary tracks cleared.');
+  });
+
+  // Populate the source dropdown initially + whenever the row becomes
+  // visible. Patterns can change after user-pattern-creation so we
+  // rebuild on every row reveal too.
+  setTimeout(() => {
+    try { _populateSecondarySourceDropdown(); _renderSecondaryTracksList(); }
+    catch (e) { console.warn('[fs-secondary init]', e); }
+  }, 100);
+
+
   // Round 26 — keep the speed preset chip highlight in sync with the
   // current slider value. Tolerance of 0.025 covers the slider's
   // 0.05 step quantization without falsely matching adjacent presets
@@ -43238,6 +45591,75 @@ Begin:`;
         line.textContent = `ramp target: ${eff.toFixed(2)}× (manual: ${(state.liveControl?.intensityScale || 1).toFixed(2)}×)`;
       }
     }, 500);
+
+    // Round 27 — Dynamic pacing panel wiring. Same shape as ramp:
+    // toggle + collapsible details, persisted via savePacingSettings.
+    // Reset _pacingCurrentSpeed when the user toggles enable so the
+    // first tick starts from the slider's current value rather than the
+    // last session's smoothed remnant.
+    const pacing = state.pacingSettings || (state.pacingSettings = loadPacingSettings());
+    const pcEnable = $('pacingEnable');
+    const pcPanel  = $('pacingPanel');
+    if (pcEnable) {
+      pcEnable.checked = !!pacing.enabled;
+      if (pcPanel) pcPanel.style.display = pacing.enabled ? '' : 'none';
+      const setIfPresent = (id, v) => { const el = $(id); if (el) el.value = v; };
+      setIfPresent('pacingMin',    pacing.minSpeed);
+      setIfPresent('pacingMax',    pacing.maxSpeed);
+      setIfPresent('pacingCurve',  pacing.curve);
+      setIfPresent('pacingSmooth', pacing.smoothingSec);
+      setIfPresent('pacingLock',   pacing.lockDuringSec);
+      const _persistPacing = () => {
+        state.pacingSettings = _normalizePacingSettings(pacing);
+        savePacingSettings(state.pacingSettings);
+      };
+      pcEnable.addEventListener('change', e => {
+        pacing.enabled = e.target.checked;
+        if (pcPanel) pcPanel.style.display = pacing.enabled ? '' : 'none';
+        // Re-anchor smoothing to the slider's current value when toggling on,
+        // so we don't lurch from a stale 1.0 if the user dragged the slider
+        // earlier.
+        if (pacing.enabled) {
+          const s = $('liveCtrlSpeed');
+          if (s) _pacingCurrentSpeed = parseFloat(s.value) || 1.0;
+        }
+        _persistPacing();
+      });
+      $('pacingMin')?.addEventListener('change', e => {
+        const v = Math.max(0.25, Math.min(4, parseFloat(e.target.value) || 0.5));
+        pacing.minSpeed = v; e.target.value = v; _persistPacing();
+      });
+      $('pacingMax')?.addEventListener('change', e => {
+        const v = Math.max(0.25, Math.min(4, parseFloat(e.target.value) || 2.0));
+        pacing.maxSpeed = v; e.target.value = v; _persistPacing();
+      });
+      $('pacingCurve')?.addEventListener('change', e => {
+        pacing.curve = ['linear','exponential','sine'].includes(e.target.value) ? e.target.value : 'linear';
+        _persistPacing();
+      });
+      $('pacingSmooth')?.addEventListener('change', e => {
+        const v = Math.max(0, Math.min(30, parseFloat(e.target.value) || 4));
+        pacing.smoothingSec = v; e.target.value = v; _persistPacing();
+      });
+      $('pacingLock')?.addEventListener('change', e => {
+        const v = Math.max(0, Math.min(60, parseFloat(e.target.value) || 0));
+        pacing.lockDuringSec = v; e.target.value = v; _persistPacing();
+      });
+
+      // Live status read-out for pacing — same 2Hz cadence as ramp,
+      // shows current smoothed speed + engagement so the user can see
+      // the mapping work in real time.
+      setInterval(() => {
+        const det = $('liveControlDetails');
+        if (!det || !det.open) return;
+        const line = $('pacingStatusLine');
+        if (!line) return;
+        if (!pacing.enabled) { line.textContent = ''; return; }
+        const eng = state.engineState?.engagement;
+        const engTxt = (typeof eng === 'number') ? eng.toFixed(2) : '—';
+        line.textContent = `pacing: ${_pacingCurrentSpeed.toFixed(2)}× (engagement: ${engTxt})`;
+      }, 500);
+    }
   }
   // Defer init until after init() has populated state. Bare check is fine —
   // the panel HTML exists from page load.
@@ -43307,8 +45729,23 @@ Begin:`;
     while (existingIds.has(id)) id = baseId + '-' + (++suffix);
     const range = Math.max(1, Math.min(100, Number(p.range) || 100));
     const actions = (Array.isArray(p.actions) ? p.actions : [])
-      .map(a => ({ at: Number(a?.at), pos: Number(a?.pos) }))
-      .filter(a => Number.isFinite(a.at) && Number.isFinite(a.pos))
+      .map(a => {
+        const at = Number(a?.at);
+        const pos = Number(a?.pos);
+        if (!Number.isFinite(at) || !Number.isFinite(pos)) return null;
+        const out = { at, pos };
+        // Round 27 — preserve Bézier handle if present and well-formed.
+        // Editor stores `h: {dx, dy}` for curve points; this lets user
+        // patterns round-trip through localStorage / share-links without
+        // losing curvature information. The runtime engine still receives
+        // the densified linear form via _ceDensifyForEngine; `h` is purely
+        // an editor enrichment.
+        if (a?.h && Number.isFinite(a.h.dx) && Number.isFinite(a.h.dy)) {
+          out.h = { dx: Number(a.h.dx), dy: Number(a.h.dy) };
+        }
+        return out;
+      })
+      .filter(Boolean)
       .sort((a, b) => a.at - b.at);
     return {
       id,
@@ -43355,10 +45792,68 @@ Begin:`;
         version: 1,
         inverted: !!p.inverted,
         range: p.range || 100,
-        actions: (p.actions || []).slice(),
+        // Round 27 — densify any Bézier handles before the track reaches
+        // the funscript engine. The engine's interpolation is linear, so
+        // curve fidelity comes from sampling the cubic densely enough
+        // that linear interpolation between samples matches the curve
+        // visually. Pass-through fast path inside _densifyTrackActions
+        // returns straight points unchanged when no `h` is present.
+        actions: _densifyTrackActions(p.actions || []),
       };
     }
     return _funscriptFromPattern(p.id);
+  }
+
+  // Round 27 — module-scope cubic-Bézier densifier. Editor's local
+  // _ceDensifyForEngine is a near-copy used inside the editor closure;
+  // this version exists so non-editor callers (track loaders, share-link
+  // parsers, .funscript exporters) can produce engine-ready linear
+  // actions from author-form actions that may carry `h` handles.
+  // Public-facing because the same algorithm is documented in the
+  // editor module — kept in sync if either is changed.
+  function _densifyTrackActions(actions, sampleMs = 50) {
+    if (!Array.isArray(actions) || actions.length === 0) return [];
+    const hasCurves = actions.some(a => a && a.h);
+    if (!hasCurves) {
+      return actions.map(a => ({
+        at: Math.round(Number(a.at) || 0),
+        pos: Math.max(0, Math.min(100, Math.round(Number(a.pos) || 0))),
+      }));
+    }
+    const out = [];
+    out.push({ at: Math.round(actions[0].at), pos: Math.max(0, Math.min(100, Math.round(actions[0].pos))) });
+    for (let i = 0; i < actions.length - 1; i++) {
+      const p0 = actions[i], p1 = actions[i + 1];
+      const dur = Math.max(0, p1.at - p0.at);
+      if ((p0.h || p1.h) && dur > 0) {
+        const steps = Math.max(2, Math.ceil(dur / sampleMs));
+        const cp1at  = p0.at  + (p0.h ? p0.h.dx : 0);
+        const cp1pos = p0.pos + (p0.h ? p0.h.dy : 0);
+        const cp2at  = p1.at  - (p1.h ? p1.h.dx : 0);
+        const cp2pos = p1.pos - (p1.h ? p1.h.dy : 0);
+        for (let s = 1; s < steps; s++) {
+          const t = s / steps, it = 1 - t, it2 = it * it, t2 = t * t;
+          const at  = it2*it*p0.at  + 3*it2*t*cp1at  + 3*it*t2*cp2at  + t2*t*p1.at;
+          const pos = it2*it*p0.pos + 3*it2*t*cp1pos + 3*it*t2*cp2pos + t2*t*p1.pos;
+          out.push({
+            at:  Math.round(at),
+            pos: Math.max(0, Math.min(100, Math.round(pos))),
+          });
+        }
+      }
+      out.push({
+        at:  Math.round(p1.at),
+        pos: Math.max(0, Math.min(100, Math.round(p1.pos))),
+      });
+    }
+    // Drop duplicate `at` collisions that linear engines treat as
+    // zero-duration segments.
+    const seen = new Set();
+    return out.filter(p => {
+      if (seen.has(p.at)) return false;
+      seen.add(p.at);
+      return true;
+    });
   }
 
   // ── Pattern editor modal ──────────────────────────────────────────────
@@ -43436,6 +45931,19 @@ Begin:`;
         <span style="font-size:0.74rem;color:var(--text-dim)">Curve editor</span>
         <span id="_pe_actstats" style="font-size:0.66rem;color:var(--text-faint);margin-left:auto"></span>
       </div>
+      <!-- Round 27 — Tool toggle row. Sets the default behaviour of a
+           click-on-point. "Move" is the original behaviour; the other
+           three are explicit type/state changes. The toggle pills are
+           styled like terminal pills with an active-state background. -->
+      <div id="_pe_tool_row" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;align-items:center">
+        <span style="font-size:0.62rem;color:var(--text-faint);margin-right:4px">Tool:</span>
+        <button type="button" class="pe-tool-btn active" data-tool="move"   title="Click empty: add point. Click point: drag. Drag handle endpoint: adjust curvature.">🖐 move</button>
+        <button type="button" class="pe-tool-btn"        data-tool="curve"  title="Click point: convert to a curve point (adds Bézier handles). Click empty: add new curve point. Drag handle to shape curvature.">〜 curve</button>
+        <button type="button" class="pe-tool-btn"        data-tool="point"  title="Click curve point: convert back to straight (removes handles). Click empty: add straight point.">• point</button>
+        <button type="button" class="pe-tool-btn"        data-tool="delete" title="Click point: delete it. Click empty: nothing.">✕ delete</button>
+        <span style="flex:1"></span>
+        <span id="_pe_tool_hint" style="font-size:0.6rem;color:var(--text-faint)">click empty to add · drag points to move · drag handles to shape</span>
+      </div>
       <div style="position:relative;background:var(--bg-deep);border:1px solid var(--glass-border);border-radius:4px;overflow:hidden">
         <canvas id="_pe_canvas" width="680" height="220" style="display:block;width:100%;height:220px;cursor:crosshair"></canvas>
         <div id="_pe_canvas_tip" style="position:absolute;pointer-events:none;background:rgba(0,0,0,0.85);color:#fff;font-family:monospace;font-size:0.66rem;padding:2px 6px;border-radius:3px;display:none;z-index:1;white-space:nowrap"></div>
@@ -43494,7 +46002,25 @@ Begin:`;
     // The actions array is the single source of truth. Both the canvas
     // and the JSON textarea are views on it. Mutations go through the
     // helpers below so views stay in sync.
-    let _ceActions  = (init.actions || []).slice().sort((a, b) => a.at - b.at);
+    // Round 27 — Bézier handles. Each action may carry an `h: {dx, dy}`
+    // describing its symmetric tangent (out-tangent in time/pos units;
+    // in-tangent is the mirror). When both endpoints of a segment are
+    // straight (no h), the segment is a line — same as before. We
+    // sanitize on init so external init.actions can't smuggle malformed
+    // handle objects.
+    function _sanitizeAction(a) {
+      const at = Number(a?.at), pos = Number(a?.pos);
+      if (!Number.isFinite(at) || !Number.isFinite(pos)) return null;
+      const out = { at, pos: Math.max(0, Math.min(100, pos)) };
+      if (a && a.h && Number.isFinite(a.h.dx) && Number.isFinite(a.h.dy)) {
+        out.h = { dx: Number(a.h.dx), dy: Number(a.h.dy) };
+      }
+      return out;
+    }
+    let _ceActions  = (init.actions || [])
+      .map(_sanitizeAction)
+      .filter(Boolean)
+      .sort((a, b) => a.at - b.at);
     let _ceDuration = Math.max(1000, _ceActions.at(-1)?.at ?? 60000);
     let _ceDrag     = null; // { idx, startX, startY, origAt, origPos, lockAxis }
     let _ceHover    = -1;   // index of point under cursor (-1 = none)
@@ -43506,6 +46032,14 @@ Begin:`;
     let _ceMarquee  = null;           // { x0, y0, x1, y1 } when active
     let _ceGroupDrag = null;          // { startX, startY, origPositions: Map<obj,{at,pos}>, lockX, lockY }
     function _ceClearSelection() { _ceSelected.clear(); }
+    // Round 27 — tool mode + handle drag state. _ceTool is one of
+    // 'move' | 'curve' | 'point' | 'delete'. _ceHandleDrag tracks an
+    // in-progress drag of a handle endpoint: { idx, startX, startY,
+    // origDx, origDy }. Handles are SYMMETRIC (one logical handle per
+    // smooth point) — dragging the out-handle moves the in-handle to
+    // mirror, which keeps tangent continuity through the point.
+    let _ceTool       = 'move';
+    let _ceHandleDrag = null;
 
     const canvas = $$('_pe_canvas');
     const ctx    = canvas.getContext('2d');
@@ -43548,6 +46082,130 @@ Begin:`;
       return Math.max(0, Math.min(100, (1 - (y - PAD.t) / Math.max(1, m.plotH)) * 100));
     }
 
+    // Round 27 — Bézier curve helpers ────────────────────────────────
+    // Default tangent length for a fresh curve point: ~1/4 of the
+    // average neighbor spacing in time, with zero vertical bias.
+    // Produces a gently sloped curve that the user can then shape.
+    function _ceDefaultHandle(idx) {
+      const a = _ceActions[idx];
+      const prev = _ceActions[idx - 1];
+      const next = _ceActions[idx + 1];
+      let dx, dy;
+      if (prev && next) {
+        // Symmetric: tangent direction matches the chord through neighbors,
+        // length scaled to give visible-but-subtle curvature.
+        dx = (next.at  - prev.at)  / 6;
+        dy = (next.pos - prev.pos) / 6;
+      } else if (prev) {
+        dx = Math.max(50, (a.at - prev.at) / 3);
+        dy = 0;
+      } else if (next) {
+        dx = Math.max(50, (next.at - a.at) / 3);
+        dy = 0;
+      } else {
+        dx = 200; dy = 0;
+      }
+      return { dx, dy };
+    }
+    function _ceMakeCurve(idx) {
+      if (idx < 0 || idx >= _ceActions.length) return false;
+      if (_ceActions[idx].h) return false;  // already a curve point
+      _ceActions[idx].h = _ceDefaultHandle(idx);
+      return true;
+    }
+    function _ceMakeStraight(idx) {
+      if (idx < 0 || idx >= _ceActions.length) return false;
+      if (!_ceActions[idx].h) return false;
+      delete _ceActions[idx].h;
+      return true;
+    }
+    function _ceDeletePoint(idx) {
+      if (idx < 0 || idx >= _ceActions.length) return false;
+      // Refuse to delete if it would leave the array empty — patterns
+      // need at least one point.
+      if (_ceActions.length <= 1) return false;
+      const obj = _ceActions[idx];
+      _ceActions.splice(idx, 1);
+      _ceSelected.delete(obj);
+      return true;
+    }
+    /** Hit-test handle endpoints. Returns { idx, side } where side is
+     *  'out' or 'in', or null. Both sides are draggable; dragging
+     *  either updates h symmetrically (out-handle is the source of truth).
+     *  Only curve points (those with .h) are tested. */
+    function _ceHitTestHandle(x, y, tolPx = 7) {
+      const tolSq = tolPx * tolPx;
+      for (let i = 0; i < _ceActions.length; i++) {
+        const a = _ceActions[i];
+        if (!a.h) continue;
+        // Out
+        const ohx = _ceTimeToX(a.at + a.h.dx);
+        const ohy = _cePosToY(a.pos + a.h.dy);
+        const d1 = (x - ohx) * (x - ohx) + (y - ohy) * (y - ohy);
+        if (d1 < tolSq) return { idx: i, side: 'out' };
+        // In (mirrored)
+        const ihx = _ceTimeToX(a.at - a.h.dx);
+        const ihy = _cePosToY(a.pos - a.h.dy);
+        const d2 = (x - ihx) * (x - ihx) + (y - ihy) * (y - ihy);
+        if (d2 < tolSq) return { idx: i, side: 'in' };
+      }
+      return null;
+    }
+    /** Cubic Bézier evaluation at parameter t in [0,1]. Returns {at, pos}. */
+    function _ceCubicAt(p0, p1, t) {
+      const cp1at  = p0.at  + (p0.h ? p0.h.dx : 0);
+      const cp1pos = p0.pos + (p0.h ? p0.h.dy : 0);
+      const cp2at  = p1.at  - (p1.h ? p1.h.dx : 0);
+      const cp2pos = p1.pos - (p1.h ? p1.h.dy : 0);
+      const it = 1 - t;
+      const it2 = it * it, t2 = t * t;
+      const at  = it2*it*p0.at  + 3*it2*t*cp1at  + 3*it*t2*cp2at  + t2*t*p1.at;
+      const pos = it2*it*p0.pos + 3*it2*t*cp1pos + 3*it*t2*cp2pos + t2*t*p1.pos;
+      return { at, pos };
+    }
+    /** Densify all Bézier segments into linear samples for engine
+     *  consumption. Pure: returns a fresh array of {at, pos} (no h).
+     *  Sample step is ~50ms — enough fidelity for haptic playback at
+     *  funscript's typical 10–20Hz update rate, with the engine's
+     *  built-in linear interpolation smoothing the rest. Pass-through
+     *  fast path: if no point has h, returns a slice of the input. */
+    function _ceDensifyForEngine(actions, sampleMs = 50) {
+      const hasCurves = actions.some(a => a && a.h);
+      if (!hasCurves) {
+        return actions.map(a => ({ at: Math.round(a.at), pos: Math.round(a.pos) }));
+      }
+      const out = [];
+      out.push({ at: Math.round(actions[0].at), pos: Math.round(actions[0].pos) });
+      for (let i = 0; i < actions.length - 1; i++) {
+        const p0 = actions[i], p1 = actions[i + 1];
+        const dur = Math.max(0, p1.at - p0.at);
+        if ((p0.h || p1.h) && dur > 0) {
+          const steps = Math.max(2, Math.ceil(dur / sampleMs));
+          for (let s = 1; s < steps; s++) {
+            const sample = _ceCubicAt(p0, p1, s / steps);
+            out.push({
+              at:  Math.round(sample.at),
+              pos: Math.max(0, Math.min(100, Math.round(sample.pos))),
+            });
+          }
+        }
+        out.push({
+          at:  Math.round(p1.at),
+          pos: Math.max(0, Math.min(100, Math.round(p1.pos))),
+        });
+      }
+      // Deduplicate samples that landed on the same `at` (rounding
+      // collisions); engines treat duplicate timestamps as zero-duration
+      // segments which can skip frames.
+      const seen = new Set();
+      return out.filter(p => {
+        const k = p.at;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    }
+
     function _ceRender() {
       const m = _ceMetrics();
       const { w, h } = m;
@@ -43587,28 +46245,87 @@ Begin:`;
       ctx.fillText(`${(_ceDuration/2000).toFixed(1)}s`, PAD.l + m.plotW/2, h - 5);
       ctx.fillText(`${(_ceDuration/1000).toFixed(1)}s`, PAD.l + m.plotW, h - 5);
 
-      // Curve fill (subtle)
+      // Curve fill (subtle) — follows the same Bézier path as the line
+      // when handles are present, so the area under the curve matches
+      // the visual line.
       if (_ceActions.length >= 2) {
         ctx.beginPath();
         ctx.moveTo(_ceTimeToX(_ceActions[0].at), _cePosToY(0));
-        for (const a of _ceActions) ctx.lineTo(_ceTimeToX(a.at), _cePosToY(a.pos));
+        ctx.lineTo(_ceTimeToX(_ceActions[0].at), _cePosToY(_ceActions[0].pos));
+        for (let i = 1; i < _ceActions.length; i++) {
+          const p0 = _ceActions[i - 1], p1 = _ceActions[i];
+          const x1 = _ceTimeToX(p1.at), y1 = _cePosToY(p1.pos);
+          if (p0.h || p1.h) {
+            const cp1x = _ceTimeToX(p0.at  + (p0.h ? p0.h.dx : 0));
+            const cp1y = _cePosToY(p0.pos + (p0.h ? p0.h.dy : 0));
+            const cp2x = _ceTimeToX(p1.at  - (p1.h ? p1.h.dx : 0));
+            const cp2y = _cePosToY(p1.pos - (p1.h ? p1.h.dy : 0));
+            ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x1, y1);
+          } else {
+            ctx.lineTo(x1, y1);
+          }
+        }
         ctx.lineTo(_ceTimeToX(_ceActions.at(-1).at), _cePosToY(0));
         ctx.closePath();
         ctx.fillStyle = 'rgba(120,180,240,0.10)';
         ctx.fill();
       }
 
-      // Curve line
+      // Curve line — Round 27 uses Bézier between any two points where
+      // at least one endpoint has an `h` handle. Pure straight segments
+      // (both endpoints without h) keep the original lineTo path so
+      // legacy patterns render identically.
       if (_ceActions.length >= 1) {
         ctx.beginPath();
-        for (let i = 0; i < _ceActions.length; i++) {
-          const x = _ceTimeToX(_ceActions[i].at);
-          const y = _cePosToY(_ceActions[i].pos);
-          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        ctx.moveTo(_ceTimeToX(_ceActions[0].at), _cePosToY(_ceActions[0].pos));
+        for (let i = 1; i < _ceActions.length; i++) {
+          const p0 = _ceActions[i - 1], p1 = _ceActions[i];
+          const x1 = _ceTimeToX(p1.at), y1 = _cePosToY(p1.pos);
+          if (p0.h || p1.h) {
+            const cp1x = _ceTimeToX(p0.at  + (p0.h ? p0.h.dx : 0));
+            const cp1y = _cePosToY(p0.pos + (p0.h ? p0.h.dy : 0));
+            const cp2x = _ceTimeToX(p1.at  - (p1.h ? p1.h.dx : 0));
+            const cp2y = _cePosToY(p1.pos - (p1.h ? p1.h.dy : 0));
+            ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x1, y1);
+          } else {
+            ctx.lineTo(x1, y1);
+          }
         }
         ctx.strokeStyle = 'rgba(120,180,240,0.85)';
         ctx.lineWidth = 1.5;
         ctx.stroke();
+      }
+
+      // Round 27 — Bézier handles for curve points. Drawn AFTER the
+      // curve line (so they overlay) and BEFORE the anchor dots (so
+      // anchors stay clearly clickable). Each smooth point shows two
+      // handles: the out-tangent (right) and the mirrored in-tangent
+      // (left). Both are draggable and update the same `h` symmetrically.
+      for (let i = 0; i < _ceActions.length; i++) {
+        const a = _ceActions[i];
+        if (!a.h) continue;
+        const ax  = _ceTimeToX(a.at);
+        const ay  = _cePosToY(a.pos);
+        const ohx = _ceTimeToX(a.at + a.h.dx);
+        const ohy = _cePosToY(a.pos + a.h.dy);
+        const ihx = _ceTimeToX(a.at - a.h.dx);
+        const ihy = _cePosToY(a.pos - a.h.dy);
+        // Tangent line (anchor to handles)
+        ctx.beginPath();
+        ctx.moveTo(ihx, ihy); ctx.lineTo(ax, ay); ctx.lineTo(ohx, ohy);
+        ctx.strokeStyle = 'rgba(200,200,220,0.45)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // Handle endpoints
+        for (const [hx, hy] of [[ohx, ohy], [ihx, ihy]]) {
+          ctx.beginPath();
+          ctx.arc(hx, hy, 3, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(220,220,240,0.92)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+        }
       }
 
       // Points
@@ -43706,7 +46423,64 @@ Begin:`;
     canvas.addEventListener('mousedown', (e) => {
       if (e.button === 2) return; // right-click handled by contextmenu
       const { x, y } = _ceCanvasPos(e);
+
+      // Round 27 — handle drag takes priority over everything else.
+      // A click on a handle endpoint always starts a curvature drag,
+      // regardless of the active tool. This mirrors how all major curve
+      // editors work — handles are always interactive.
+      const handleHit = _ceHitTestHandle(x, y, 8);
+      if (handleHit) {
+        const a = _ceActions[handleHit.idx];
+        _ceHandleDrag = {
+          idx:    handleHit.idx,
+          side:   handleHit.side,
+          origDx: a.h.dx,
+          origDy: a.h.dy,
+          startX: x,
+          startY: y,
+        };
+        return;
+      }
+
       const hit = _ceHitTest(x, y, 10);
+
+      // Round 27 — non-default tool modes intercept point clicks.
+      // 'curve'/'point'/'delete' all have explicit point-target semantics
+      // and do NOT initiate drags. 'move' falls through to the original
+      // drag/marquee/add behavior for full back-compat with prior muscle
+      // memory (most users will leave the tool on 'move').
+      if (_ceTool !== 'move' && hit >= 0 && !e.shiftKey && !e.altKey) {
+        const obj = _ceActions[hit];
+        if (_ceTool === 'curve') {
+          // Make the point a curve point (idempotent — does nothing
+          // if it already is) and immediately enter handle-drag so the
+          // user can shape it without a second click.
+          _ceMakeCurve(hit);
+          // Start handle drag on the OUT side at the current position.
+          _ceHandleDrag = {
+            idx: hit, side: 'out',
+            origDx: obj.h.dx, origDy: obj.h.dy,
+            startX: x, startY: y,
+          };
+          _ceSyncToJson();
+          _ceRender();
+          return;
+        }
+        if (_ceTool === 'point') {
+          if (_ceMakeStraight(hit)) {
+            _ceSyncToJson();
+            _ceRender();
+          }
+          return;
+        }
+        if (_ceTool === 'delete') {
+          if (_ceDeletePoint(hit)) {
+            _ceSyncToJson();
+            _ceRender();
+          }
+          return;
+        }
+      }
 
       if (hit >= 0) {
         const obj = _ceActions[hit];
@@ -43744,12 +46518,24 @@ Begin:`;
         _ceMarquee = { x0: x, y0: y, x1: x, y1: y };
         if (!e.shiftKey) _ceClearSelection();
         _ceRender();
+      } else if (_ceTool === 'delete') {
+        // Round 27 — delete tool ignores empty-space clicks. Adding a
+        // point in delete-mode would contradict user intent.
+        return;
       } else {
-        // Click empty (no Alt) → add a point AND clear selection
+        // Click empty (no Alt) → add a point AND clear selection.
+        // In 'curve' tool mode the new point is created with a default
+        // tangent so it joins the surrounding curve smoothly.
         _ceClearSelection();
         const t = _ceXToTime(x), p = _ceYToPos(y);
-        _ceActions.push({ at: Math.round(t), pos: Math.round(p) });
+        const newPoint = { at: Math.round(t), pos: Math.round(p) };
+        _ceActions.push(newPoint);
         _ceActions.sort((a, b) => a.at - b.at);
+        if (_ceTool === 'curve') {
+          // Find the index of the new point post-sort and curve-ify it.
+          const newIdx = _ceActions.indexOf(newPoint);
+          if (newIdx >= 0) _ceMakeCurve(newIdx);
+        }
         _ceSyncToJson();
         _ceRender();
       }
@@ -43771,6 +46557,41 @@ Begin:`;
           if (px >= xMin && px <= xMax && py >= yMin && py <= yMax) _ceSelected.add(a);
         }
         _ceRender();
+        return;
+      }
+      if (_ceHandleDrag) {
+        // Round 27 — handle drag. Convert pixel delta to time/pos delta
+        // and apply to the point's `h` symmetric offset. Dragging the
+        // 'in' side flips the sign so the user-facing motion always
+        // matches the mouse: pulling left expands the in-handle's reach.
+        const m = _ceMetrics();
+        const a = _ceActions[_ceHandleDrag.idx];
+        if (!a || !a.h) {
+          _ceHandleDrag = null;
+        } else {
+          const dxPx = x - _ceHandleDrag.startX;
+          const dyPx = y - _ceHandleDrag.startY;
+          const dxT  = (dxPx / m.plotW) * _ceDuration;
+          const dyP  = -(dyPx / m.plotH) * 100;        // y inverted
+          const sign = _ceHandleDrag.side === 'out' ? 1 : -1;
+          a.h.dx = _ceHandleDrag.origDx + sign * dxT;
+          a.h.dy = _ceHandleDrag.origDy + sign * dyP;
+          // Cap handle reach so it can't extend past the next/prev anchor —
+          // keeps the curve well-behaved (no self-intersecting loops in
+          // the normal direction). Vertical clamp also keeps cp positions
+          // visible inside the canvas.
+          const prev = _ceActions[_ceHandleDrag.idx - 1];
+          const next = _ceActions[_ceHandleDrag.idx + 1];
+          if (next) a.h.dx = Math.min(a.h.dx, (next.at - a.at) * 0.95);
+          if (prev) a.h.dx = Math.max(a.h.dx, -(a.at - prev.at) * 0.95);
+          a.h.dy = Math.max(-100, Math.min(100, a.h.dy));
+          tipEl.style.display = 'block';
+          tipEl.textContent = `handle · Δt ${(a.h.dx/1000).toFixed(2)}s · Δp ${a.h.dy.toFixed(0)}`;
+          const r = canvas.getBoundingClientRect();
+          tipEl.style.left = (e.clientX - r.left + 10) + 'px';
+          tipEl.style.top  = (e.clientY - r.top  - 24) + 'px';
+          _ceRender();
+        }
         return;
       }
       if (_ceGroupDrag) {
@@ -43834,6 +46655,12 @@ Begin:`;
       if (_ceDrag) {
         _ceActions.sort((a, b) => a.at - b.at);
         _ceDrag = null;
+        mutated = true;
+      }
+      if (_ceHandleDrag) {
+        // Handle drags don't reorder points (the anchor itself didn't move),
+        // so no sort needed — but we still flag mutation to sync JSON.
+        _ceHandleDrag = null;
         mutated = true;
       }
       if (mutated) {
@@ -44107,13 +46934,14 @@ Begin:`;
       if (!_ceActions.length) { notify.warn('Add at least one point before exporting.'); return; }
       const name = ($$('_pe_name').value || 'pattern').trim() || 'pattern';
       const tags = _peParseTags($$('_pe_tags')?.value || '');
-      // Action positions get pre-clamped to integer 0..100 — most
-      // funscript players expect ints, not floats. We round once on
-      // export rather than mutating _ceActions itself.
-      const actions = _ceActions.map(a => ({
-        at: Math.max(0, Math.round(a.at)),
-        pos: Math.max(0, Math.min(100, Math.round(a.pos))),
-      })).sort((a, b) => a.at - b.at);
+      // Round 27 — densify any Bézier curves into linear samples before
+      // export. Other players (OFS, ScriptAxis, funscript.io) don't
+      // understand `h` handles; sending the raw author-form would render
+      // as straight lines between anchors. Densifying preserves the
+      // visual + haptic shape at funscript-typical 50ms granularity.
+      const actions = _ceDensifyForEngine(
+        _ceActions.slice().sort((a, b) => a.at - b.at)
+      );
       const lastAt = actions.length ? actions[actions.length - 1].at : 0;
       const fs = {
         version: '1.0',
@@ -44161,6 +46989,33 @@ Begin:`;
       _ceResize();
       _ceSyncToJson();
     });
+
+    // Round 27 — tool toggle pill click handlers. Buttons live inside
+    // the modal so we scope the query to backdrop. Active state is
+    // visual only; the actual mode lives in _ceTool.
+    const _peToolButtons = backdrop.querySelectorAll('.pe-tool-btn');
+    const _peToolHint = $$('_pe_tool_hint');
+    function _setPeTool(t) {
+      if (!['move','curve','point','delete'].includes(t)) return;
+      _ceTool = t;
+      for (const btn of _peToolButtons) {
+        btn.classList.toggle('active', btn.dataset.tool === t);
+      }
+      // Update the cursor + hint text so users know what their click will do.
+      const cursorMap = { move: 'crosshair', curve: 'crosshair', point: 'pointer', delete: 'not-allowed' };
+      canvas.style.cursor = cursorMap[t] || 'crosshair';
+      const hintMap = {
+        move:   'click empty to add · drag points to move · drag handles to shape',
+        curve:  'click points to add curvature · click empty to add curve point',
+        point:  'click curve points to remove handles · click empty to add straight point',
+        delete: 'click points to delete · empty space ignored',
+      };
+      if (_peToolHint) _peToolHint.textContent = hintMap[t] || '';
+    }
+    for (const btn of _peToolButtons) {
+      btn.addEventListener('click', () => _setPeTool(btn.dataset.tool));
+    }
+
     // Re-render on window resize so the canvas tracks viewport changes
     const _ceResizeHandler = () => _ceResize();
     window.addEventListener('resize', _ceResizeHandler);
@@ -44198,6 +47053,20 @@ Begin:`;
         <button type="button" id="_macroExportAllBtn" class="btn secondary" style="padding:3px 10px;font-size:0.66rem">export all</button>
         <button type="button" id="_macroShareAllBtn"  class="btn secondary" style="padding:3px 10px;font-size:0.66rem">share bundle</button>
       </div>
+      <!-- Round 28 — Slot bindings. Five slots, one per number key 1-5.
+           Each binds a macro id; pressing the matching key during
+           session playback injects that macro instantly. Stored
+           independently from the macro list so deleting a bound macro
+           silently makes the slot a no-op (rather than corrupting
+           state). UX: dropdown picker per slot showing all macros,
+           plus an "—" option to unbind. -->
+      <details style="margin-bottom:10px;padding:6px 10px;background:rgba(255,255,255,0.025);border:0.5px solid rgba(255,255,255,0.08);border-radius:4px">
+        <summary style="font-size:0.72rem;color:var(--text-dim);cursor:pointer">▸ keyboard slots <span id="_macroSlotsCountLabel" style="color:var(--text-faint);font-weight:normal">— bind 1–5 to inject macros instantly</span></summary>
+        <div style="margin-top:8px;font-size:0.66rem;color:var(--text-faint);line-height:1.5;margin-bottom:8px">
+          Press number keys <code>1</code>–<code>5</code> during a session to fire the bound macro. Useful for partner-led training where the operator wants instant manual triggers without reaching for a menu. Bindings persist across sessions.
+        </div>
+        <div id="_macroSlotsList" style="display:grid;grid-template-columns:38px 1fr 60px;gap:6px 10px;align-items:center"></div>
+      </details>
       <div id="_macroLibraryList" style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:4px"></div>
       <div class="modal-actions" style="margin-top:14px">
         <button class="btn secondary" id="_macroLibClose">close</button>
@@ -44331,6 +47200,68 @@ Begin:`;
     backdrop.querySelector('#_macroLibClose').addEventListener('click', close);
     backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
 
+    // Round 28 — render slot dropdowns. Call from _renderList so adding/
+    // removing macros refreshes the slot picker options too. Standalone
+    // because the slot UI is independent of the macro-list rendering
+    // below it (different containers).
+    function _renderSlots() {
+      const slotsEl = backdrop.querySelector('#_macroSlotsList');
+      const countEl = backdrop.querySelector('#_macroSlotsCountLabel');
+      if (!slotsEl) return;
+      const slots = loadMacroSlots();
+      const allMacros = [
+        ...HAPTIC_MACROS.map(m => ({ id: m.id, name: m.name, builtin: true })),
+        ...loadUserMacros().map(m => ({ id: m.id, name: m.name, builtin: false })),
+      ];
+      const boundCount = Object.keys(slots).filter(k => slots[k]).length;
+      if (countEl) {
+        countEl.textContent = boundCount
+          ? `— ${boundCount} of 5 bound`
+          : '— bind 1–5 to inject macros instantly';
+      }
+      slotsEl.innerHTML = '';
+      for (let s = 1; s <= 5; s++) {
+        const keyEl = document.createElement('div');
+        keyEl.style.cssText = 'font-family:monospace;font-size:0.78rem;text-align:center;color:var(--neon-cyan);background:rgba(0,212,230,0.06);border:1px solid rgba(0,212,230,0.3);border-radius:3px;padding:3px 0';
+        keyEl.textContent = String(s);
+        const sel = document.createElement('select');
+        sel.style.cssText = 'padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.72rem;width:100%';
+        const noneOpt = document.createElement('option');
+        noneOpt.value = ''; noneOpt.textContent = '— unbound —';
+        sel.appendChild(noneOpt);
+        for (const m of allMacros) {
+          const opt = document.createElement('option');
+          opt.value = m.id;
+          opt.textContent = `${m.builtin ? '🔧 ' : '✏ '}${m.name}`;
+          if (slots[s] === m.id) opt.selected = true;
+          sel.appendChild(opt);
+        }
+        sel.addEventListener('change', () => {
+          setMacroSlot(s, sel.value || null);
+          _renderSlots();  // refresh count badge
+        });
+        // "▶ test" button — fires the macro instantly so the user can
+        // preview without having to start a session.
+        const testBtn = document.createElement('button');
+        testBtn.type = 'button';
+        testBtn.className = 'btn secondary';
+        testBtn.style.cssText = 'padding:2px 8px;font-size:0.62rem';
+        testBtn.textContent = '▶ test';
+        testBtn.disabled = !slots[s];
+        testBtn.addEventListener('click', () => {
+          const macro = _findHapticMacro(slots[s]);
+          if (macro) {
+            try { funscriptEngine.injectMacro(macro); notify.info?.(`Testing slot ${s}: ${macro.name}`); }
+            catch (err) { notify.error?.('Test failed: ' + (err?.message || err)); }
+          }
+        });
+        slotsEl.appendChild(keyEl);
+        slotsEl.appendChild(sel);
+        slotsEl.appendChild(testBtn);
+      }
+    }
+
+    _renderSlots();
     _renderList();
   }
 
@@ -45487,6 +48418,46 @@ Begin:`;
   // user-actionable.
   $('pfAge')?.addEventListener('change', () => {
     if (typeof _refreshSoundscapeHint === 'function') _refreshSoundscapeHint();
+    // Round 27 — when age bracket changes, re-evaluate whether the
+    // adult-unlock checkbox should be enabled. If the user just
+    // dropped their bracket to 18-20 or '', the unlock is force-
+    // disabled and unchecked (and the mode dropdown re-renders so
+    // any gated entries disappear).
+    try {
+      const adultEl = $('pfAdultUnlock');
+      if (adultEl) {
+        const ageEl = $('pfAge');
+        const ageEligible = !!ageEl && ['21-24','25-34','35-44','45-54','55-64','65+'].includes(ageEl.value);
+        if (!ageEligible) adultEl.checked = false;
+        adultEl.disabled = !ageEligible;
+        const lbl = $('pfAdultUnlockLabel');
+        if (lbl) lbl.style.opacity = ageEligible ? '1' : '0.5';
+      }
+      if (typeof _renderSessionModeDropdown === 'function') _renderSessionModeDropdown();
+      if (typeof _renderContentPacksGrid === 'function') _renderContentPacksGrid();
+    } catch {}
+  });
+  // Round 27 — adult-content opt-in. When toggled on, the mode dropdown
+  // re-renders to include gated entries; when off, it filters them out.
+  // Also auto-flips off the active mode if it was a gated one (defensive
+  // — the unlock toggle going off should not leave the user inside a
+  // gated session config).
+  $('pfAdultUnlock')?.addEventListener('change', e => {
+    try {
+      if (e.target.checked) {
+        // Show a one-time confirmation toast — keeps the action explicit.
+        notify.info?.('Mature content enabled. Additional session modes are now visible.');
+      } else {
+        // If the active session mode was adult-gated, fall back to standard.
+        const m = SESSION_MODES.find(x => x.id === state.activeSessionMode);
+        if (m?.adultGated) {
+          applySessionMode('standard');
+          notify.info?.('Mature content disabled. Session mode reset to Standard.');
+        }
+      }
+      if (typeof _renderSessionModeDropdown === 'function') _renderSessionModeDropdown();
+      if (typeof _renderContentPacksGrid === 'function') _renderContentPacksGrid();
+    } catch (err) { console.warn('[adult-unlock toggle]', err); }
   });
   // Practice space change → refresh the soundscape hint so the
   // space-aware nudge appears/disappears live.
@@ -46481,6 +49452,7 @@ Begin:`;
     document.querySelectorAll('#personaFilterTabs .filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === state.personaFilter));
     document.querySelectorAll('#methodFilterTabs .filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === state.methodFilter));
     renderPresets();
+    if (typeof _renderContentPacksGrid === 'function') _renderContentPacksGrid();
     renderPrograms();
     renderSessionHistory();
     renderHeatmap();
