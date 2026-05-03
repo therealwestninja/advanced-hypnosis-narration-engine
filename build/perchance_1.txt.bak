@@ -136,57 +136,6 @@ textToImagePlugin = {import:text-to-image-plugin}
 fullscreenButtonPlugin = {import:fullscreen-button-plugin}
 uploadPlugin = {import:upload-plugin}
 dynamicImport = {import:dynamic-import-plugin}
-
-// ════════════════════════════════════════════════════════════════════════
-// HNE DATA PLUGIN — baseline (English) data pack we control.
-// Sub-domain: perchance.org/advanced-hypnosis-narration-engine-data
-//
-// Holds the large static tables that used to live inline in the HTML pane:
-// BUILTIN_PERSONAS, INTENTION_TYPES, METHODS, SESSION_MODES, TOUR_STEPS,
-// PROGRAMS, PRESETS, SOS_SESSIONS, and ~14 others. Moving them out cut the
-// inline <script> by ~200KB so the JS parser stops choking.
-//
-// Exposes a single sync function: hneDataBundle() returning an object whose
-// keys are the table names and whose values are the table contents.
-//
-// The HTML pane reads it as `root.hneData.hneDataBundle()` from a tiny
-// bootstrap at the top of the inline <script>. Missing keys fall through
-// to empty defaults — the app degrades gracefully if the import fails.
-// ════════════════════════════════════════════════════════════════════════
-hneData = {import:advanced-hypnosis-narration-engine-data}
-
-// ════════════════════════════════════════════════════════════════════════
-// HNE LANGUAGE PACKS — community-authored translations of the data above.
-// Listed below for the Profile ▸ Options ▸ Language picker dropdown. Each
-// entry is a JSON object on its own line:
-//   {"id":"<bcp47-locale>","label":"<display name>","slug":"<perchance-slug>"}
-//
-// Loaded LAZILY via dynamicImport when the user picks a non-default language —
-// avoids paying the load cost for languages the user isn't using.
-//
-// CONTRACT for pack authors:
-//   1. Fork advanced-hypnosis-narration-engine-data.
-//   2. Translate any subset of keys returned by hneDataBundle(). Every key
-//      is optional — missing keys fall back to the English baseline above.
-//   3. Keep the shape identical (same key names, same value structures).
-//   4. Publish under your own slug; PR a one-line entry below to ship it
-//      in HNE's language picker for everyone.
-//
-// CRITICAL: AI prompt strings (systemPrompt, guidance, methodInstructions)
-// determine how the model narrates. Translating them changes the model's
-// voice. Test thoroughly — a poorly-translated systemPrompt can produce
-// degenerate AI output even though the UI looks fine.
-// ════════════════════════════════════════════════════════════════════════
-hneLanguagePacks
-  // ─── Default ────────────────────────────────────────────────────────
-  {"id":"en","label":"English (default)","slug":"advanced-hypnosis-narration-engine-data"}
-  // ─── Examples (uncomment + replace slug when published) ─────────────
-  // {"id":"es","label":"Español","slug":"hne-data-es"}
-  // {"id":"de","label":"Deutsch","slug":"hne-data-de"}
-  // {"id":"fr","label":"Français","slug":"hne-data-fr"}
-  // {"id":"ja","label":"日本語","slug":"hne-data-ja"}
-  // {"id":"pt","label":"Português","slug":"hne-data-pt"}
-
 // Round 24 — favicon-plugin lets us swap the browser tab icon during
 // sessions. The HTML-pane code uses this to surface the user's personal
 // symbol (set in profile) as the favicon while a session is playing,
