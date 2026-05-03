@@ -4515,7 +4515,7 @@ padding: 6px 10px; font-size: 1.1rem;
         </div>
         <div class="sidebar-separator" aria-hidden="true"></div>
         <div class="sidebar-profile" id="sidebarProfileHeader">
-          <div class="sidebar-avatar">🧠</div>
+          <div class="sidebar-avatar" id="sidebarAvatar">🧠</div>
           <div class="sidebar-profile-info">
             <div class="sidebar-profile-name" id="sidebarDisplayName">Practitioner</div>
             <div class="sidebar-profile-sub" id="sidebarStreak">—</div>
@@ -4523,6 +4523,14 @@ padding: 6px 10px; font-size: 1.1rem;
         </div>
         <div class="profile-form">
           <div class="pf-row"><label class="pf-label">First Name</label><input type="text" id="pfName" class="pf-input" maxlength="30" placeholder="(What do you call yourself?)"></div>
+          <div class="pf-row"><label class="pf-label">Personal Symbol</label>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <input type="text" id="pfPersonalSymbol" class="pf-input" maxlength="3" placeholder="🧠" style="flex:1;font-size:1.2em" title="An emoji or short text (1–3 characters) to represent you — shown glowing in the sidebar">
+              <div id="symbolQuickPick" style="display:flex;gap:3px;flex-wrap:wrap;padding:4px 0">
+                <!-- Quick-pick emoji buttons populated by JS -->
+              </div>
+            </div>
+          </div>
           <div class="pf-row" style="flex-direction:row;align-items:center;gap:8px">
             <input type="checkbox" id="pfUseFirstName" style="width:auto;margin:0">
             <label for="pfUseFirstName" class="pf-label" style="margin:0;cursor:pointer">Use first name in scripts?</label>
@@ -4815,6 +4823,81 @@ padding: 6px 10px; font-size: 1.1rem;
               <button class="btn primary"   id="anchorTapBtn"     type="button" style="flex:1;font-size:0.7rem;padding:6px">🔔 fire anchor now</button>
             </div>
             <div id="anchorTapCount" style="font-size:0.62rem;color:var(--text-faint);text-align:center;margin-top:6px"></div>
+          </details>
+
+          <!-- ── Roadmap #15+19 — Pre-session prep tray ───────────────
+               Combined home for the priming microquestionnaire (#19)
+               and the absorption gym (#15). Profile-level toggles let
+               the user opt out per feature; the tray itself surfaces
+               at session launch unless both are off. -->
+          <details class="pf-extended" style="margin-top:6px" id="prepTrayDetails">
+            <summary style="font-size:0.7rem;font-weight:600;color:var(--text);cursor:pointer;padding:6px 0">🎯 Pre-session prep</summary>
+            <div class="sublabel" style="font-size:0.58rem;margin-bottom:8px;color:var(--text-faint)">Two short additions to the moment between "begin" and the actual session: a 3-question priming row (the act of answering primes the response — Kirsch 1985), and a 60-second imagery warm-up that builds absorption over time. Both opt-out.</div>
+
+            <div class="pf-row" style="margin-top:8px">
+              <label class="pf-label" style="font-size:0.7rem">Priming questions</label>
+              <select id="pfPrepPriming" style="width:100%;padding:6px;font-size:0.74rem">
+                <option value="auto" selected>Auto (3×/week, then auto-skip)</option>
+                <option value="always">Always (every session)</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+            <div class="pf-row" style="margin-top:8px">
+              <label class="pf-label" style="font-size:0.7rem">Absorption warm-up</label>
+              <select id="pfPrepAbsorption" style="width:100%;padding:6px;font-size:0.74rem">
+                <option value="auto" selected>Auto (rotating, opt-in per session)</option>
+                <option value="always">Always (60s, every session)</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+
+            <div id="absorptionGymStats" style="margin-top:10px;display:none">
+              <div style="font-size:0.62rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">your vividness trend</div>
+              <canvas id="absorptionGymSparkline" width="240" height="40" style="width:100%;display:block;background:var(--bg-deep);border-left:2px solid var(--neon-cyan)"></canvas>
+              <div id="absorptionGymStatsRow" style="font-size:0.62rem;color:var(--text-faint);margin-top:4px"></div>
+            </div>
+
+            <button class="btn secondary" id="absorptionGymOpenBtn" type="button" style="width:100%;font-size:0.7rem;padding:6px;margin-top:8px">▶ try a warm-up now</button>
+          </details>
+
+          <!-- ── Roadmap #16 — Soundscape spatializer ──────────────────
+               Routes the soundscape through a Web Audio HRTF panner so
+               the ambient orbits around the listener (or stays at a
+               fixed compass position). Provides an exogenous spatial
+               scene for users who can't easily generate one mentally.
+               Wants headphones for full effect. -->
+          <details class="pf-extended" style="margin-top:6px" id="spatialDetails">
+            <summary style="font-size:0.7rem;font-weight:600;color:var(--text);cursor:pointer;padding:6px 0">🎧 Spatial soundscape</summary>
+            <div class="sublabel" style="font-size:0.58rem;margin-bottom:8px;color:var(--text-faint)">Routes the soundscape through a 3D audio panner so the ambient orbits around you (or sits at a fixed direction). Best with headphones — speakers reduce to a regular stereo pan. Provides a spatial scene without requiring you to imagine one.</div>
+
+            <div class="pf-row" style="margin-top:6px">
+              <label class="pf-label" style="font-size:0.7rem">Mode</label>
+              <select id="pfSpatialMode" style="width:100%;padding:6px;font-size:0.74rem">
+                <option value="off" selected>Off — flat stereo</option>
+                <option value="orbit-slow">Slow orbit (1 rev / 5 min)</option>
+                <option value="orbit-medium">Medium orbit (1 rev / 3 min)</option>
+                <option value="orbit-fast">Fast orbit (1 rev / 1 min — drift effect)</option>
+                <option value="fixed-front">Fixed — directly ahead</option>
+                <option value="fixed-behind">Fixed — directly behind</option>
+                <option value="fixed-above">Fixed — overhead (raised)</option>
+              </select>
+            </div>
+          </details>
+
+          <!-- ── Roadmap #21 — IFS skeptic-friendly framing ────────────
+               Profile-level overlay that adds parts-aware language to
+               the AI prompt regardless of persona. The script speaks
+               TO the skeptical / analytical / tired / resistant part
+               directly, instead of trying to bypass it. -->
+          <details class="pf-extended" style="margin-top:6px" id="ifsDetails">
+            <summary style="font-size:0.7rem;font-weight:600;color:var(--text);cursor:pointer;padding:6px 0">🧩 Parts-aware framing (IFS)</summary>
+            <div class="sublabel" style="font-size:0.58rem;margin-bottom:8px;color:var(--text-faint)">For users whose first response to suggestion is "yeah but". The script will explicitly speak to the part of you that's skeptical, analytical, tired, or resistant — inviting it to stay alert while the curious part does the practice. Composes with any persona.</div>
+            <select id="pfIfsMode" style="width:100%;padding:6px;font-size:0.74rem">
+              <option value="off" selected>Off — standard framing</option>
+              <option value="skeptic">Skeptic-aware — speaks to "the part that doesn't believe this works"</option>
+              <option value="parts">Parts-aware (IFS) — multiple parts, each addressed</option>
+              <option value="felt-sense">Felt-sense (Gendlin) — body-first, "where does this question live?"</option>
+            </select>
           </details>
 
           <!-- ── Personal Anchors ─────────────────────────────────────
@@ -7615,6 +7698,41 @@ I return to myself easily"></textarea>
       }
     });
   });
+
+  // Initialize personal symbol picker
+  document.addEventListener('DOMContentLoaded', function initSymbolPicker() {
+    const symbolInput = $('pfPersonalSymbol');
+    const quickPick = $('symbolQuickPick');
+    if (!symbolInput || !quickPick) return;
+
+    // Populate quick-pick emoji buttons
+    const symbols = ['🧠', '💫', '🌙', '✨', '🔮', '🌿', '🎭', '💎', '🌊', '🔥', '🪷', '⚡'];
+    symbols.forEach(sym => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = sym;
+      btn.style.cssText = 'padding:4px 8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;border-radius:4px;font-size:1em;transition:all 0.15s';
+      btn.onmouseover = () => { btn.style.background = 'var(--bg-hover)'; };
+      btn.onmouseout = () => { btn.style.background = 'var(--bg)'; };
+      btn.onclick = (e) => {
+        e.preventDefault();
+        symbolInput.value = sym;
+        symbolInput.dispatchEvent(new Event('change', { bubbles: true }));
+        symbolInput.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      quickPick.appendChild(btn);
+    });
+
+    // Update sidebar avatar in real-time when input changes
+    symbolInput.addEventListener('input', () => {
+      const avatar = $('sidebarAvatar');
+      if (avatar) avatar.textContent = symbolInput.value || '🧠';
+    });
+
+    symbolInput.addEventListener('change', () => {
+      saveProfile();
+    });
+  });
 </script>
 <script>
 
@@ -8660,15 +8778,15 @@ I return to myself easily"></textarea>
   } catch {}
 
   const PHASE_DURATIONS = {
-    micro:    { introduction: 12, permission: 8,  settling: 15,  induction: 30,  deepener: 15,  level: 10,  work: 60,   praise: 12, reward: 20, lightener: 15,  wake: 12, reintroduction: 20, teaching: 25,  training: 45,  mission: 20,  goal: 30  },
-    quick:    { introduction: 20, permission: 15, settling: 30,  induction: 90,  deepener: 30,  level: 20,  work: 120,  praise: 20, reward: 30, lightener: 30,  wake: 20, reintroduction: 30, teaching: 45,  training: 75,  mission: 30,  goal: 50  },
-    short:    { introduction: 30, permission: 20, settling: 60,  induction: 180, deepener: 60,  level: 40,  work: 240,  praise: 30, reward: 45, lightener: 45,  wake: 30, reintroduction: 45, teaching: 75,  training: 150, mission: 45,  goal: 75  },
-    medium:   { introduction: 45, permission: 25, settling: 120, induction: 300, deepener: 180, level: 60,  work: 360,  praise: 45, reward: 60, lightener: 60,  wake: 40, reintroduction: 60, teaching: 90,  training: 240, mission: 60,  goal: 100 },
-    long:     { introduction: 60, permission: 30, settling: 150, induction: 420, deepener: 300, level: 90,  work: 540,  praise: 60, reward: 75, lightener: 75,  wake: 50, reintroduction: 75, teaching: 120, training: 360, mission: 75,  goal: 130 },
+    micro:    { introduction: 12, permission: 8,  settling: 15,  induction: 30,  deepener: 15,  level: 10,  work: 60,   praise: 12, reward: 20, lightener: 15,  wake: 12, reintroduction: 20, teaching: 25,  training: 45,  mission: 20,  goal: 30,  pendulation: 35 },
+    quick:    { introduction: 20, permission: 15, settling: 30,  induction: 90,  deepener: 30,  level: 20,  work: 120,  praise: 20, reward: 30, lightener: 30,  wake: 20, reintroduction: 30, teaching: 45,  training: 75,  mission: 30,  goal: 50,  pendulation: 55 },
+    short:    { introduction: 30, permission: 20, settling: 60,  induction: 180, deepener: 60,  level: 40,  work: 240,  praise: 30, reward: 45, lightener: 45,  wake: 30, reintroduction: 45, teaching: 75,  training: 150, mission: 45,  goal: 75,  pendulation: 75 },
+    medium:   { introduction: 45, permission: 25, settling: 120, induction: 300, deepener: 180, level: 60,  work: 360,  praise: 45, reward: 60, lightener: 60,  wake: 40, reintroduction: 60, teaching: 90,  training: 240, mission: 60,  goal: 100,  pendulation: 110 },
+    long:     { introduction: 60, permission: 30, settling: 150, induction: 420, deepener: 300, level: 90,  work: 540,  praise: 60, reward: 75, lightener: 75,  wake: 50, reintroduction: 75, teaching: 120, training: 360, mission: 75,  goal: 130,  pendulation: 150 },
 
-    extended: { introduction: 75, permission: 35, settling: 180, induction: 480, deepener: 360, level: 100, work: 720,  praise: 75, reward: 90,  lightener: 90,  wake: 60, reintroduction: 90,  teaching: 150, training: 480, mission: 90,  goal: 160 },
-    deep:     { introduction: 90, permission: 40, settling: 210, induction: 540, deepener: 420, level: 120, work: 900,  praise: 90, reward: 105, lightener: 105, wake: 70, reintroduction: 105, teaching: 180, training: 600, mission: 100, goal: 190 },
-    marathon: { introduction:100, permission: 45, settling: 240, induction: 600, deepener: 540, level: 180, work: 1080, praise:100, reward: 120, lightener: 120, wake: 80, reintroduction: 120, teaching: 200, training: 720, mission: 120, goal: 220 },
+    extended: { introduction: 75, permission: 35, settling: 180, induction: 480, deepener: 360, level: 100, work: 720,  praise: 75, reward: 90,  lightener: 90,  wake: 60, reintroduction: 90,  teaching: 150, training: 480, mission: 90,  goal: 160,  pendulation: 180 },
+    deep:     { introduction: 90, permission: 40, settling: 210, induction: 540, deepener: 420, level: 120, work: 900,  praise: 90, reward: 105, lightener: 105, wake: 70, reintroduction: 105, teaching: 180, training: 600, mission: 100, goal: 190,  pendulation: 210 },
+    marathon: { introduction:100, permission: 45, settling: 240, induction: 600, deepener: 540, level: 180, work: 1080, praise:100, reward: 120, lightener: 120, wake: 80, reintroduction: 120, teaching: 200, training: 720, mission: 120, goal: 220,  pendulation: 240 },
   };
 
   const _FALLBACK_PERSONA = { id: 'fallback', name: 'Guide', tagline: '', category: 'contemplative', systemPrompt: '' };
@@ -12200,6 +12318,7 @@ I return to myself easily"></textarea>
     return {
       name: $('pfName')?.value?.trim() || '',
       useFirstName: !!$('pfUseFirstName')?.checked,
+      personalSymbol: $('pfPersonalSymbol')?.value?.trim() || '🧠',
       pronouns: $('pfPronouns')?.value || '',
       age: $('pfAge')?.value || '',
 
@@ -12274,6 +12393,7 @@ I return to myself easily"></textarea>
 
     const useName = $('pfUseFirstName');
     if (useName) useName.checked = !!p.useFirstName;
+    setVal('pfPersonalSymbol', p.personalSymbol, '🧠');
     setVal('pfPronouns', p.pronouns, '');
 
     let _migratedAge = p.age;
@@ -12344,6 +12464,8 @@ I return to myself easily"></textarea>
     const nameEl = $('sidebarDisplayName');
 
     if (nameEl) nameEl.textContent = p.name || 'Practitioner';
+    const avatarEl = $('sidebarAvatar');
+    if (avatarEl) avatarEl.textContent = p.personalSymbol || '🧠';
     if (opts.save !== false) saveProfile();
   }
 
@@ -12991,6 +13113,43 @@ I return to myself easily"></textarea>
         }
       }
     } catch (e) {  }
+
+    // Roadmap #19 — Surface today's priming answers as ambient context
+    // for the AI. The questionnaire's primary effect is on the user
+    // (the act of answering primes expectancy), but feeding the answers
+    // through to the AI lets the script gently match the user's
+    // self-rated openness — direct language for high willingness, more
+    // permissive for low. Only the most recent (≤4 hour) entry counts.
+    try {
+      const log = JSON.parse(localStorage.getItem('hne.primingLogV1') || '[]');
+      const fresh = log.filter(e => e.ts > Date.now() - 4 * 60 * 60 * 1000).pop();
+      if (fresh) {
+        const avg = (fresh.openness + fresh.imagination + fresh.willingness) / 3;
+        let hint = '';
+        if (avg <= 2) hint = 'low — the listener self-reported low openness/willingness in the last hour. Lean permissive: invitations rather than commands, no pressure to feel anything specific, validate their critical mind explicitly';
+        else if (avg >= 4) hint = 'high — the listener self-reported high openness/willingness. Direct and confident language is appropriate; you can lead more firmly';
+        else hint = 'moderate — default balanced approach';
+        parts.push(`Listener's self-rated state right now (1–5 scale): openness ${fresh.openness}, imagination ${fresh.imagination}, willingness ${fresh.willingness}. Tone: ${hint}.`);
+      }
+    } catch {}
+
+    // ── Roadmap #21 — IFS / parts-aware framing overlay ───────────────
+    // Composes with any persona. Adds prompt instruction that re-shapes
+    // how the script addresses internal resistance.
+    const ifsMode = $('pfIfsMode')?.value || 'off';
+    if (ifsMode === 'skeptic') {
+      parts.push(
+        'PARTS-AWARE FRAMING (skeptic): Throughout the script, occasionally address THE PART OF THE LISTENER THAT DOESN\'T BELIEVE THIS WORKS directly. Use phrases like "and the part of you that\'s tracking whether this is working can keep doing that — that\'s its job", "the analytical part is welcome to stay analytical", "the curious part can come along; the skeptical part can stay back and watch". Never argue with the skeptical part. Never ask the listener to suspend disbelief. The skeptical part remaining active is COMPATIBLE with the practice, not opposed to it. Use this register about once per phase — not constantly, not absent.'
+      );
+    } else if (ifsMode === 'parts') {
+      parts.push(
+        'PARTS-AWARE FRAMING (IFS-style): Address the listener as having multiple parts — the part that\'s tired, the part that\'s skeptical, the part that\'s here to do the practice, the part that\'s already been working hard today. Never claim all parts agree. Never push for unanimity. Phrases like "we\'re not asking all of you to come; just the part that\'s curious", "the protective part can stay nearby", "the tired part doesn\'t have to do anything tonight — it can just witness". This composition is essential — the listener\'s internal multiplicity is honored, not overridden.'
+      );
+    } else if (ifsMode === 'felt-sense') {
+      parts.push(
+        'FELT-SENSE FRAMING (Gendlin Focusing): Body-first throughout. Whenever you\'d normally ask the listener to imagine, picture, or visualize something, instead ask where in the body this question or topic lives. "Where does the tightness sit right now? Just below the breastbone, or higher? Notice the shape of it. Don\'t name it yet — let the body answer first." The script never demands imagery; it always returns to bodily sensation as the primary site of work. Cognitive observations are welcome but always tested against "and how does that land in the body right now?"'
+      );
+    }
 
     const result = parts.length > 0 ? '\nSUBJECT PROFILE: ' + parts.join(' ') : '';
     sdLog('getProfileContext built', { fieldCount: parts.length, charCount: result.length });
@@ -21870,6 +22029,22 @@ Output ONLY the script text — no stage directions, no square-bracket notes oth
       const base = phaseBase(p);
       if (base === 'affirm') {
         phaseInstructions[p] = `Write a brief affirmation interlude (~40-60 words). Deliver these affirmations in ${persona.name}'s voice, woven into flowing, hypnotic language:\n${affirmLines.map(l => `"${l}"`).join('\n')}\nUse the user's exact words. Place each affirmation on its own line so each one has time to settle. Poetic, rhythmic, repetitive. Output ONLY script text — no stage directions, no square-bracket notes.`;
+      } else if (base === 'pendulation') {
+        // Roadmap #28 — Felt-sense pendulation phase. Levine-style
+        // somatic-experiencing oscillation between sensing activation
+        // and sensing settling, scaled down for solo practice. The
+        // listener does not generate imagery; they only locate
+        // sensation. Bypasses cognitive resistance because the move
+        // is interoceptive, not imaginative.
+        phaseInstructions[p] = `Write a PENDULATION phase (~${targetWords.pendulation || 110} words). This is somatic-experiencing-style oscillation — NEVER ask the listener to imagine, picture, or visualize anything. Only ask them to locate sensation in the body.
+
+Structure (in ${persona.name}'s voice):
+  1. Briefly invite attention to whatever activation is present right now — tightness, restlessness, alertness, agitation. Where does it sit? What's its shape, weight, temperature? Do not interpret. Do not soothe.
+  2. Pause. Then invite attention to whatever settling is present right now — softness, warmth, breath, support against the chair, the part of the body that's already calm. Where does it sit?
+  3. Pause. Then ask them to move attention back to the activation, briefly — just locate it again — and then back to the settling.
+  4. Two or three slow oscillations. Always end on the settling, never on the activation.
+
+Tone: matter-of-fact, body-anatomist, not therapist. Pauses are long; sentences are short. Output ONLY script text — no stage directions, no square-bracket notes.`;
       } else if (base === 'sounding') {
 
         phaseInstructions[p] = `Write a SOUNDING phase (~80-130 words). This is a brief meta-awareness moment — a "depth check" where you invite the user to NOTICE how they feel right now WITHOUT changing it. The narrator pauses the descent or work, lets the user register their own state, then continues.
@@ -26362,6 +26537,12 @@ Start immediately:`;
   }
 
   async function startSession() {
+    // Roadmap #15+19 — fire the prep tray. Resolves immediately if both
+    // priming + absorption are off, or if priming is auto-mode and
+    // weekly cap is hit. Awaiting this blocks session launch on the
+    // user's tray interaction, which is the entire point of the
+    // priming intervention.
+    try { await runPrepTray({ context: 'session' }); } catch (e) { console.warn('[prep tray]', e); }
 
     if (state._preGenInProgress || state._preGenScheduled) {
       cancelActivePreGen('user starting active session');
@@ -34404,6 +34585,320 @@ $('jumpGuideBtn')?.addEventListener('click', () => goToStep(1));
 
   const SOS_SESSIONS = (window.__HNE_DATA__ && window.__HNE_DATA__.SOS_SESSIONS) || [];
 
+
+    // ====================================================================
+    // PRE-SESSION PREP TRAY (Roadmap #15 + #19)
+    // ====================================================================
+    // Two combined features:
+    //   • #19 priming microquestionnaire — 3 single-tap 1–5 ratings
+    //     ("openness", "imagination", "willingness to let something happen")
+    //     that prime expectancy via the act of answering.
+    //   • #15 absorption gym — rotating 60-second imagery exercises
+    //     (visual / aesthetic / synesthesia) with self-rated vividness.
+    //     Scores tracked over time, surfaced as a sparkline.
+    //
+    // The tray fires on session launch (right before the script plays).
+    // Skip mechanics: priming Qs cap at 3×/week if pfPrepPriming=auto;
+    // absorption warm-up is opt-in per launch unless pfPrepAbsorption=always.
+    // Hard-skipped entirely if the user toggles both off.
+    // ====================================================================
+  
+    const ABSORPTION_LOG_KEY = 'hne.absorptionLogV1';   // [{ts, kind, score 0-3}]
+    const PRIMING_LOG_KEY    = 'hne.primingLogV1';      // [{ts, openness, imagination, willingness}]
+  
+    const ABSORPTION_EXERCISES = [
+      {
+        id: 'apple', kind: 'visual',
+        title: 'The apple',
+        prompt: 'Close your eyes. Imagine a single red apple, sitting on a plain wooden table. For 30 seconds, build it as fully as you can — the exact red, the small bruise on one shoulder, the matte stem, the way light catches the curve nearest you, the cool weight of it if you picked it up. Then open your eyes.',
+        rateLabel: 'How vivid was the apple?',
+        ratings: ['Just an idea — no image', 'Faint, fragmentary', 'Solid image, somewhat detailed', 'Fully present — I could almost reach for it'],
+      },
+      {
+        id: 'home-room', kind: 'visual',
+        title: 'A familiar room',
+        prompt: 'Eyes closed. Pick a room in your home — kitchen, bedroom, wherever. Slowly mentally walk its perimeter, noticing the order of things on the walls, the surface materials, the light source. About 45 seconds. Then open your eyes.',
+        rateLabel: 'How completely could you walk it?',
+        ratings: ['Vague impression of the room', 'Partial — some walls, some objects', 'Most of it, in correct order', 'Completely — I noticed details I\'d forgotten'],
+      },
+      {
+        id: 'sound-color', kind: 'synesthesia',
+        title: 'What color is this sound?',
+        prompt: 'Sit still for 30 seconds and listen to the loudest ambient sound near you — fan, traffic, fridge hum, breath. Without thinking, assign it a color, a temperature, and a texture. There are no wrong answers; the exercise is making the assignment.',
+        rateLabel: 'How quickly did the assignments come?',
+        ratings: ['Couldn\'t — they felt arbitrary', 'Slow but possible', 'Came naturally', 'Immediate, multiple options for each'],
+      },
+      {
+        id: 'tea', kind: 'aesthetic',
+        title: 'A held cup',
+        prompt: 'Imagine holding a hot cup of tea (or coffee). For 60 seconds, build only the somatic side: warmth in the palms, the ceramic\'s curve, steam against the lip and chin, the first slow sip\'s heat-spread down the throat and into the chest.',
+        rateLabel: 'How present was the body?',
+        ratings: ['Abstract — just thinking about it', 'A faint warmth somewhere', 'Clear sensation in hands or throat', 'Strong full-body response'],
+      },
+      {
+        id: 'rain', kind: 'aesthetic',
+        title: 'Listening through rain',
+        prompt: 'Close your eyes. Imagine standing under a porch awning during steady rain. Hold only the audio: the rain on the roof above, the heavier drops from the corners, the more distant patter on the path, the brief silence as a car goes by. 45 seconds.',
+        rateLabel: 'How layered was the sound?',
+        ratings: ['One flat impression', 'Two layers, mostly flat', 'Three or four distinct layers', 'Dense — I could turn my attention from one to another'],
+      },
+      {
+        id: 'mood-shape', kind: 'synesthesia',
+        title: 'Today\'s shape',
+        prompt: 'Without thinking, answer: if your overall mood today were a shape, what shape? A color? A speed of motion? A weight? About 30 seconds. The point is the speed of the answers, not the precision.',
+        rateLabel: 'How easily did the answers come?',
+        ratings: ['I had to manufacture them', 'Some came, some forced', 'They came quickly', 'They were already there before I asked'],
+      },
+    ];
+  
+    /** Fire the prep tray before a session launches. Returns a Promise that
+     *  resolves when the user dismisses the tray (or instantly if both
+     *  features are off). The session launch should `await` this. */
+    async function runPrepTray({ context = 'session' } = {}) {
+      const primingMode    = $('pfPrepPriming')?.value    || 'auto';
+      const absorptionMode = $('pfPrepAbsorption')?.value || 'auto';
+  
+      const showPriming = (() => {
+        if (primingMode === 'off') return false;
+        if (primingMode === 'always') return true;
+        // Auto: cap at 3×/week
+        const log = _readPrimingLog();
+        const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const recent = log.filter(e => e.ts > weekAgo).length;
+        return recent < 3;
+      })();
+      const showAbsorption = absorptionMode === 'always';
+      // (auto mode = opt-in per launch via the "warm up?" button — handled below)
+  
+      if (!showPriming && !showAbsorption && absorptionMode !== 'auto') {
+        return;
+      }
+  
+      return new Promise(resolve => {
+        const tray = _ensurePrepTray();
+        _renderPrepTray({
+          showPriming,
+          showAbsorption,
+          offerWarmup: absorptionMode === 'auto',
+          onDone: () => { tray.classList.remove('visible'); resolve(); },
+        });
+        tray.classList.add('visible');
+      });
+    }
+  
+    let _prepTrayEl = null;
+    function _ensurePrepTray() {
+      if (_prepTrayEl) return _prepTrayEl;
+      const wrap = document.createElement('div');
+      wrap.className = 'modal-backdrop';
+      wrap.id = 'prepTrayModal';
+      wrap.innerHTML = `<div class="modal" style="max-width:540px"><div id="prepTrayBody"></div></div>`;
+      document.body.appendChild(wrap);
+      _prepTrayEl = wrap;
+      wrap.addEventListener('click', e => {
+        // Don't allow click-outside to dismiss — the user has to engage
+        // (or tap "skip"). Otherwise the priming intervention gets
+        // accidentally bypassed and we lose its effect.
+        if (e.target === wrap) e.stopPropagation();
+      });
+      return wrap;
+    }
+  
+    function _renderPrepTray({ showPriming, showAbsorption, offerWarmup, onDone }) {
+      const body = $('prepTrayBody');
+      if (!body) return;
+  
+      const primingState = { openness: null, imagination: null, willingness: null };
+      let absorptionPicked = null;
+  
+      const finish = () => {
+        // Persist priming if completed
+        if (showPriming && primingState.openness != null) {
+          _appendPrimingLog(primingState);
+        }
+        onDone?.();
+      };
+  
+      const render = () => {
+        const primingComplete = !showPriming || (
+          primingState.openness    != null &&
+          primingState.imagination != null &&
+          primingState.willingness != null
+        );
+        body.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
+            <h2 style="margin:0;font-size:0.95rem">Quick prep</h2>
+            <button class="btn secondary" id="prepTraySkipBtn" style="padding:4px 12px;font-size:0.74rem">skip all</button>
+          </div>
+  
+          ${showPriming ? `
+            <div class="prep-section" style="margin-bottom:18px">
+              <div style="font-size:0.74rem;color:var(--text-dim);margin-bottom:10px">Three quick ratings — the answering itself is part of the practice. (1 low, 5 high)</div>
+              ${[
+                { key: 'openness',    label: 'Openness today' },
+                { key: 'imagination', label: 'Imagination today' },
+                { key: 'willingness', label: 'Willingness to let something happen' },
+              ].map(q => `
+                <div style="margin-bottom:10px">
+                  <div style="font-size:0.72rem;color:var(--text);margin-bottom:4px">${q.label}</div>
+                  <div style="display:flex;gap:4px">
+                    ${[1,2,3,4,5].map(v => `
+                      <button type="button" class="prep-rate-btn" data-q="${q.key}" data-v="${v}"
+                        style="flex:1;padding:8px 0;font-size:0.78rem;background:${primingState[q.key] === v ? 'rgba(0,212,230,0.18)' : 'var(--glass)'};border:1px solid ${primingState[q.key] === v ? 'var(--neon-cyan)' : 'var(--glass-border)'};color:var(--text);cursor:pointer">${v}</button>
+                    `).join('')}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+  
+          ${showAbsorption ? `
+            <div class="prep-section" style="margin-bottom:14px">
+              <div style="font-size:0.74rem;color:var(--text);font-weight:600;margin-bottom:6px">${escapeHtml(absorptionPicked?.title || 'Warm-up')}</div>
+              <div style="font-size:0.74rem;color:var(--text-dim);line-height:1.55;margin-bottom:10px">${escapeHtml(absorptionPicked?.prompt || '')}</div>
+              <div style="font-size:0.66rem;color:var(--text-faint);margin-bottom:6px">${escapeHtml(absorptionPicked?.rateLabel || '')}</div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                ${(absorptionPicked?.ratings || []).map((r, ri) => `
+                  <button type="button" class="prep-abs-btn" data-v="${ri}"
+                    style="padding:7px 10px;font-size:0.7rem;text-align:left;background:var(--glass);border:1px solid var(--glass-border);color:var(--text-dim);cursor:pointer">${ri} — ${escapeHtml(r)}</button>
+                `).join('')}
+              </div>
+            </div>
+          ` : offerWarmup ? `
+            <div class="prep-section" style="margin-bottom:14px;padding:10px;background:var(--bg-deep);border-left:2px solid var(--neon-cyan)">
+              <div style="font-size:0.74rem;color:var(--text-dim);margin-bottom:8px">Want a 60-second imagery warm-up before the session? Builds absorption over time.</div>
+              <button class="btn secondary" id="prepWarmupYes" style="padding:6px 14px;font-size:0.72rem">yes, run one</button>
+            </div>
+          ` : ''}
+  
+          <div class="modal-actions" style="display:flex;justify-content:flex-end;margin-top:6px">
+            <button class="btn primary" id="prepTrayContinue" style="padding:9px 22px;font-size:0.78rem"${primingComplete ? '' : ' disabled style="opacity:0.5"'}>
+              ${primingComplete ? 'continue' : 'answer to continue'}
+            </button>
+          </div>
+        `;
+  
+        body.querySelectorAll('.prep-rate-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            primingState[btn.dataset.q] = Number(btn.dataset.v);
+            render();
+          });
+        });
+        body.querySelectorAll('.prep-abs-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (absorptionPicked) {
+              _appendAbsorptionLog({ kind: absorptionPicked.kind, score: Number(btn.dataset.v), id: absorptionPicked.id });
+              _refreshAbsorptionGymStats();
+            }
+            finish();
+          });
+        });
+        $('prepWarmupYes')?.addEventListener('click', () => {
+          absorptionPicked = _pickRotatingAbsorption();
+          showAbsorption = true;
+          offerWarmup = false;
+          render();
+        });
+        $('prepTraySkipBtn')?.addEventListener('click', finish);
+        $('prepTrayContinue')?.addEventListener('click', () => {
+          if (showAbsorption && absorptionPicked) {
+            // User hit "continue" without rating — that's also fine; treat
+            // as "did the exercise but didn't rate." Skip logging.
+          }
+          finish();
+        });
+      };
+  
+      if (showAbsorption && !absorptionPicked) {
+        absorptionPicked = _pickRotatingAbsorption();
+      }
+      render();
+    }
+  
+    /** Pick an exercise the user hasn't seen recently. */
+    function _pickRotatingAbsorption() {
+      const log = _readAbsorptionLog();
+      const recentIds = new Set(log.slice(-3).map(e => e.id));
+      const candidates = ABSORPTION_EXERCISES.filter(e => !recentIds.has(e.id));
+      const pool = candidates.length ? candidates : ABSORPTION_EXERCISES;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+  
+    // Storage helpers
+    function _readAbsorptionLog() {
+      try { return JSON.parse(localStorage.getItem(ABSORPTION_LOG_KEY) || '[]'); } catch { return []; }
+    }
+    function _appendAbsorptionLog(entry) {
+      const log = _readAbsorptionLog();
+      log.push({ ts: Date.now(), ...entry });
+      // Keep last 200 entries
+      if (log.length > 200) log.splice(0, log.length - 200);
+      try { localStorage.setItem(ABSORPTION_LOG_KEY, JSON.stringify(log)); } catch {}
+    }
+    function _readPrimingLog() {
+      try { return JSON.parse(localStorage.getItem(PRIMING_LOG_KEY) || '[]'); } catch { return []; }
+    }
+    function _appendPrimingLog(state) {
+      const log = _readPrimingLog();
+      log.push({ ts: Date.now(), ...state });
+      if (log.length > 200) log.splice(0, log.length - 200);
+      try { localStorage.setItem(PRIMING_LOG_KEY, JSON.stringify(log)); } catch {}
+    }
+  
+    /** Sparkline + stats for the absorption gym, rendered into the
+     *  pf-extended details block. Only shown after ≥ 3 logged exercises. */
+    function _refreshAbsorptionGymStats() {
+      const wrap = $('absorptionGymStats');
+      const cnv  = $('absorptionGymSparkline');
+      const row  = $('absorptionGymStatsRow');
+      if (!wrap || !cnv || !row) return;
+      const log = _readAbsorptionLog();
+      if (log.length < 3) { wrap.style.display = 'none'; return; }
+      wrap.style.display = '';
+  
+      const ctx = cnv.getContext('2d');
+      const W = cnv.width, H = cnv.height;
+      ctx.clearRect(0, 0, W, H);
+  
+      // Show last 30 entries as a small line chart (score 0-3 → 0..H)
+      const points = log.slice(-30).map((e, i, arr) => ({
+        x: arr.length > 1 ? (i / (arr.length - 1)) * (W - 8) + 4 : W / 2,
+        y: H - 4 - (e.score / 3) * (H - 12),
+        score: e.score, kind: e.kind,
+      }));
+      // Connecting line
+      ctx.beginPath();
+      points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      ctx.strokeStyle = 'rgba(0,212,230,0.55)'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Dots
+      points.forEach(p => {
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,212,230,0.85)'; ctx.fill();
+      });
+  
+      // Stats row — average score + recent trend
+      const recent  = points.slice(-7).reduce((a, p) => a + p.score, 0) / Math.min(7, points.length);
+      const earlier = points.slice(0, -7).length
+        ? points.slice(0, -7).reduce((a, p) => a + p.score, 0) / points.slice(0, -7).length
+        : recent;
+      const delta = recent - earlier;
+      const trendTxt = Math.abs(delta) < 0.15 ? 'stable' : delta > 0 ? `+${delta.toFixed(1)} trending up` : `${delta.toFixed(1)} trending down`;
+      row.innerHTML = `${log.length} entries · last 7 avg: <strong>${recent.toFixed(1)}/3</strong> · ${escapeHtml(trendTxt)}`;
+    }
+    _refreshAbsorptionGymStats();
+  
+    // Allow opening a one-off warm-up from the profile section
+    $('absorptionGymOpenBtn')?.addEventListener('click', () => {
+      const tray = _ensurePrepTray();
+      _renderPrepTray({
+        showPriming: false,
+        showAbsorption: true,
+        offerWarmup: false,
+        onDone: () => tray.classList.remove('visible'),
+      });
+      tray.classList.add('visible');
+    });
+
   let _sosModalEl = null;
   function _ensureSosModal() {
     if (_sosModalEl) return _sosModalEl;
@@ -36287,6 +36782,20 @@ Begin:`;
             }
           } catch {}
         } },
+      { kind: 'action', label: 'Absorption warm-up', hint: '60-sec imagery exercise · scored', keywords: 'absorption gym warm-up vividness imagery tellegen modtas',
+        run: () => { try { $('absorptionGymOpenBtn')?.click(); } catch {} } },
+      { kind: 'action', label: 'Toggle parts-aware framing', hint: 'IFS / skeptic / felt-sense overlay', keywords: 'ifs parts skeptic felt sense gendlin focusing',
+        run: () => {
+          try {
+            const sel = $('pfIfsMode'); if (!sel) return;
+            const order = ['off', 'skeptic', 'parts', 'felt-sense'];
+            const idx = order.indexOf(sel.value);
+            sel.value = order[(idx + 1) % order.length];
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            notify.info(`Parts-aware framing: ${sel.options[sel.selectedIndex].text}`);
+          } catch {}
+        } },
+
       { kind: 'action', label: 'Open command palette help', hint: 'this menu — keyboard shortcuts', keywords: 'help palette shortcuts keys keyboard',
         run: () => {
           notify.info('Cmd-K / Ctrl-K opens this menu. ↑↓ to navigate, Enter to run, Esc to close. Type to fuzzy-match. Recent items appear at the top when the query is empty.');

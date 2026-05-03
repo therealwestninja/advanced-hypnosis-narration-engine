@@ -3131,6 +3131,36 @@ hneDataBundle() =>
         "soundscape": "heartbeat",
         "vizOverride": "pendulum-viz",
         "adultGated": true
+      },
+      {
+        "id": "somatic-release",
+        "icon": "🫀",
+        "name": "Somatic Release",
+        "desc": "Body-scan tension release via pendulation",
+        "persona": "bodyworker",
+        "method": "body-awareness",
+        "intention": "relaxation",
+        "length": "medium",
+        "soundscape": "bowls",
+        "vizOverride": "breathing",
+        "profileOverrides": {
+          "pfIfsMode": "felt-sense"
+        }
+      },
+      {
+        "id": "activation-to-calm",
+        "icon": "🌊",
+        "name": "Activation → Calm",
+        "desc": "Ground anxiety by oscillating between activation and settling",
+        "persona": "inner-voice",
+        "method": "body-awareness",
+        "intention": "emotional",
+        "length": "short",
+        "soundscape": "rain",
+        "vizOverride": "breathing",
+        "profileOverrides": {
+          "pfIfsMode": "skeptic"
+        }
       }
     ],
     "CSTP_MODULES": [
