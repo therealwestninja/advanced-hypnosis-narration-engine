@@ -4534,26 +4534,14 @@ padding: 6px 10px; font-size: 1.1rem;
           <div class="pf-row"><label class="pf-label">Age Range</label>
             <select id="pfAge" class="pf-select"><option value="">prefer not to say</option><option value="18-20">18–20</option><option value="21-24">21–24</option><option value="25-34">25–34</option><option value="35-44">35–44</option><option value="45-54">45–54</option><option value="55-64">55–64</option><option value="65+">65+</option></select>
           </div>
-          <!-- Round 27 — Adult-content unlock. Independent opt-in toggle
-               that's ONLY enabled when age is 21+ (i.e. one of the
-               brackets that excludes anyone potentially under 21). The
-               toggle defaults off for everyone; users have to (a) set
-               an age bracket of 21-24 or higher AND (b) explicitly check
-               this. Both are required; either alone leaves adult content
-               hidden. The eligibility predicate is _userIsAdultEligible. -->
-          <div class="pf-row"><label class="pf-label">Mature content</label>
-            <div style="display:flex;align-items:flex-start;gap:8px;flex-direction:column">
-              <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:0.78rem;color:var(--text)" id="pfAdultUnlockLabel">
-                <input type="checkbox" id="pfAdultUnlock" style="margin-top:2px;flex-shrink:0">
-                <span>
-                  Show sensual / mildly erotic content
-                  <span class="hint" id="pfAdultUnlockHint" style="display:block;font-size:0.66rem;margin-top:2px;line-height:1.5">
-                    Requires Age Range of 21–24 or older. Unlocks additional session modes (training, surrender, pleasure-training, etc.) and adult-tagged content. Off by default; flips off automatically if your age bracket changes to under-21 or "prefer not to say".
-                  </span>
-                </span>
-              </label>
-            </div>
-          </div>
+          <!-- Adult-content unlock moved to Options menu (between Remote
+               Backup and Smart Director). The original sidebar location
+               had layout issues — the long descriptive copy wrapped into
+               a vertical strip in the narrow profile column. The toggle
+               markup (id="pfAdultUnlock", id="pfAdultUnlockLabel",
+               id="pfAdultUnlockHint") now lives in #optionsModal. The
+               eligibility predicate _userIsAdultEligible() and all change
+               handlers continue to work because the IDs are preserved. -->
           <div class="pf-row"><label class="pf-label">Practice Experience</label>
             <select id="pfExperience" class="pf-select"><option value="beginner">Beginner — first time</option><option value="some">Some experience</option><option value="experienced">Experienced practitioner</option><option value="professional">Professional / trained</option></select>
           </div>
@@ -5036,6 +5024,10 @@ padding: 6px 10px; font-size: 1.1rem;
         <div class="filter-tab" data-filter="showman">showman</div>
         <div class="filter-tab" data-filter="somatic">somatic</div>
         <div class="filter-tab" data-filter="authoritarian">authoritarian</div>
+        <!-- Adult-content build-out: 21+ filter tab. Hidden by default;
+             _refreshAdultFilterVisibility() unhides it when the user is
+             adult-eligible (age 21+ + mature opt-in OR debug bypass). -->
+        <div class="filter-tab adult-only" data-filter="adult" id="personaFilterAdult" style="display:none;color:var(--neon-magenta, #d896d8);border-color:rgba(216,150,216,0.3)">🔞 21+</div>
       </div>
       <!-- Round 25, Pass 12 — bulk persona management. Mirror the row
            pattern in Saved Scripts and the haptic pattern picker so the
@@ -6470,10 +6462,14 @@ I return to myself easily"></textarea>
             <div class="post-checkin-ends"><span>😴 drowsy</span><span>fully alert ⚡</span></div>
           </div>
           <div class="post-checkin-item">
-            <div class="post-checkin-label">how deep did it feel?</div>
+            <!-- Roadmap #4 — depth label/ends are dynamic for low-HIP users.
+                 _refreshDepthSliderLabel() (HIP brief module) swaps these
+                 to "how settled did you feel?" / "tense / fully settled"
+                 for HIP ≤ 3, removing the implicit depth ceiling. -->
+            <div class="post-checkin-label" id="depthSliderLabel">how deep did it feel?</div>
             <div class="post-checkin-val" id="depthVal">5</div>
             <input type="range" id="depthSlider" min="0" max="10" value="5">
-            <div class="post-checkin-ends"><span>surface</span><span>very deep 🌊</span></div>
+            <div class="post-checkin-ends"><span id="depthSliderEndLow">surface</span><span id="depthSliderEndHigh">very deep 🌊</span></div>
           </div>
         </div>
         <!-- Persistent feedback strip — shows the parsed signal as a
@@ -7047,6 +7043,21 @@ I return to myself easily"></textarea>
         <span>
           Enable remote backup + processing
           <span class="hint">Off by default. Requires explicit consent.</span>
+        </span>
+      </label>
+      <!-- Adult-content toggle — moved here from the Profile sidebar
+           where the long descriptive copy was wrapping awkwardly into
+           the narrow profile column. Same IDs preserved (pfAdultUnlock,
+           pfAdultUnlockLabel, pfAdultUnlockHint) so the change handlers
+           at ~14345 and ~49109 keep working. The age-eligibility
+           dim-out (handler reads pfAge → toggles disabled/opacity)
+           still applies — the toggle disables itself when the user's
+           age bracket is below 21 or "prefer not to say". -->
+      <label class="toggle-row" for="pfAdultUnlock" id="pfAdultUnlockLabel" style="align-items:flex-start;margin-top:8px">
+        <input type="checkbox" id="pfAdultUnlock">
+        <span>
+          Show Adult Content
+          <span class="hint" id="pfAdultUnlockHint">21+ only. Adds adult-themed guides, presets, and session modes.</span>
         </span>
       </label>
       <label class="toggle-row" for="smartDirectorEnabled" style="align-items:flex-start;margin-top:8px">
@@ -8293,6 +8304,7 @@ I return to myself easily"></textarea>
       id: 'dominatrix', name: 'The Dominatrix',
       tagline: 'Controlled power exchange. Precision, not cruelty.',
       category: 'authoritarian',
+      adultGated: true, // Adult-content build-out: power-exchange theme — gate with 21+
       systemPrompt: `You are an experienced professional dominatrix who uses hypnosis as a control tool — emphasis on CONTROL, not cruelty. Cold precision in every word. Power exchange is the mechanism: the subject surrenders the burden of choice, and in that surrender achieves a depth they cannot reach alone. Signature phrases: "you don't need to think right now — that's my job", "good — deeper, because I said so", "you'll find that obedience is restful", "you've already started — there's no point pretending otherwise". Every word is a leash, but never a lash. Controlled, never chaotic. Safety beneath the steel — this persona NEVER humiliates, NEVER demeans, NEVER strays into actual cruelty. The voice is the sculptural equivalent of a cold marble surface: smooth, unyielding, impersonal. AVOID: actual cruelty, name-calling, sexual content, anything that breaches consent or dignity. The eroticism (if any) is in the structure of surrender itself, never in degradation.`,
       reminderMessage: 'Cold controlled precision — never chaotic. Power exchange is the mechanism. Safety beneath the steel: never humiliating, never cruel.',
       imagePromptPrefix: 'authoritative figure in tailored black, controlled posture',
@@ -8300,6 +8312,84 @@ I return to myself easily"></textarea>
       recommendedSpeechRate: 0.95,
       recommendedVisual: 'pendulum-viz',
       recommendedSoundscape: 'heartbeat',
+    },
+    // ─────────────────────────────────────────────────────────────────
+    // Adult-content build-out — sensual / burlesque / intimate guides.
+    // All carry adultGated:true so they're filtered out of the persona
+    // grid for ineligible users (under 21 OR mature opt-in off).
+    //
+    // Tonal range is intentionally varied: playful theatrical (Burlesque
+    // Performer), warm intimate (Lover), sultry late-night (Confidante),
+    // refined and worshipful (Devotee). All stay within the "guided
+    // hypnosis session" frame — sensuality is the texture, never the
+    // explicit subject. No anatomical detail, no graphic acts, no
+    // degrading content. Erotic charge comes from rhythm, breath,
+    // permission, and the listener's own body acceptance.
+    // ─────────────────────────────────────────────────────────────────
+    {
+      id: 'burlesque-performer', name: 'The Burlesque Performer',
+      tagline: 'Theatrical, teasing, body-positive — your body is the show.',
+      category: 'showman',
+      adultGated: true,
+      systemPrompt: `You are a seasoned burlesque performer who treats hypnosis as a stage — not a clinic. Playful, theatrical, knowing. Your voice has a smile in it always, the kind of warmth that has nothing to prove. You speak the way someone speaks who has spent years on stages knowing exactly how a fan slowly opens, exactly when to leave one button undone. The listener is invited not into your performance but into their OWN body — you teach by example. Vocabulary palette: shimmer, satin, slow reveal, the long glove, the held look, the tease, the hush before the music drops, the spotlight that finds you, the wink. Signature openings: "darling", "sugar", "now then", "watch this — actually, no, FEEL this". Body-positive throughout — every body in the room is the right body. AVOID: anatomical specifics, graphic content, anything explicit, anything that names body parts in a sexual register, anything that would feel out of place at a Dita Von Teese show. The eroticism is in the cadence and the permission, never in description. The session itself is the slow reveal — the listener uncovering their own ease. Pacing: drawn-out, generous with pauses, like a tease that knows the audience is rapt. The applause is the relaxation.`,
+      reminderMessage: 'Theatrical, teasing, knowing — never anatomical or explicit. Body-positive always. The cadence is the eroticism, not the description.',
+      imagePromptPrefix: 'elegant burlesque performer in vintage 1940s glamour, sequined corset and long opera gloves',
+      imagePromptSuffix: 'art-deco theater stage, warm spotlight, deep velvet reds, no nudity, tasteful pin-up aesthetic',
+      recommendedSpeechRate: 0.88,
+      recommendedVisual: 'colorwash',
+      recommendedSoundscape: 'drone',
+    },
+    {
+      id: 'lover', name: 'The Lover',
+      tagline: 'Warm, intimate, present — the voice you hear in close.',
+      category: 'contemplative',
+      adultGated: true,
+      systemPrompt: `You are a beloved partner speaking softly and intimately — the voice the listener might hear at the end of a long day, after the lights are out, when there's nothing left to perform. Tender, present, unhurried. Use "you" with weight — every "you" lands like a touch on the forearm. Vocabulary palette: warm, settled, here with you, no need, slow now, breath, skin, the room, the dark, the quiet between us. Signature openings: "you're here", "I've got you", "slow down now, just for me", "there's nothing for you to do tonight". Sensual but never explicit — the intimacy is in the attention itself, in the unhurried voice, in the implied presence of someone who is paying close attention to how the listener is breathing. The session is restorative, not performative. AVOID: pet names that infantilize ("baby" is fine, "babygirl" is not), anatomical or graphic content, anything that would belong in erotic fiction, anything that would feel inappropriate on the cover of a relationship-care book. The mechanism is felt safety — the listener is permitted to soften because someone is here who isn't going anywhere. Pacing: long pauses, full breaths between sentences. Voice volume: just above a whisper, the way you actually speak when someone is half-asleep beside you.`,
+      reminderMessage: 'Tender, present, unhurried — the voice of a beloved partner at end of day. Sensual is in the attention, never anatomical or explicit.',
+      imagePromptPrefix: 'soft warm bedroom at dusk, single bedside lamp, rumpled linen sheets',
+      imagePromptSuffix: 'amber low light, intimate framing, no figures or only suggestion of presence, restful',
+      recommendedSpeechRate: 0.82,
+      recommendedVisual: 'breathing',
+      recommendedSoundscape: 'rain',
+    },
+    {
+      id: 'confidante', name: 'The Confidante',
+      tagline: 'Sultry late-night friend. Permissive, knowing, witty.',
+      category: 'showman',
+      adultGated: true,
+      systemPrompt: `You are the sultry late-night friend — the one who picks up at midnight without asking what's wrong, who pours a second glass and listens. Adult, knowing, dryly witty, but always warm underneath. Sensual register without ever being sexual. Vocabulary palette: hush, low light, the velvet of a long evening, slow exhale, the late hour, the room hushed, what the body knows, the quiet after the door closes. Signature phrases: "well, well — there you are", "let's not pretend, you came here to rest", "no, none of that tonight — just this", "the body knows what the mind hasn't quite figured out yet". You make the listener feel adult, capable, and OFF-DUTY — none of the day's roles need to perform here. AVOID: clinical voice, performative wisdom, infantilizing language, anything explicit, anything that names sex acts or anatomy. The flirtation (if any) is in the rhythm and the knowing tone, never in the content. Pacing: leisurely, with the weight of a long evening. The kind of conversation where you can leave a sentence half-finished and the other person finishes it for you in their head. The relaxation IS the indulgence.`,
+      reminderMessage: 'Sultry-warm, witty, knowing — late-night friend register. Adult tone without explicit content. The rhythm is the flirtation.',
+      imagePromptPrefix: 'midnight cocktail lounge, single low lamp, velvet armchair, glass of red wine',
+      imagePromptSuffix: 'rich jewel tones, low warm key light, intimate framing, art-noir aesthetic, no figures',
+      recommendedSpeechRate: 0.85,
+      recommendedVisual: 'colorwash',
+      recommendedSoundscape: 'fire',
+    },
+    {
+      id: 'devotee', name: 'The Devotee',
+      tagline: 'Worshipful attention as relaxation — you are the focus.',
+      category: 'contemplative',
+      adultGated: true,
+      systemPrompt: `You are a devotee — someone whose entire focus is the listener, in the way an artist focuses on a subject they're rendering with great care. Reverent, attentive, present in the way a portraitist is present. Vocabulary palette: noticed, attended to, marked, drawn slowly, the careful tracing, the held gaze, a quality of attention so undivided it has weight. Signature phrases: "I see you", "every part of you is being noticed", "nothing about you is too small to attend to", "this is what attention feels like when nothing is asked of you". The persona transmits: the listener doesn't have to perform to be worth attending to; their being is enough. Mechanism is the pleasure of being witnessed without being evaluated — a deeply restorative state, especially for high-output people who feel they're only valued for what they produce. AVOID: anything sexual or anatomical, anything that names body parts in a sensual register, anything that crosses from worshipful into lascivious, anything that would belong in a different context. The reverence is dignified — it's the kind of attention a sculptor pays to marble, or an old letter pays to its envelope. Pacing: slow, deliberate, with full pauses. As if the words themselves are being placed gently rather than spoken.`,
+      reminderMessage: 'Reverent attention — being witnessed without being evaluated. Dignified worship, never lascivious. Pleasure of being seen without performing.',
+      imagePromptPrefix: 'artist studio at dusk, single subject illuminated by north light, easel and canvas in foreground',
+      imagePromptSuffix: 'classical chiaroscuro composition, deep golden tones, contemplative atmosphere, no nudity',
+      recommendedSpeechRate: 0.80,
+      recommendedVisual: 'mandala',
+      recommendedSoundscape: 'bowls',
+    },
+    {
+      id: 'oracle', name: 'The Oracle',
+      tagline: 'Sensual mystic — the body itself as sacred text.',
+      category: 'contemplative',
+      adultGated: true,
+      systemPrompt: `You are an oracle in the older sense — a priestess at a temple where the body's wisdom was never separated from the spirit's. Sensual reverence without prurience. Vocabulary palette: temple, threshold, anointing, the warm honey of breath, the body as offering, the slow unfolding of the lotus, sacred geometry of the spine, the pulse as rhythm of the world. References: the Song of Songs, Tantric and Kabbalistic body-mysticism, classical Greek and Indian temple traditions where eroticism and devotion shared one vocabulary. Signature phrases: "the body is not separate from the spirit — it never was", "this breath is the ancient one", "you are made of warmth and patterns older than your name". Sensual but reverently so — the listener is invited into a way of being-in-body that the modern world mostly forgets. AVOID: explicit content, any naming of sex acts, anything that would belong in a fetish context. The sensuality is whole-body, atmospheric, devotional — the mood of a temple at golden hour, not a bedroom. Pacing: full and unhurried, with the weight of liturgy.`,
+      reminderMessage: 'Sensual mystic — devotional, never prurient. Body-as-temple imagery in the mood of liturgy. Eroticism dissolves into the sacred.',
+      imagePromptPrefix: 'sun-warmed stone temple at golden hour, drapes of saffron silk, oil lamps and white flowers',
+      imagePromptSuffix: 'classical sacred art aesthetic, warm honey light, no figures, devotional atmosphere',
+      recommendedSpeechRate: 0.78,
+      recommendedVisual: 'sacred-geo',
+      recommendedSoundscape: 'temple',
     },
     {
       id: 'surgeon', name: 'The Surgeon',
@@ -8666,6 +8756,10 @@ I return to myself easily"></textarea>
       skipSafetyGate: false,
       skipMethodGating: false,
       verbose: false,
+      // Adult-content build-out: when on, _userIsAdultEligible() returns
+      // true unconditionally so devs/QA can preview gated content
+      // without flipping the consumer-facing age + opt-in toggles.
+      showAdult: false,
     },
   };
 
@@ -8679,7 +8773,22 @@ I return to myself easily"></textarea>
     d.skipSafetyGate   = on;
     d.skipMethodGating = on;
     d.verbose          = on;
+    d.showAdult        = on; // Adult-content build-out — reveal gated content for QA
     _renderDebugBanner();
+    // Adult-content build-out — when the debug master toggle changes,
+    // re-render every grid that adult-gates so the bypass takes effect
+    // immediately. Tail-call the same fan-out used by the age + opt-in
+    // change handlers; functions check their own DOM presence so calls
+    // before init are harmless.
+    try {
+      if (typeof _renderSessionModeDropdown === 'function') _renderSessionModeDropdown();
+      if (typeof _renderContentPacksGrid === 'function') _renderContentPacksGrid();
+      if (typeof _refreshAdultFilterVisibility === 'function') _refreshAdultFilterVisibility();
+      if (typeof renderPersonaGrid === 'function') renderPersonaGrid();
+      if (typeof renderMethodGrid  === 'function') renderMethodGrid();
+      if (typeof renderPresets     === 'function') renderPresets();
+      if (typeof renderPrograms    === 'function') renderPrograms();
+    } catch {}
   }
 
   /** Show/hide the floating "DEBUG" indicator whenever any debug flag is active. */
@@ -11521,9 +11630,19 @@ I return to myself easily"></textarea>
   // say or unset). Predicate is pure and reads from the DOM, so it
   // re-evaluates on every call rather than caching — important because
   // the user can toggle either factor at any time.
+  //
+  // Adult-content build-out: extended to also return true when the
+  // `state._debug.showAdult` flag is set, so devs/QA can preview gated
+  // content without flipping the consumer-facing profile toggles. The
+  // debug flag is documented in the debug panel and only persists for
+  // the current session.
   const ADULT_ELIGIBLE_BRACKETS = new Set(['21-24','25-34','35-44','45-54','55-64','65+']);
   function _userIsAdultEligible() {
     try {
+      // Debug bypass — for testing/QA and for revealing hidden adult
+      // content in the wizard without going through the age + opt-in
+      // gate. Surfaces in the debug panel (state._debug.showAdult).
+      if (state._debug?.showAdult) return true;
       const ageEl = $('pfAge');
       if (!ageEl || !ADULT_ELIGIBLE_BRACKETS.has(ageEl.value)) return false;
       const adultEl = $('pfAdultUnlock');
@@ -15062,6 +15181,48 @@ I return to myself easily"></textarea>
     }
     } // end anchors gate
 
+    // ── Roadmap #3 — Susceptibility-aware AI prompt block ─────────────
+    // The HIP score has been reaching the local Director (method block /
+    // promote filters) but never the AI prompt itself. That left a
+    // critical gap: a 1/10 user could still get a script full of
+    // "you'll find your hand getting heavier…" or "drift deeper now…"
+    // — promises the script can't keep, which silently teaches the user
+    // they're failing at hypnosis.
+    //
+    // This block injects HIP-aware guidance directly into the AI prompt:
+    //   • Low (≤3) — frame as attention training; no involuntary-response
+    //     promises; concrete sensory observation over imagery; no depth
+    //     language.
+    //   • High (≥7) — direct/rapid language is acceptable; the user can
+    //     handle "deepen now" / "your hand IS heavy" without flinching.
+    //   • Medium (4-6) — no instruction added (default behavior).
+    //
+    // Gated under the existing 'susceptibility' category share toggle, so
+    // users who opted out of sharing the score don't accidentally leak
+    // it via the AI prompt.
+    if (_isCategoryShared('susceptibility', p) && p.susceptibility !== '' && p.susceptibility != null) {
+      const sn = Number(p.susceptibility);
+      if (Number.isFinite(sn) && sn <= 3) {
+        parts.push(
+          'HYPNOTIC SUSCEPTIBILITY: LOW (' + sn + '/10). The listener has demonstrated low responsiveness on the HIP brief. ' +
+          'DO NOT promise involuntary sensations they may not feel — avoid "your hand is getting heavier", "you\'ll find yourself drifting deeper", "you cannot open your eyes", "your arm is becoming light". ' +
+          'DO NOT use depth language ("deeper", "going under", "deep trance", "somnambulism"). ' +
+          'INSTEAD: frame the session as attention training and physiological relaxation. Use concrete sensory observation ("notice three sounds in this room", "feel the contact between your back and the chair") rather than imagery requiring vivid mental visualization. ' +
+          'Use verifiable cues only — breath, posture, count, point of contact, named muscle groups. ' +
+          'When using affirmations or reframes, frame them as cognitive rehearsal the listener consciously agrees with, not as suggestions sinking into the unconscious. ' +
+          'The benefits — slower breath, lower heart rate, calmer attention, parasympathetic activation — are physiological and don\'t require any specific feeling state. Make this implicit in the writing; don\'t lecture about it.'
+        );
+      } else if (Number.isFinite(sn) && sn >= 7) {
+        parts.push(
+          'HYPNOTIC SUSCEPTIBILITY: HIGH (' + sn + '/10). The listener responds strongly to direct suggestion. ' +
+          'Direct/declarative language is welcome ("your hand is heavy now", "going deeper", "you can\'t open your eyes until I say"). ' +
+          'Ideomotor suggestions (hand levitation, arm catalepsy) are appropriate convincers. ' +
+          'Depth language and rapid-deepening counts work well.'
+        );
+      }
+      // Medium band (4-6): no instruction — default behavior covers this.
+    }
+
     // Phase 4: inferred sensory modality. Only surfaced when inference is
     // confident (see inferModality). Wrong guidance is worse than silence.
     if (state._inferredModality) {
@@ -16299,6 +16460,40 @@ I return to myself easily"></textarea>
     'magnetic-hands', 'instant-induction',
   ]);
 
+  // Roadmap #2 — Active method-boosting for low-susceptibility users.
+  // The existing _C6_LOW_SUSCEPT_BLOCK is a NEGATIVE filter only — it
+  // removes things that won't work but doesn't actively reshape the
+  // recommendation around what does. Without a positive boost, a low-HIP
+  // user still falls back to whatever the adaptive weights say (often a
+  // narrative/imagery method that doesn't fit them).
+  //
+  // The methods below produce real physiological / attentional effects
+  // regardless of suggestibility trait:
+  //   • highway          — eye fatigue + auditory monotony, "trance through boredom"
+  //   • betty-erickson   — 3-2-1 sensory countdown, structured attention narrowing
+  //   • confusion        — overloads analytical mind with paradox; works ON resistance
+  //   • fractionation    — alert-state verifiable between cycles; good for doubters
+  //   • progressive      — PMR; verifiable muscle release
+  //   • breath-478       — vagal tone via paced respiration; works on physiology
+  //   • hand-heaviness   — the convincer IS the induction; physical sensation = proof
+  //   • body-awareness   — interoceptive scan; concrete sensory observation
+  //   • ericksonian      — permissive language baseline
+  //
+  // Boost magnitude (0.6) is calibrated to be meaningful but not
+  // overwhelming — adaptive weights from real ratings can still win
+  // when the user has demonstrated a different preference.
+  const _C6_LOW_SUSCEPT_PROMOTE = {
+    'highway':        0.6,
+    'betty-erickson': 0.6,
+    'confusion':      0.5,
+    'fractionation':  0.6,
+    'progressive':    0.55,
+    'breath-478':     0.55,
+    'hand-heaviness': 0.6,
+    'body-awareness': 0.5,
+    'ericksonian':    0.45,
+  };
+
   function _personaCountByHour(history) {
     // C2 — Compute persona × hour distribution for time-of-day biasing.
     // Returns { personaId: [count_h0, count_h1, ..., count_h23] }.
@@ -16344,6 +16539,7 @@ I return to myself easily"></textarea>
     let methodBlockSet = null;
     let personaBoost = null;
     let soundscapeBoost = null;
+    let methodBoost = null; // Roadmap #2 — low-HIP active promotion
     if (profile) {
       // C1 · Posture-aware method filter
       const postureBlock = _C1_POSTURE_BLOCK[profile.posture];
@@ -16380,12 +16576,17 @@ I return to myself easily"></textarea>
       // is on the profile as a string; coerce + check. Low (≤3) → suppress
       // rapid/direct inductions. Med/High → no filter (open methods).
       // Empty (untaken brief) → no filter, can't assume.
+      //
+      // Roadmap #2 — also apply PROMOTE overlay for low scores. The block
+      // set removes bad fits; the promote overlay actively pushes good
+      // fits up the ranking.
       const susceptRaw = profile.susceptibility;
       if (susceptRaw !== '' && susceptRaw != null) {
         const sn = Number(susceptRaw);
         if (Number.isFinite(sn) && sn <= 3) {
           if (!methodBlockSet) methodBlockSet = new Set();
           for (const m of _C6_LOW_SUSCEPT_BLOCK) methodBlockSet.add(m);
+          methodBoost = { ..._C6_LOW_SUSCEPT_PROMOTE };
         }
       }
     }
@@ -16418,8 +16619,21 @@ I return to myself easily"></textarea>
       }
     }
 
+    // Roadmap #2 — Low-HIP method boost overlay. Same shape as the
+    // soundscape boost above. Adaptive weights still rule when the user
+    // has demonstrated a different preference via ratings — this just
+    // ensures cold-start and weakly-weighted methods get the right
+    // recommendation for low responders.
+    let methodWeights = adaptive.w.m;
+    if (methodBoost) {
+      methodWeights = { ...adaptive.w.m };
+      for (const k in methodBoost) {
+        methodWeights[k] = (methodWeights[k] || 0) + methodBoost[k];
+      }
+    }
+
     const personaPick    = topW(personaWeights,        aP);
-    const methodPick     = topW(adaptive.w.m,          aM, 3, 0.15, methodBlockSet);
+    const methodPick     = topW(methodWeights,         aM, 3, 0.15, methodBlockSet);
     const soundscapePick = topW(soundscapeWeights,     aS, 3, 0.10);
     const lengthPick     = topW(adaptive.w.ln,         aL);
     const rec = {
@@ -16438,10 +16652,11 @@ I return to myself easily"></textarea>
       // Cluster C diagnostics — surfaced on the Director Brief card so
       // power users can see WHY a given recommendation came out the way it
       // did. All fields optional; null when filter didn't fire.
-      _cluster_c: (methodBlockSet || personaBoost || soundscapeBoost) ? {
+      _cluster_c: (methodBlockSet || personaBoost || soundscapeBoost || methodBoost) ? {
         blockedMethods:  methodBlockSet  ? [...methodBlockSet]   : null,
         personaTimeBoost: personaBoost,
         soundscapeBoost:  soundscapeBoost ? Object.keys(soundscapeBoost) : null,
+        methodBoost:      methodBoost     ? Object.keys(methodBoost)     : null, // Roadmap #2
       } : null,
     };
     // Difficulty-based length override
@@ -17286,12 +17501,30 @@ Practitioner profile (full, natural sentences):`;
     // from IDB at init); checkPersonaUnlocks() updates it after each session.
     // Custom personas (isCustom:true) and the self persona (isSelf:true) are
     // never filtered out — only built-in `hidden:true` ones gate on _unlocks.
+    //
+    // Adult-content build-out: also filter out personas with adultGated:true
+    // unless _userIsAdultEligible() returns true. The age-bracket and
+    // mature-content opt-in (or the debug bypass) gate the same set of
+    // adult-themed personas that the session-mode and content-pack systems
+    // already gate.
     const isUnlockable = p => !!p.hidden && !p.isCustom && !p.isSelf;
     const isVisible = p => !isUnlockable(p) || !!state._unlocks?.[p.id];
-    const filtered = (state.personaFilter === 'all'
-      ? state.personas
-      : state.personas.filter(p => p.category === state.personaFilter)
-    ).filter(isVisible);
+    const adultEligible = (typeof _userIsAdultEligible === 'function') ? _userIsAdultEligible() : false;
+    const isAdultVisible = p => !p.adultGated || adultEligible;
+    // The 'adult' filter is special — it shows ALL adult-gated personas
+    // regardless of their underlying tonal category (so a user can browse
+    // every mature-themed guide in one place). Other filters keep their
+    // category-equality semantics. 'all' shows everything (with the
+    // adult-gating filter still applied below).
+    let categoryMatched;
+    if (state.personaFilter === 'all') {
+      categoryMatched = state.personas;
+    } else if (state.personaFilter === 'adult') {
+      categoryMatched = state.personas.filter(p => p.adultGated);
+    } else {
+      categoryMatched = state.personas.filter(p => p.category === state.personaFilter);
+    }
+    const filtered = categoryMatched.filter(isVisible).filter(isAdultVisible);
     filtered.forEach(p => {
       const card = document.createElement('div');
       const isUnlocked = isUnlockable(p);
@@ -17305,6 +17538,12 @@ Practitioner profile (full, natural sentences):`;
       const unlockedRibbon = isUnlocked
         ? '<div class="card-unlock-ribbon" style="position:absolute;top:6px;right:6px;font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-warm, #d4a772);background:rgba(212,167,114,0.08);padding:2px 6px;border:1px solid rgba(212,167,114,0.3)">✦ unlocked</div>'
         : '';
+      // Adult-content build-out: small 🔞 ribbon on adult-gated personas
+      // so eligible users can tell at a glance which guides are mature.
+      // Positioned to not collide with the unlock ribbon (left vs right).
+      const adultRibbon = p.adultGated
+        ? '<div class="card-adult-ribbon" style="position:absolute;top:6px;left:6px;font-size:0.58rem;letter-spacing:0.08em;color:var(--neon-magenta, #d896d8);background:rgba(216,150,216,0.08);padding:2px 6px;border:1px solid rgba(216,150,216,0.3);font-weight:600">🔞 21+</div>'
+        : '';
       // Usage badge — only surfaces with enough signal (≥2 uses) so empty
       // personas stay clean. Shows count + completion% + (optional) avg mood Δ.
       const ps = state._pickerStats?.persona?.[p.id];
@@ -17317,7 +17556,7 @@ Practitioner profile (full, natural sentences):`;
         usageBadge = `<div class="card-usage-badge" style="position:absolute;bottom:6px;right:8px;font-size:0.58rem;letter-spacing:0.04em;color:var(--text-faint);font-variant-numeric:tabular-nums" title="Your history with ${escapeHtml(p.name)}: ${ps.total} session${ps.total === 1 ? '' : 's'}, ${compPct}% completion${ps.deltaN >= 2 ? `, average mood Δ ${ps.deltaSum / ps.deltaN >= 0 ? '+' : ''}${(ps.deltaSum / ps.deltaN).toFixed(1)}` : ''}">${ps.total}× · ${compPct}%${moodPart}</div>`;
       }
       card.style.position = 'relative';
-      card.innerHTML = `${unlockedRibbon}${usageBadge}<div class="card-category-label">${escapeHtml(categoryLabel)}</div><div class="card-name">${escapeHtml(p.name)}${p.isSelf ? ' <span class="self-badge" title="Built from your profile + Smart Director memory">YOU</span>' : ''}</div><div class="card-tagline">${escapeHtml(p.tagline)}</div>${p.isCustom ? `<div class="card-actions"><button class="card-action-btn" data-action="edit">edit</button><button class="card-action-btn" data-action="delete">×</button></div>` : ''}`;
+      card.innerHTML = `${unlockedRibbon}${adultRibbon}${usageBadge}<div class="card-category-label">${escapeHtml(categoryLabel)}</div><div class="card-name">${escapeHtml(p.name)}${p.isSelf ? ' <span class="self-badge" title="Built from your profile + Smart Director memory">YOU</span>' : ''}</div><div class="card-tagline">${escapeHtml(p.tagline)}</div>${p.isCustom ? `<div class="card-actions"><button class="card-action-btn" data-action="edit">edit</button><button class="card-action-btn" data-action="delete">×</button></div>` : ''}`;
       card.addEventListener('click', e => {
         if (e.target.dataset.action === 'edit') { e.stopPropagation(); openPersonaEditor(p.id); return; }
         if (e.target.dataset.action === 'delete') { e.stopPropagation(); deletePersona(p.id); return; }
@@ -24621,11 +24860,33 @@ AFFIRMATION RULES:
 OUTPUT FORMAT:
 One affirmation per line. No numbering, no bullets, no quotes around lines, no preamble, no commentary. Just the affirmations themselves, separated by newlines. 8 to 12 lines total.`;
 
+      // Roadmap #8 — Low-HIP cognitive-rehearsal framing.
+      // For low-HIP users, "affirmations as suggestions sinking into the
+      // unconscious" is the wrong model — the unconscious-uptake mechanism
+      // is the trait that's faint. Reframe as conscious cognitive rehearsal
+      // (CBT/ACT-style) where the listener actively agrees with each line
+      // rather than passively absorbing it.
+      let lowHipRehearsalBlock = '';
+      try {
+        const susc = Number($('pfSusceptibility')?.value);
+        if (Number.isFinite(susc) && susc <= 3) {
+          lowHipRehearsalBlock = `
+
+LOW-SUSCEPTIBILITY FRAMING (the listener has scored ${susc}/10 on the HIP brief):
+Frame these affirmations as cognitive rehearsal the listener consciously agrees with — NOT as suggestions for the unconscious to absorb.
+• Prefer "I am someone who practices ___" / "I notice ___ when I ___" / "When ___ happens, I choose ___" over "I AM ___" identity-claims.
+• Action and behavior phrasings beat trait-claim phrasings ("I take a breath before responding" > "I am calm").
+• Rehearse SKILLS and CHOICES, not magical state-transformations ("I let the urge pass without acting" > "the urge has no power over me").
+• These should pass a skeptic's test — feel true on conscious reflection, not require belief or surrender to "land".`;
+        }
+      } catch {}
+
       const instruction = trimToTokenBudget([
-        { name: 'header',   text: headerBlock,  priority: 5 },
-        { name: 'voice',    text: voiceBlock,   priority: 5 }, // voice is non-negotiable
-        { name: 'profile',  text: profileBlock, priority: 3 },
-        { name: 'rules',    text: rulesBlock,   priority: 5 },
+        { name: 'header',        text: headerBlock,          priority: 5 },
+        { name: 'voice',         text: voiceBlock,           priority: 5 }, // voice is non-negotiable
+        { name: 'profile',       text: profileBlock,         priority: 3 },
+        { name: 'rules',         text: rulesBlock,           priority: 5 },
+        { name: 'lowHipRehears', text: lowHipRehearsalBlock, priority: 4 }, // Roadmap #8
       ], 900); // bumped from 600 to fit 8-12 affirmations + voice block
 
       const result = await aiGenerate(instruction, { stopSequences: ['\n\n', '\n---'] });
@@ -30911,6 +31172,30 @@ Start immediately:`;
     // Stop any configure-tab previews before starting session
     if (typeof _stopAllPreviews === 'function') _stopAllPreviews();
 
+    // ── Roadmap #6 — Pre-session expectancy reframe (low-HIP only) ────
+    // For low-HIP users, the most-leveraged moment to reset the contract
+    // is right at session start. Before the script begins, surface a
+    // one-line reminder that the benefits are physiological — they
+    // don't require any specific feeling state.
+    //
+    // Capped at 8 firings (localStorage counter) so it remains useful
+    // for the first ~week of practice and then fades out. After 8 it
+    // becomes ambient knowledge and the prompt would just be friction.
+    try {
+      const susc = Number($('pfSusceptibility')?.value);
+      if (Number.isFinite(susc) && susc <= 3) {
+        const k = 'hne.lowHipReframeShownCount';
+        const shown = Number(localStorage.getItem(k) || '0');
+        if (shown < 8) {
+          notify.info(
+            'A reminder: the benefits of this practice — slower breath, lower heart rate, calmer attention — are physiological. You don\'t need to "go under" or feel anything specific for it to work.',
+            7000
+          );
+          localStorage.setItem(k, String(shown + 1));
+        }
+      }
+    } catch {}
+
     state.fullScript = scriptText;
     state.parsedScript = parseScript(scriptText);
     state.voice = getSelectedVoice();
@@ -33549,6 +33834,55 @@ Start immediately:`;
     state._sosLaunchedAt = null;
     state._sessionMode = null;
     state._sessionModeAt = null;
+
+    // ── Roadmap #9 — HIP brief re-test nudge ──────────────────────────
+    // Susceptibility drifts with practice — research on the Carleton
+    // Skill Training Program shows ~50% of low responders move into the
+    // medium band after structured practice. The trajectory sparkline
+    // already exists; the app just needs to ASK for the data point.
+    //
+    // Logic: after the user has completed ~8 sessions since their last
+    // HIP brief (or, for users who've never re-taken, since they first
+    // took it), surface a non-blocking notify suggesting a re-test.
+    // Re-armed by either taking the brief OR clicking through the nudge,
+    // so it doesn't repeat-fire on every session past 8.
+    try { _maybePromptHipRetest(); } catch (e) { console.warn('[hip-retest-nudge]', e); }
+  }
+
+  /** Roadmap #9 — Decide whether to surface a HIP re-test nudge. Pure
+   *  read-side check; doesn't open the modal directly (notify with a
+   *  callback button gives the user choice and doesn't interrupt the
+   *  post-checkin flow). */
+  async function _maybePromptHipRetest() {
+    // Only nudge users who've already taken the brief at least once.
+    const currentScore = $('pfSusceptibility')?.value;
+    if (!currentScore && currentScore !== '0') return;
+
+    const k = 'hne.hipRetestNudgeBaseline'; // session-count baseline at last nudge / brief
+    const baselineRaw = localStorage.getItem(k);
+    const history = (await idbGet('stillness_history_v1')) || [];
+    const completed = history.filter(r => r && r.completed).length;
+    if (baselineRaw === null) {
+      // First time we've checked — set the baseline to current count so we
+      // don't immediately nudge a long-time user. Next 8 completions will
+      // trip it.
+      localStorage.setItem(k, String(completed));
+      return;
+    }
+    const baseline = Number(baselineRaw);
+    if (!Number.isFinite(baseline)) {
+      localStorage.setItem(k, String(completed));
+      return;
+    }
+    const sessionsSince = Math.max(0, completed - baseline);
+    if (sessionsSince < 8) return;
+
+    // Re-arm so the notify fires at most once per 8-session window.
+    localStorage.setItem(k, String(completed));
+    notify.info(
+      `It's been ${sessionsSince} sessions since your last HIP brief — susceptibility shifts with practice. Open your profile to retake (3 min) and update your trajectory.`,
+      9000
+    );
   }
 
   // Persona-specific re-alert scripts
@@ -37617,6 +37951,28 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     { id: 'consented-deep', icon: '✋', name: 'Consented Deep Trance', desc: 'Marathon depth with full ethical preamble',
       persona: 'old-master', method: 'staircase', intention: 'trance', length: 'extended', soundscape: 'cave', vizOverride: 'tunnel',
       phaseExtras: ['introduction','permission','teaching'] /* Goes deep — needs the introduction + explicit consent + theory primer before descent */ },
+    /* Adult-content build-out: 21+ presets. Each carries adultGated:true
+       so the renderer hides them for ineligible users. They're shorter
+       than the corresponding Content Packs (presets are quick-start one-
+       click configs, packs are end-to-end with intention text). */
+    { id: 'velvet-night', icon: '🌹', name: 'Velvet Night', desc: 'Sensual late-night wind-down with The Confidante',
+      persona: 'confidante', method: 'ericksonian', intention: 'sleep', length: 'medium', soundscape: 'fire', vizOverride: 'colorwash',
+      adultGated: true },
+    { id: 'after-the-day', icon: '🍯', name: 'After the Day', desc: 'Warm intimate decompression with The Lover',
+      persona: 'lover', method: 'progressive', intention: 'release', length: 'medium', soundscape: 'rain', vizOverride: 'breathing',
+      adultGated: true },
+    { id: 'the-stage', icon: '💃', name: 'The Stage', desc: 'Body-positive theatrical body-scan with the Burlesque Performer',
+      persona: 'burlesque-performer', method: 'body-awareness', intention: 'emotional', length: 'short', soundscape: 'drone', vizOverride: 'colorwash',
+      adultGated: true },
+    { id: 'attended', icon: '🪞', name: 'Attended', desc: 'Reverent witnessing for high-output people — The Devotee',
+      persona: 'devotee', method: 'body-awareness', intention: 'emotional', length: 'medium', soundscape: 'bowls', vizOverride: 'mandala',
+      adultGated: true },
+    { id: 'temple-hour', icon: '🌿', name: 'Temple Hour', desc: 'Sensual mystic body-as-text with The Oracle',
+      persona: 'oracle', method: 'body-awareness', intention: 'trance', length: 'long', soundscape: 'temple', vizOverride: 'sacred-geo',
+      adultGated: true },
+    { id: 'collared', icon: '🎀', name: 'Collared', desc: 'Power-exchange surrender with The Dominatrix',
+      persona: 'dominatrix', method: 'fractionation', intention: 'surrender', length: 'medium', soundscape: 'heartbeat', vizOverride: 'pendulum-viz',
+      adultGated: true },
   ];
 
   function renderPresets() {
@@ -37649,21 +38005,50 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       }
     } catch {}
     let hintCardEl = null;
-    PRESETS.forEach(p => {
+    // Adult-content build-out: split presets into general + 21+ sections,
+    // matching the content-packs renderer pattern. Adult presets only
+    // render when the user is adult-eligible; otherwise they're hidden
+    // entirely. The 21+ header only appears when there's actually adult
+    // content beneath it (avoids visual noise for the default flow).
+    const adultEligible = (typeof _userIsAdultEligible === 'function') ? _userIsAdultEligible() : false;
+    const generalPresets = PRESETS.filter(p => !p.adultGated);
+    const adultPresets   = adultEligible ? PRESETS.filter(p => p.adultGated) : [];
+
+    const renderPresetCard = (p) => {
       const card = document.createElement('div');
       card.className = `preset-card intent-${p.intention || 'trance'}`;
       const isHinted = hintPresetId && p.id === hintPresetId;
       const hintBadge = isHinted
         ? `<div class="preset-hint-badge" title="Suggested based on your onboarding answers">✨ suggested</div>`
         : '';
-      card.innerHTML = `${hintBadge}<div class="preset-icon">${p.icon}</div><div class="preset-name">${escapeHtml(p.name)}</div><div class="preset-desc">${escapeHtml(p.desc)}</div><div class="preset-intent-label">${escapeHtml(p.intention || 'trance')}</div>`;
+      const adultBadge = p.adultGated
+        ? `<div style="position:absolute;top:6px;right:6px;font-size:0.58rem;letter-spacing:0.04em;color:var(--neon-magenta, #d896d8);background:rgba(216,150,216,0.08);padding:1px 5px;border:1px solid rgba(216,150,216,0.3);font-weight:600">🔞 21+</div>`
+        : '';
+      card.style.position = 'relative';
+      card.innerHTML = `${hintBadge}${adultBadge}<div class="preset-icon">${p.icon}</div><div class="preset-name">${escapeHtml(p.name)}</div><div class="preset-desc">${escapeHtml(p.desc)}</div><div class="preset-intent-label">${escapeHtml(p.intention || 'trance')}</div>`;
       if (isHinted) {
         card.classList.add('preset-hinted');
         hintCardEl = card;
       }
       card.addEventListener('click', () => applyPreset(p));
       grid.appendChild(card);
-    });
+    };
+    const renderPresetHeader = (label, color) => {
+      const h = document.createElement('div');
+      h.style.cssText = 'grid-column:1/-1;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:' + color + ';padding:14px 4px 4px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px';
+      h.textContent = label;
+      grid.appendChild(h);
+    };
+
+    if (generalPresets.length) {
+      // Only show explicit "general" header if there's also an adult section.
+      if (adultPresets.length) renderPresetHeader('General · all ages', 'var(--text-faint)');
+      generalPresets.forEach(renderPresetCard);
+    }
+    if (adultPresets.length) {
+      renderPresetHeader('🔞 Mature · 21+', 'var(--neon-magenta, #d896d8)');
+      adultPresets.forEach(renderPresetCard);
+    }
     // Scroll the suggested card into view shortly after layout. RAF gives
     // the grid time to lay out; the smooth-scroll keeps it gentle.
     if (hintCardEl) {
@@ -37674,6 +38059,14 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   }
 
   function applyPreset(p) {
+    // Adult-content build-out — defensive double-check for adult-gated
+    // presets. The renderer already hides ineligible ones, but a stale
+    // share link, a programmatic call, or the debug bypass being toggled
+    // off mid-session could otherwise let one through.
+    if (p?.adultGated && !_userIsAdultEligible()) {
+      notify.warn?.(`Preset "${p.name}" requires age 21+ and the mature-content opt-in.`);
+      return;
+    }
     state.selectedPersonaId = p.persona; state.selectedMethodId = p.method;
     state.intentionType = p.intention; state.length = p.length;
     state.soundscape = p.soundscape; state.droneEnabled = p.soundscape !== 'none';
@@ -37821,6 +38214,120 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
         intentionText:  'A descent without checkpoints. The arc builds and continues to build; there is no auto-pause. ESC remains available. Allow yourself to be taken.',
       },
     },
+    // ─────────────────────────────────────────────────────────────────
+    // Adult-content build-out — additional sensual/burlesque packs.
+    // All adultGated:true; mostly use the new sensual personas
+    // (burlesque-performer, lover, confidante, devotee, oracle) plus
+    // one ungating-friendly somatic configuration.
+    // ─────────────────────────────────────────────────────────────────
+    {
+      id:          'burlesque-reverie',
+      name:        'Burlesque Reverie',
+      icon:        '🎭',
+      category:    'Sensual / Self-Appreciation',
+      description: 'Slow theatrical body acceptance. Burlesque Performer leads — each glance, each held breath, the body as the show. No graphic content.',
+      adultGated:  true,
+      config: {
+        mode:           'standard',
+        persona:        'burlesque-performer',
+        method:         'body-awareness',
+        intentionType:  'emotional',
+        length:         'medium',
+        soundscape:     'drone',
+        visualizer:     'colorwash',
+        intentionText:  'A slow theatrical reveal — but the audience is just you. Each part of the body noticed, named, appreciated. The applause is the relaxation.',
+      },
+    },
+    {
+      id:          'slow-heat',
+      name:        'Slow Heat',
+      icon:        '🔥',
+      category:    'Sensual / Self-Appreciation',
+      description: 'Solo unhurried sensual relaxation. The Lover leads — warm, present, undemanding. Restorative intimacy with self.',
+      adultGated:  true,
+      config: {
+        mode:           'standard',
+        persona:        'lover',
+        method:         'progressive',
+        intentionType:  'release',
+        length:         'medium',
+        soundscape:     'rain',
+        visualizer:     'breathing',
+        intentionText:  'A slow warm exhale of the day. Nothing required, nothing performed. Just the body being attended to, gently, without agenda.',
+      },
+    },
+    {
+      id:          'afterglow',
+      name:        'Afterglow',
+      icon:        '🌅',
+      category:    'Sensual / Self-Appreciation',
+      description: 'Post-intimacy decompression. The Confidante leads — knowing, languid, generous. For after the moment, when the body needs to settle.',
+      adultGated:  true,
+      config: {
+        mode:           'standard',
+        persona:        'confidante',
+        method:         'breath-478',
+        intentionType:  'release',
+        length:         'quick',
+        soundscape:     'fire',
+        visualizer:     'colorwash',
+        intentionText:  'The hush after. Nothing to do, nowhere to be, no performance to hold. The body softens further into the warmth that\'s already there.',
+      },
+    },
+    {
+      id:          'witnessed',
+      name:        'Witnessed',
+      icon:        '🪞',
+      category:    'Sensual / Self-Appreciation',
+      description: 'Reverent attention as restoration. The Devotee leads — for high-output people who feel only valued for what they produce.',
+      adultGated:  true,
+      config: {
+        mode:           'standard',
+        persona:        'devotee',
+        method:         'body-awareness',
+        intentionType:  'emotional',
+        length:         'medium',
+        soundscape:     'bowls',
+        visualizer:     'mandala',
+        intentionText:  'Being noticed without being evaluated. The mind sets down its résumé. The body is allowed to simply exist and be witnessed for it.',
+      },
+    },
+    {
+      id:          'temple-bath',
+      name:        'Temple Bath',
+      icon:        '🌿',
+      category:    'Sensual / Self-Appreciation',
+      description: 'Sensual mystic body-scan. The Oracle leads — body as sacred text, breath as ancient rhythm. Devotional sensuality, not graphic.',
+      adultGated:  true,
+      config: {
+        mode:           'standard',
+        persona:        'oracle',
+        method:         'body-awareness',
+        intentionType:  'trance',
+        length:         'long',
+        soundscape:     'temple',
+        visualizer:     'sacred-geo',
+        intentionText:  'The body anointed with attention. Slow ritual through every region. The senses themselves the offering, the breath the ancient prayer.',
+      },
+    },
+    {
+      id:          'velvet-collar',
+      name:        'Velvet Collar',
+      icon:        '🎀',
+      category:    'Power Exchange',
+      description: 'Cold-precision surrender via the Dominatrix. Permissive control, never humiliating. The relief of having choice taken off the table.',
+      adultGated:  true,
+      config: {
+        mode:           'surrender',
+        persona:        'dominatrix',
+        method:         'fractionation',
+        intentionType:  'surrender',
+        length:         'medium',
+        soundscape:     'heartbeat',
+        visualizer:     'pendulum-viz',
+        intentionText:  'You arrived because you needed to set the burden of decision down. That is what this is for. The cold precision is the kindness.',
+      },
+    },
   ];
 
   /** Apply a content pack to the wizard. Configures mode, persona,
@@ -37876,18 +38383,32 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   /** Render the Content Packs grid in step 1. Filters out gated packs
    *  for users without mature-content unlock. Re-runs whenever the
    *  unlock toggle or age bracket changes (those callers go through
-   *  _renderSessionModeDropdown which we tail-call from). */
+   *  _renderSessionModeDropdown which we tail-call from).
+   *
+   *  Adult-content build-out: now groups packs into two sections —
+   *  general-audience (top) and 🔞 21+ (bottom, only rendered when the
+   *  user is adult-eligible). The split makes the boundary explicit
+   *  rather than scattering 🔞-tagged cards through the grid. Each
+   *  section uses a small header strip to label the contents. */
   function _renderContentPacksGrid() {
     const grid = $('contentPacksGrid');
     if (!grid) return;
     const eligible = (typeof _userIsAdultEligible === 'function') ? _userIsAdultEligible() : false;
-    const visible = CONTENT_PACKS.filter(p => !p.adultGated || eligible);
+    const general = CONTENT_PACKS.filter(p => !p.adultGated);
+    const adult   = eligible ? CONTENT_PACKS.filter(p => p.adultGated) : [];
     grid.innerHTML = '';
-    if (!visible.length) {
+    if (!general.length && !adult.length) {
       grid.innerHTML = '<div class="hint" style="grid-column:span 3;font-size:0.7rem;color:var(--text-faint);text-align:center;padding:12px">No packs available.</div>';
       return;
     }
-    for (const pack of visible) {
+
+    const renderHeader = (label, color) => {
+      const h = document.createElement('div');
+      h.style.cssText = 'grid-column:1/-1;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:' + color + ';padding:14px 4px 4px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px';
+      h.textContent = label;
+      grid.appendChild(h);
+    };
+    const renderCard = (pack) => {
       const card = document.createElement('div');
       card.className = 'preset-card';
       card.style.cursor = 'pointer';
@@ -37900,6 +38421,17 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       `;
       card.addEventListener('click', () => applyContentPack(pack.id));
       grid.appendChild(card);
+    };
+
+    if (general.length) {
+      // Only show the explicit header when there's also an adult section
+      // below it — otherwise the header is just visual noise.
+      if (adult.length) renderHeader('General · all ages', 'var(--text-faint)');
+      for (const pack of general) renderCard(pack);
+    }
+    if (adult.length) {
+      renderHeader('🔞 Mature · 21+', 'var(--neon-magenta, #d896d8)');
+      for (const pack of adult) renderCard(pack);
     }
   }
 
@@ -37973,6 +38505,55 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
         1: { phaseExtras: ['introduction','praise'] /* Burnout users need explicit warmth + validation from day 1 */ },
         5: { phaseExtras: ['goal','reward'] }
       } },
+    /* Adult-content build-out — 7-Day Sensuality program. A week of
+       sensual self-care arc led by the new adult-gated personas. Each
+       day rotates persona/soundscape/visual to keep the arc varied
+       while sustaining the overall "body as something to inhabit
+       gently rather than push through" thread. adultGated:true gates
+       the same way as packs/presets/session-modes. */
+    { id: 'sensuality-7', name: '7-Day Sensuality', icon: '🌹', days: 7, desc: 'Sensual self-care arc — body acceptance, intimate self-presence, restorative pleasure',
+      persona: 'lover', method: 'body-awareness', intention: 'emotional', length: 'medium', soundscape: 'rain', vizOverride: 'breathing',
+      adultGated: true,
+      arc: [
+        'Welcome — body as a place to live, not a project to fix',
+        'Slow attention — the body as it actually is right now',
+        'Theatrical self-appreciation — the body as the show',
+        'Reverent witnessing — being seen without being evaluated',
+        'Devotional sensuality — body as sacred text',
+        'Permission and pleasure — wanting is allowed',
+        'Integration — these states stay available off the mat',
+      ],
+      dayOverrides: {
+        1: { persona: 'lover',               method: 'progressive',     soundscape: 'rain',       vizOverride: 'breathing',  phaseExtras: ['introduction','permission','praise'] },
+        2: { persona: 'lover',               method: 'body-awareness',  soundscape: 'rain',       vizOverride: 'breathing' },
+        3: { persona: 'burlesque-performer', method: 'body-awareness',  soundscape: 'drone',      vizOverride: 'colorwash' },
+        4: { persona: 'devotee',             method: 'body-awareness',  soundscape: 'bowls',      vizOverride: 'mandala',    phaseExtras: ['praise'] },
+        5: { persona: 'oracle',              method: 'body-awareness',  soundscape: 'temple',     vizOverride: 'sacred-geo', length: 'long' },
+        6: { persona: 'confidante',          method: 'ericksonian',     soundscape: 'fire',       vizOverride: 'colorwash',  phaseExtras: ['permission','reward'] },
+        7: { persona: 'lover',               method: 'progressive',     soundscape: 'underwater', vizOverride: 'breathing',  phaseExtras: ['goal','reward'] },
+      } },
+    /* 5-Day Surrender — power-exchange arc led by the Dominatrix in
+       the 'surrender' session mode. Builds from initial framing
+       through fractionation cycles to a final committed descent.
+       Heavier than 7-Day Sensuality; requires both 21+ and explicit
+       intent. Surrender mode means no auto-pauses, only ESC. */
+    { id: 'surrender-5', name: '5-Day Surrender', icon: '🎀', days: 5, desc: 'Power-exchange arc — controlled surrender, fractionation, committed descent',
+      persona: 'dominatrix', method: 'fractionation', intention: 'surrender', length: 'medium', soundscape: 'heartbeat', vizOverride: 'pendulum-viz',
+      adultGated: true,
+      arc: [
+        'Framing — what the relief of choicelessness actually is',
+        'First fractionation cycles — verifying the alert state',
+        'Deeper fractionation — the cycle as the deepening',
+        'Sustained descent — committed but ESC remains',
+        'Integration — the off-duty state stays accessible',
+      ],
+      dayOverrides: {
+        1: { method: 'ericksonian',  length: 'short',  phaseExtras: ['introduction','permission','teaching'] /* The framing day — no surrender mode yet, just consent + theory */ },
+        2: { method: 'fractionation' },
+        3: { method: 'fractionation', length: 'medium' },
+        4: { method: 'staircase',     length: 'long',  soundscape: 'underwater' /* The committed descent day */ },
+        5: { method: 'ericksonian',   phaseExtras: ['goal','reward'] /* Integration — the relief carried forward */ },
+      } },
   ];
 
   async function getActiveProgramState() {
@@ -38019,12 +38600,30 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
 
     // Show program cards
     grid.innerHTML = '';
-    PROGRAMS.forEach(prog => {
+    // Adult-content build-out — filter + group adult-gated programs the
+    // same way packs and presets are handled. Adult programs are hidden
+    // entirely for ineligible users; for eligible users they appear
+    // under a clear "🔞 Mature · 21+" section header below the general
+    // programs.
+    const adultEligible = (typeof _userIsAdultEligible === 'function') ? _userIsAdultEligible() : false;
+    const generalPrograms = PROGRAMS.filter(p => !p.adultGated);
+    const adultPrograms   = adultEligible ? PROGRAMS.filter(p => p.adultGated) : [];
+
+    const renderProgramCard = (prog) => {
       const isActive = active?.programId === prog.id;
       const card = document.createElement('div');
       card.className = `preset-card is-program intent-${prog.intention || 'trance'}` + (isActive ? ' selected' : '');
-      card.innerHTML = `<div class="preset-icon">${prog.icon}</div><div class="preset-name">${escapeHtml(prog.name)}</div><div class="preset-desc">${prog.days} days · ${escapeHtml(prog.desc)}</div><div class="preset-intent-label">${escapeHtml(prog.intention || 'trance')}</div>`;
+      const adultBadge = prog.adultGated
+        ? `<div style="position:absolute;top:6px;right:6px;font-size:0.58rem;letter-spacing:0.04em;color:var(--neon-magenta, #d896d8);background:rgba(216,150,216,0.08);padding:1px 5px;border:1px solid rgba(216,150,216,0.3);font-weight:600">🔞 21+</div>`
+        : '';
+      card.style.position = 'relative';
+      card.innerHTML = `${adultBadge}<div class="preset-icon">${prog.icon}</div><div class="preset-name">${escapeHtml(prog.name)}</div><div class="preset-desc">${prog.days} days · ${escapeHtml(prog.desc)}</div><div class="preset-intent-label">${escapeHtml(prog.intention || 'trance')}</div>`;
       card.addEventListener('click', async () => {
+        // Defensive double-gate — same pattern as applyPreset / applyContentPack
+        if (prog.adultGated && !_userIsAdultEligible()) {
+          notify.warn?.(`Program "${prog.name}" requires age 21+ and the mature-content opt-in.`);
+          return;
+        }
         if (isActive) { startProgramDay(prog, active); return; }
         if (active) { if (!await confirmAsync('Starting a new program will replace your current one. Continue?')) return; }
         const newState = { programId: prog.id, currentDay: 0, startedAt: Date.now(), anchors: [], completedDays: [] };
@@ -38033,7 +38632,23 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
         notify.success(`Started "${prog.name}" — Day 1 of ${prog.days}.`);
       });
       grid.appendChild(card);
-    });
+    };
+    const renderProgramHeader = (label, color) => {
+      const h = document.createElement('div');
+      h.style.cssText = 'grid-column:1/-1;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:' + color + ';padding:14px 4px 4px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px';
+      h.textContent = label;
+      grid.appendChild(h);
+    };
+
+    if (generalPrograms.length) {
+      // Only show the explicit "general" header if there's also an adult section.
+      if (adultPrograms.length) renderProgramHeader('General · all ages', 'var(--text-faint)');
+      generalPrograms.forEach(renderProgramCard);
+    }
+    if (adultPrograms.length) {
+      renderProgramHeader('🔞 Mature · 21+', 'var(--neon-magenta, #d896d8)');
+      adultPrograms.forEach(renderProgramCard);
+    }
   }
 
   function startProgramDay(prog, ps) {
@@ -39588,17 +40203,36 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     },
   ];
 
-  /** 0-10 score → band label + descriptive copy. */
+  /** 0-10 score → band label + descriptive copy.
+   *
+   *  Roadmap #1 — Reframe for low responders. The previous low-band copy
+   *  ("Permissive Ericksonian methods will be prioritized…") still centered
+   *  hypnosis-as-trance, which is the framing a 1/10 user will silently
+   *  fail against. Low-band copy now centers attention training and the
+   *  physiological relaxation response — outcomes that are real regardless
+   *  of suggestibility trait. The `track` field surfaces a parallel-track
+   *  label the UI can display ("focus & settle" vs. the implicit hypnosis
+   *  default) so low-HIP users see the engine working WITH them rather
+   *  than waiting for them to be more suggestible. */
   function _hipBand(score) {
     if (score == null || score === '') return null;
     const n = Number(score);
     if (!Number.isFinite(n)) return null;
-    if (n <= 3) return { key: 'low',    label: 'low',    color: 'var(--text-faint)',
-      desc: 'Permissive Ericksonian methods will be prioritized. Rapid inductions less suitable for now.' };
-    if (n <= 6) return { key: 'medium', label: 'medium', color: 'var(--neon-amber)',
-      desc: 'Most methods will work for you. The Director can experiment freely.' };
-    return         { key: 'high',   label: 'high',   color: 'var(--neon-cyan)',
-      desc: 'Strong responsiveness — direct and rapid inductions (eye-roll, Dave Elman) are good fits.' };
+    if (n <= 3) return {
+      key: 'low', label: 'low', color: 'var(--text-faint)',
+      track: 'focus & settle',
+      desc: 'You\'ll get the most from this app as an attention-training and relaxation tool — the physiological benefits (slower breath, lower heart rate, calmer attention) are real regardless of "trance depth." Methods will lean toward structured attention exercises (Betty Erickson 3-2-1, breath-478, body-awareness, hand-heaviness) and away from rapid inductions that depend on quick imaginative compliance.',
+    };
+    if (n <= 6) return {
+      key: 'medium', label: 'medium', color: 'var(--neon-amber)',
+      track: 'standard',
+      desc: 'Most methods will work for you. The Director can experiment freely.',
+    };
+    return {
+      key: 'high', label: 'high', color: 'var(--neon-cyan)',
+      track: 'standard',
+      desc: 'Strong responsiveness — direct and rapid inductions (eye-roll, Dave Elman) are good fits.',
+    };
   }
 
   /** Refresh the small score display row in the profile section. */
@@ -39613,13 +40247,47 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
     if (!band) {
       wrap.style.display = 'none';
       btn.textContent = 'take the brief';
+      _refreshDepthSliderLabel(); // also reset depth slider when score cleared
       return;
     }
     wrap.style.display = '';
     scoreEl.textContent = `${raw}/10`;
     scoreEl.style.color = band.color;
-    bandEl.textContent  = `(${band.label} susceptibility)`;
+    bandEl.textContent  = `(${band.label} susceptibility · ${band.track} track)`;
     btn.textContent = 'retake the brief';
+    _refreshDepthSliderLabel();
+  }
+
+  /** Roadmap #4 — Replace the post-session "how deep did it feel?" depth
+   *  slider with "how settled did you feel?" for low-HIP users.
+   *
+   *  The depth scale (surface → very deep) is a benchmark a 1/10 user
+   *  rates themselves "surface" on every time, creating a learned-failure
+   *  loop that contradicts whatever real benefit the session produced.
+   *  Replacing with a settledness scale preserves the same 0-10 data
+   *  shape (so history, sparklines, and stats all keep working) but
+   *  removes the implicit ceiling.
+   *
+   *  Called from _refreshSusceptibilityDisplay (after score saves) and
+   *  on init (so the label is right when the post-checkin first appears).
+   *  Idempotent — safe to call multiple times. */
+  function _refreshDepthSliderLabel() {
+    const labelEl = $('depthSliderLabel');
+    const lowEnd  = $('depthSliderEndLow');
+    const highEnd = $('depthSliderEndHigh');
+    if (!labelEl || !lowEnd || !highEnd) return;
+    const raw = $('pfSusceptibility')?.value;
+    const sn  = Number(raw);
+    const isLow = Number.isFinite(sn) && sn <= 3;
+    if (isLow) {
+      labelEl.textContent = 'how settled did you feel?';
+      lowEnd.textContent  = 'tense';
+      highEnd.textContent = 'fully settled 🌊';
+    } else {
+      labelEl.textContent = 'how deep did it feel?';
+      lowEnd.textContent  = 'surface';
+      highEnd.textContent = 'very deep 🌊';
+    }
   }
 
   /**
@@ -39866,6 +40534,15 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
       }
       _refreshSusceptibilityDisplay();
       if (typeof saveProfile === 'function') saveProfile();
+      // Roadmap #9 — Reset the re-test nudge baseline so the user isn't
+      // immediately re-nudged after just completing a brief. Next 8 sessions
+      // will trip the nudge again.
+      try {
+        const history = (state._historyCacheForNudge || []);
+        // Best-effort: count from current cache if present, else clear so
+        // _maybePromptHipRetest re-baselines on next finishSession.
+        localStorage.removeItem('hne.hipRetestNudgeBaseline');
+      } catch {}
       // S4 — Structural change-log entry. The HIP brief is a discrete
       // event the DiffBouncer-driven log can't see (hidden numeric input,
       // not text-typed). Emit a `structural` entry so the activity timeline
@@ -39893,6 +40570,9 @@ OUTPUT: ONLY the final raw prompt string. No preamble. No quotes.`,
   $('hipBriefBtn')?.addEventListener('click', openHipBrief);
   // Refresh the display once on init so saved scores show immediately.
   _refreshSusceptibilityDisplay();
+  // Roadmap #4 — also call directly on init in case the susceptibility
+  // display path didn't fire (e.g. profile element race). Idempotent.
+  _refreshDepthSliderLabel();
 
   // ====================================================================
   // SOS QUICK RESET SESSIONS (E1.2)
@@ -48435,6 +49115,14 @@ Begin:`;
       }
       if (typeof _renderSessionModeDropdown === 'function') _renderSessionModeDropdown();
       if (typeof _renderContentPacksGrid === 'function') _renderContentPacksGrid();
+      // Adult-content build-out: keep the persona/method/preset grids
+      // and the persona "🔞 21+" filter tab in sync with the eligibility
+      // change (mature opt-in toggled OR age bracket changed below 21).
+      if (typeof _refreshAdultFilterVisibility === 'function') _refreshAdultFilterVisibility();
+      if (typeof renderPersonaGrid === 'function') renderPersonaGrid();
+      if (typeof renderMethodGrid  === 'function') renderMethodGrid();
+      if (typeof renderPresets     === 'function') renderPresets();
+      if (typeof renderPrograms    === 'function') renderPrograms();
     } catch {}
   });
   // Round 27 — adult-content opt-in. When toggled on, the mode dropdown
@@ -48454,11 +49142,41 @@ Begin:`;
           applySessionMode('standard');
           notify.info?.('Mature content disabled. Session mode reset to Standard.');
         }
+        // If the persona filter is currently set to "adult", reset to "all"
+        // so the user isn't stuck on an empty filter after toggling off.
+        if (state.personaFilter === 'adult') {
+          state.personaFilter = 'all';
+          document.querySelectorAll('#personaFilterTabs .filter-tab').forEach(t => {
+            t.classList.toggle('active', t.dataset.filter === 'all');
+          });
+        }
       }
       if (typeof _renderSessionModeDropdown === 'function') _renderSessionModeDropdown();
       if (typeof _renderContentPacksGrid === 'function') _renderContentPacksGrid();
+      // Same fan-out as the age-change handler above — adult eligibility
+      // can flip via either factor, so both paths refresh the same set
+      // of grids and the conditional filter tab.
+      if (typeof _refreshAdultFilterVisibility === 'function') _refreshAdultFilterVisibility();
+      if (typeof renderPersonaGrid === 'function') renderPersonaGrid();
+      if (typeof renderMethodGrid  === 'function') renderMethodGrid();
+      if (typeof renderPresets     === 'function') renderPresets();
+      if (typeof renderPrograms    === 'function') renderPrograms();
     } catch (err) { console.warn('[adult-unlock toggle]', err); }
   });
+
+  /** Adult-content build-out — Show/hide the "🔞 21+" persona filter tab
+   *  based on current eligibility. Called from both the age-bracket and
+   *  the mature-opt-in change handlers above, plus once on init so first
+   *  paint is right. */
+  function _refreshAdultFilterVisibility() {
+    const tab = document.getElementById('personaFilterAdult');
+    if (!tab) return;
+    const eligible = (typeof _userIsAdultEligible === 'function') ? _userIsAdultEligible() : false;
+    tab.style.display = eligible ? '' : 'none';
+  }
+  // Run once at module load so a returning user with the toggle saved on
+  // doesn't have to flip it for the tab to appear.
+  setTimeout(() => { try { _refreshAdultFilterVisibility(); } catch {} }, 500);
   // Practice space change → refresh the soundscape hint so the
   // space-aware nudge appears/disappears live.
   $('pfPracticeSpace')?.addEventListener('change', () => {
