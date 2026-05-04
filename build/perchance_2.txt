@@ -6015,17 +6015,25 @@ I return to myself easily"></textarea>
           <span id="micStatusDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;margin-right:6px;vertical-align:middle"></span>
           <span id="micStatusText">listening…</span>
         </div>
-        <!-- Biometric sensor bridge (Round 25, Pass 9). Same per-session
-             opt-in pattern; loopback WebSocket to a local adapter that
-             pushes biometric signals into the engagement engine. -->
+        <!-- Biometric sensor bridge (Round 25, Pass 9; HR-OBS native protocol added Round 29).
+             Same per-session opt-in pattern; loopback WebSocket to a local adapter that
+             pushes biometric signals into the engagement engine. Two protocols are
+             auto-detected on the same socket:
+               • Generic HNE format: {"signal":"heartRate","value":0.5,"weight":0.4}
+               • HR-OBS Monitor v2: {"type":"heart_rate","data":{"bpm":72}}  ← translated
+                 internally to normalized heartRate + derived relaxation (drop from
+                 personal baseline). Lets users plug in the open-source Heart Rate
+                 OBS Monitor (Samsung / Wear OS / Mi Band / Fitbit via Gadgetbridge)
+                 with zero glue code. -->
         <label class="toggle-row toggle-row-cb" for="sensorBridgeOptInThisSession" style="align-items:flex-start;padding:6px 0;margin-top:4px">
           <input type="checkbox" id="sensorBridgeOptInThisSession">
           <span>
-            📈 Biometric sensor bridge
+            📈 Biometric sensor bridge <span style="color:var(--text-faint);font-weight:400">— heart rate, HRV, breath, EEG</span>
             <span class="hint" style="line-height:1.5">
-              Connects to a local adapter (default <code style="font-size:0.65rem">ws://localhost:8765</code>) pushing JSON like
-              <code style="font-size:0.65rem">\{"signal":"heartRate","value":0.5,"weight":0.4\}</code>.
-              Recognized signals: heartRate, hrv, gsr, breath, eegFocus, custom1-3. Each feeds the engagement engine. Intended for self-hosted bridges (e.g. a Polar/Muse adapter you run locally).
+              Connects to a local adapter pushing biometric data over WebSocket. Two protocols auto-detected:
+              <br>• <strong>Generic HNE</strong> (default <code style="font-size:0.65rem">ws://localhost:8765</code>): <code style="font-size:0.65rem">\{"signal":"heartRate","value":0.5,"weight":0.4\}</code>. Signals: heartRate, hrv, gsr, breath, eegFocus, custom1-3.
+              <br>• <strong>Heart Rate OBS Monitor v2</strong> (<code style="font-size:0.65rem">ws://localhost:8080</code>): supports Samsung Galaxy Fit/Watch, Mi Band, Fitbit via Gadgetbridge — sends raw BPM, HNE auto-normalizes and derives a <em>relaxation</em> signal (drop from personal baseline). No glue code needed.
+              <br>Each feeds the engagement engine and is exposed to rules as <code style="font-size:0.65rem">heartRate</code>, <code style="font-size:0.65rem">relaxation</code>, <code style="font-size:0.65rem">heartRateBpm</code>.
             </span>
           </span>
         </label>
@@ -6033,8 +6041,17 @@ I return to myself easily"></textarea>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span id="sensorBridgeDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;vertical-align:middle"></span>
             <span id="sensorBridgeStatusText">not connected</span>
+            <span id="sensorBridgeBpmBadge" style="display:none;align-items:center;gap:3px;padding:1px 6px;background:rgba(255,80,100,0.10);border:0.5px solid rgba(255,80,100,0.35);border-radius:10px;color:#ff8a96;font-family:monospace;font-size:0.64rem"><span style="font-size:0.7rem;line-height:1">♥</span><span id="sensorBridgeBpmValue">—</span><span style="color:var(--text-faint);font-size:0.58rem">bpm</span></span>
             <input type="text" id="sensorBridgeUrl" value="ws://localhost:8765" style="background:rgba(0,0,0,0.3);border:0.5px solid var(--border,rgba(255,255,255,0.15));border-radius:4px;color:var(--text);font-size:0.66rem;padding:2px 6px;width:170px;font-family:monospace">
             <button type="button" id="sensorBridgeReconnectBtn" class="btn secondary" style="padding:2px 10px;font-size:0.66rem">reconnect</button>
+          </div>
+          <!-- Quick URL presets — one tap to switch between the generic adapter
+               port and the HR-OBS Monitor port. Saves typing for the common
+               cases. The custom button just focuses the field. -->
+          <div style="display:flex;align-items:center;gap:4px;margin-top:4px;font-size:0.6rem">
+            <span style="color:var(--text-faint)">presets:</span>
+            <button type="button" class="btn secondary sensor-bridge-preset" data-url="ws://localhost:8765" style="padding:1px 7px;font-size:0.6rem" title="Generic HNE biometric adapter — Polar/Muse-style bridges">generic :8765</button>
+            <button type="button" class="btn secondary sensor-bridge-preset" data-url="ws://localhost:8080" style="padding:1px 7px;font-size:0.6rem" title="Heart Rate OBS Monitor (github.com — Samsung/Wear OS/Mi Band/Fitbit)">HR-OBS :8080</button>
           </div>
           <div id="sensorBridgeSignalsLine" style="font-size:0.62rem;color:var(--text-faint);margin-top:4px;font-family:monospace;min-height:1.3em"></div>
         </div>
@@ -9112,6 +9129,19 @@ I return to myself easily"></textarea>
       case 'faceDetected':      return state._webcam?.faceDetected ? 1 : 0;
       case 'ambientBrightness': return state.ambientBrightness ?? 0.5;
 
+      // Round 29 — heart-rate-derived metrics for the rules engine and HUD.
+      // `heartRate` and `relaxation` come from the external-signals map
+      // (populated by sensorBridge); `heartRateBpm` is the raw BPM from
+      // sensorBridge directly. All return 0 (not null) when unavailable
+      // so condition arithmetic stays well-defined — rules should AND
+      // their threshold check with `bridgeConnected` if a 0 reading
+      // would otherwise be a false positive.
+      case 'heartRate':         return _engineExternalSignals?.heartRate?.value ?? 0;
+      case 'relaxation':        return _engineExternalSignals?.relaxation?.value ?? 0;
+      case 'heartRateBpm':      return (typeof sensorBridge !== 'undefined' && sensorBridge.getCurrentBpm)
+                                  ? (sensorBridge.getCurrentBpm() ?? 0)
+                                  : 0;
+
       case 'liveIntensity':     return state._rampActiveIntensity ?? state.liveControl?.intensityScale ?? 1;
       case 'liveSpeed':         return state.liveControl?.speedScale ?? 1;
       case 'liveRandomness':    return state.liveControl?.randomness ?? 0;
@@ -9181,6 +9211,12 @@ I return to myself easily"></textarea>
     'phaseSec', 'phaseKind', 'currentPhase',
 
     'attention', 'wakefulness', 'faceDetected', 'ambientBrightness',
+
+    // Round 29 — heart-rate-aware rule metrics. heartRate / relaxation
+    // are normalized 0-1 (engagement-scale); heartRateBpm is the raw
+    // value (e.g. for `heartRateBpm < 70` rules). Available whether the
+    // user runs a generic adapter or HR-OBS Monitor v2.
+    'heartRate', 'relaxation', 'heartRateBpm',
 
     'liveIntensity', 'liveSpeed', 'liveRandomness', 'rampActive',
   ]);
@@ -26672,6 +26708,16 @@ Start immediately:`;
       startMic().catch(e => console.warn('[mic] start in startSession failed:', e));
     }
 
+    // Round 29 — re-arm the HR baseline at session start so the relaxation
+    // signal anchors on the user's "settled at the start of the session"
+    // state, not whatever they were doing while configuring the wizard.
+    // Safe to call unconditionally — the bridge no-ops if no HR data is
+    // currently flowing.
+    if ($('sensorBridgeOptInThisSession')?.checked) {
+      try { sensorBridge.resetBaseline(); }
+      catch (e) { console.warn('[sensor-bridge] resetBaseline in startSession failed:', e); }
+    }
+
     if (DIFF_BOUNCE_THRESHOLDS.commitOnSessionStart) {
       Object.values(diffBouncers).forEach(b => { try { b.hardCommit('sessionStart'); } catch(e) { console.warn('[DB] hardCommit failed for', b.source, e); } });
     }
@@ -27180,7 +27226,15 @@ Start immediately:`;
       const webcamOn = !!(state._webcam && state._webcam.active);
 
       const sessionRunning = !!state._sessionStartTime && !state.abortFlag;
-      if (!webcamOn && !sessionRunning) {
+      // Round 29 — HUD also surfaces live BPM whenever the sensor bridge
+      // is producing data, even outside a session (e.g. while the user is
+      // calibrating before tapping Begin). The bridge is treated as a
+      // first-class display source alongside webcam.
+      const hrBpm = (typeof sensorBridge !== 'undefined' && sensorBridge.getCurrentBpm)
+        ? sensorBridge.getCurrentBpm()
+        : null;
+      const hrAvailable = Number.isFinite(hrBpm);
+      if (!webcamOn && !sessionRunning && !hrAvailable) {
         barsEl.innerHTML = '';
       } else {
         const eng = (typeof getEngineMetric === 'function') ? Math.max(0, Math.min(1, getEngineMetric('engagement') || 0)) : 0;
@@ -27192,6 +27246,22 @@ Start immediately:`;
         if (webcamOn) {
           rows.push(`<div class="hud-metric-row"><span>attention</span><span class="hud-metric-bar-track"><span class="hud-metric-bar-fill attention" style="width:${(att*100).toFixed(0)}%"></span></span><span class="hud-metric-bar-value">${(att*100).toFixed(0)}</span></div>`);
         }
+
+        // Round 29 — HR row. Two pieces of info squeezed into the same
+        // row shape: the heart icon + raw BPM as the label, and the
+        // relaxation score (0-1) as the bar fill. Saves vertical space
+        // vs splitting them across two rows. The fill uses --neon-magenta
+        // so it's visually distinct from engagement (cyan) and attention
+        // (amber). Only renders once we have a usable BPM reading.
+        if (hrAvailable) {
+          const relax = (typeof getEngineMetric === 'function') ? Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0)) : 0;
+          const baseline = (typeof sensorBridge !== 'undefined' && sensorBridge.getBaseline) ? sensorBridge.getBaseline() : null;
+          const baselineHint = Number.isFinite(baseline) ? ` (base ${Math.round(baseline)})` : '';
+          rows.push(
+            `<div class="hud-metric-row" title="Live heart rate · relaxation = drop from baseline${baselineHint}"><span>♥ ${Math.round(hrBpm)} bpm</span><span class="hud-metric-bar-track"><span class="hud-metric-bar-fill" style="width:${(relax*100).toFixed(0)}%;background:var(--neon-magenta,#e85a8e)"></span></span><span class="hud-metric-bar-value">${(relax*100).toFixed(0)}</span></div>`
+          );
+        }
+
         barsEl.innerHTML = rows.join('');
       }
     }
@@ -38540,8 +38610,42 @@ Begin:`;
 
     'heartRate', 'hrv', 'gsr', 'breath', 'eegFocus',
 
+    // Round 29 — `relaxation` is a DERIVED signal: drop in BPM from the
+    // user's per-session baseline, normalized 0-1. Auto-computed when raw
+    // BPM arrives via the HR-OBS protocol; user-supplied bridges can also
+    // push it directly. For hypnosis/relaxation sessions this is far more
+    // useful than raw heartRate (which monotonically increases with arousal).
+    'relaxation',
+
     'custom1', 'custom2', 'custom3',
   ]);
+
+  // Round 29 — heart rate normalization & baseline tracking constants.
+  // BPM_NORM_MIN/MAX clamp raw BPM into the 0-1 engagement-signal space.
+  // Defaults cover the realistic resting-to-vigorous range for adults; the
+  // small dead-band at the bottom (40 vs typical 50 bpm resting) leaves
+  // headroom for athletic/sleeping users without clipping.
+  const HR_BPM_NORM_MIN          = 40;
+  const HR_BPM_NORM_MAX          = 180;
+  // Baseline learns over the first BASELINE_WARMUP_MS of valid samples
+  // after connect or resetBaseline(). 30 s is enough for most users to
+  // settle into a still-but-not-deeply-relaxed state, and short enough
+  // that the relaxation signal becomes useful well within the first
+  // induction phase.
+  const HR_BASELINE_WARMUP_MS    = 30_000;
+  const HR_BASELINE_MIN_SAMPLES  = 10;
+  // Drop in BPM that maps to relaxation = 1.0. 20 bpm below baseline is
+  // a substantial parasympathetic shift — typical of mid/deep trance for
+  // most users. Clamped, so anything beyond saturates at 1.
+  const HR_RELAXATION_FULL_DROP  = 20;
+  // Protocol detection tag for HR-OBS Monitor v2 messages.
+  const HR_OBS_MESSAGE_TYPE      = 'heart_rate';
+  // Engagement-engine weight applied to auto-translated HR-OBS signals.
+  // Default 0 = signals are populated for rule access and HUD display
+  // but do NOT pollute the engagement score unless the user opts in via
+  // a rule. Keeps "just plug in HR-OBS" non-disruptive for existing
+  // sessions while making the data fully available everywhere it's useful.
+  const HR_OBS_DEFAULT_WEIGHT    = 0;
 
   const sensorBridge = (() => {
     let _ws          = null;
@@ -38554,6 +38658,18 @@ Begin:`;
     const _stamps    = Object.create(null);
     const _values    = Object.create(null);
     let _staleTimer  = null;
+
+    // Round 29 — heart-rate state. Independent of the engagement-signal map
+    // because we want to display raw BPM in the HUD/status row even when
+    // the engagement weight is 0. _hrSamples is a small ring of recent
+    // {bpm,t} entries used to smooth and to compute the baseline.
+    const HR_SAMPLE_BUFFER_MAX = 64;
+    let _hrCurrentBpm   = null;       // Most recent raw BPM (null if stale/none)
+    let _hrCurrentAt    = 0;          // Timestamp of _hrCurrentBpm
+    let _hrBaseline     = null;       // Median of warm-up samples; null until learned
+    let _hrBaselineLockedAt = 0;
+    let _hrFirstSampleAt = 0;
+    const _hrSamples    = [];         // {bpm, t} ring
 
     function _setStatus(state, text) {
       const dot = document.getElementById('sensorBridgeDot');
@@ -38580,6 +38696,90 @@ Begin:`;
       line.textContent = names.map(n => `${n}=${_values[n].toFixed(2)}`).join(' · ');
     }
 
+    // Round 29 — render the live BPM badge in the status row. Hidden when
+    // there's no recent reading; shows raw BPM with a small drop-from-baseline
+    // hint once the baseline has locked in (e.g. "♥ 68 bpm  −7 base").
+    function _renderBpmBadge() {
+      const badge = document.getElementById('sensorBridgeBpmBadge');
+      const valEl = document.getElementById('sensorBridgeBpmValue');
+      if (!badge || !valEl) return;
+      const bpm = getCurrentBpm();
+      if (!Number.isFinite(bpm)) {
+        badge.style.display = 'none';
+        return;
+      }
+      badge.style.display = 'inline-flex';
+      let label = `${Math.round(bpm)}`;
+      if (Number.isFinite(_hrBaseline)) {
+        const drop = _hrBaseline - bpm;
+        const sign = drop >= 0 ? '−' : '+';
+        label += `  ${sign}${Math.abs(Math.round(drop))} base`;
+      } else if (_hrFirstSampleAt) {
+        const learned = Math.round((Date.now() - _hrFirstSampleAt) / 1000);
+        const remaining = Math.max(0, Math.round(HR_BASELINE_WARMUP_MS / 1000) - learned);
+        if (remaining > 0) label += `  base in ${remaining}s`;
+      }
+      valEl.textContent = label;
+    }
+
+    // Round 29 — pure: take a copy of recent samples and return the median.
+    // Median (vs mean) makes the baseline robust to spurious spikes from
+    // motion artefacts (typical of optical wrist sensors during the first
+    // 30 s of a session as the user settles in).
+    function _medianOf(arr) {
+      if (!arr.length) return null;
+      const sorted = arr.slice().sort((a, b) => a - b);
+      const mid = sorted.length >> 1;
+      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+
+    // Round 29 — ingest a raw BPM reading. Updates the sample ring, learns
+    // the baseline once warm-up completes, and pushes derived signals into
+    // the engagement engine. Rejects out-of-range values silently (a watch
+    // briefly reporting 0 BPM during a sync glitch shouldn't reset the
+    // baseline). Caller handles the wire-format translation.
+    function _ingestRawBpm(bpm, weight) {
+      if (!Number.isFinite(bpm) || bpm < 25 || bpm > 240) return;
+      const now = Date.now();
+      _hrCurrentBpm = bpm;
+      _hrCurrentAt  = now;
+      if (!_hrFirstSampleAt) _hrFirstSampleAt = now;
+
+      _hrSamples.push({ bpm, t: now });
+      if (_hrSamples.length > HR_SAMPLE_BUFFER_MAX) _hrSamples.shift();
+
+      // Learn baseline once we've collected enough samples and let the
+      // warm-up window elapse. Median over the warm-up window is the
+      // anchor for the relaxation signal for the rest of the session
+      // (or until resetBaseline is called).
+      if (_hrBaseline === null) {
+        const warmupSamples = _hrSamples.filter(s => s.t - _hrFirstSampleAt <= HR_BASELINE_WARMUP_MS);
+        const elapsed = now - _hrFirstSampleAt;
+        if (elapsed >= HR_BASELINE_WARMUP_MS && warmupSamples.length >= HR_BASELINE_MIN_SAMPLES) {
+          _hrBaseline = _medianOf(warmupSamples.map(s => s.bpm));
+          _hrBaselineLockedAt = now;
+        }
+      }
+
+      // Normalized heartRate signal — 0 at rest-floor, 1 at vigorous-ceiling.
+      const heartRateNorm = Math.max(0, Math.min(1,
+        (bpm - HR_BPM_NORM_MIN) / (HR_BPM_NORM_MAX - HR_BPM_NORM_MIN)
+      ));
+      const w = Number.isFinite(weight) ? weight : HR_OBS_DEFAULT_WEIGHT;
+      _applySignal('heartRate', heartRateNorm, w);
+
+      // Derived relaxation — only meaningful once baseline is locked.
+      // Until then we keep relaxation at 0 with weight 0 so it doesn't
+      // skew engagement during the warm-up.
+      if (Number.isFinite(_hrBaseline)) {
+        const drop = _hrBaseline - bpm;
+        const relax = Math.max(0, Math.min(1, drop / HR_RELAXATION_FULL_DROP));
+        _applySignal('relaxation', relax, w);
+      }
+
+      _renderBpmBadge();
+    }
+
     function _applySignal(signal, value, weight) {
       if (!SENSOR_BRIDGE_SIGNALS.has(signal)) return;
       if (!Number.isFinite(value)) return;
@@ -38593,14 +38793,44 @@ Begin:`;
 
     function _handleMessage(msg) {
       if (!msg || typeof msg !== 'object') return;
+      // Round 29 — HR-OBS Monitor v2 protocol auto-detection.
+      // The OBS overlay ships {"type":"heart_rate","data":{"bpm":N,...}}
+      // on the same socket the dashboard uses. We translate transparently
+      // to the engine's normalized signal space and feed both raw heartRate
+      // and the derived relaxation signal — no separate translator process
+      // required. The optional config_updated message from HR-OBS is a UI
+      // hint for the OBS overlay only; we silently ignore it here.
+      if (msg.type === HR_OBS_MESSAGE_TYPE && msg.data && Number.isFinite(Number(msg.data.bpm))) {
+        _ingestRawBpm(Number(msg.data.bpm), undefined);
+        return;
+      }
+      if (msg.type === 'config_updated') {
+        return;
+      }
+      // Generic HNE protocol — batch form.
       if (Array.isArray(msg.signals)) {
         for (const s of msg.signals) {
-          if (s && typeof s === 'object') _applySignal(s.signal, Number(s.value), s.weight);
+          if (s && typeof s === 'object') {
+            // Allow user-supplied bridges to push raw BPM through the
+            // generic protocol via {signal:"heartRateBpm",value:72}. Same
+            // ingestion path as HR-OBS — single source of truth for
+            // baseline + relaxation.
+            if (s.signal === 'heartRateBpm') {
+              _ingestRawBpm(Number(s.value), Number(s.weight));
+            } else {
+              _applySignal(s.signal, Number(s.value), s.weight);
+            }
+          }
         }
         return;
       }
+      // Generic HNE protocol — single signal form.
       if (typeof msg.signal === 'string') {
-        _applySignal(msg.signal, Number(msg.value), msg.weight);
+        if (msg.signal === 'heartRateBpm') {
+          _ingestRawBpm(Number(msg.value), Number(msg.weight));
+        } else {
+          _applySignal(msg.signal, Number(msg.value), msg.weight);
+        }
         return;
       }
     }
@@ -38621,6 +38851,13 @@ Begin:`;
           if (!(name in _stamps)) setEngineSignal(name, 0, 0);
         } } catch {}
         _renderSignalsLine();
+      }
+      // Round 29 — invalidate raw BPM display when the source goes silent.
+      // (Stays separate from _stamps so we can show "stale" on the badge
+      // without zeroing the engine signals more than once.)
+      if (_hrCurrentBpm !== null && now - _hrCurrentAt > SENSOR_BRIDGE_STALE_MS) {
+        _hrCurrentBpm = null;
+        _renderBpmBadge();
       }
     }
 
@@ -38686,13 +38923,58 @@ Begin:`;
       for (const k of Object.keys(_stamps)) delete _stamps[k];
       for (const k of Object.keys(_values)) delete _values[k];
       _renderSignalsLine();
+      // Round 29 — also clear HR-specific state so a fresh connect starts
+      // with a clean baseline-learning window. resetBaseline() does the
+      // same job mid-session without dropping the WS.
+      _hrCurrentBpm = null; _hrCurrentAt = 0;
+      _hrBaseline = null; _hrBaselineLockedAt = 0;
+      _hrFirstSampleAt = 0;
+      _hrSamples.length = 0;
+      _renderBpmBadge();
       _setStatus('idle');
     }
 
     function isConnected() { return _ws?.readyState === WebSocket.OPEN; }
     function setEnabled(v) { _enabled = !!v; _setStatus(isConnected() ? 'connected' : 'idle'); }
 
-    return { connect, disconnect, isConnected, setEnabled };
+    // Round 29 — public read API. Exposed so the HUD, session-history
+    // serializer, rules engine (via getEngineMetric), and the in-app
+    // diagnostic chip can all read the same numbers without poking
+    // private module state. Returns null when no fresh reading exists
+    // — callers should treat null as "not available", not as zero.
+    function getCurrentBpm() {
+      if (!Number.isFinite(_hrCurrentBpm)) return null;
+      if (Date.now() - _hrCurrentAt > SENSOR_BRIDGE_STALE_MS) return null;
+      return _hrCurrentBpm;
+    }
+    function getBaseline() {
+      return Number.isFinite(_hrBaseline) ? _hrBaseline : null;
+    }
+    function getRelaxationScore() {
+      const bpm = getCurrentBpm();
+      if (!Number.isFinite(bpm) || !Number.isFinite(_hrBaseline)) return 0;
+      return Math.max(0, Math.min(1, (_hrBaseline - bpm) / HR_RELAXATION_FULL_DROP));
+    }
+    // Round 29 — re-arm the baseline learning window. Called automatically
+    // at startSession() so the baseline reflects the user's "settled in"
+    // state at the start of the session, not the state when they first
+    // turned on the bridge (which may have been minutes earlier while
+    // they were still configuring the wizard).
+    function resetBaseline() {
+      _hrBaseline = null;
+      _hrBaselineLockedAt = 0;
+      _hrFirstSampleAt = _hrCurrentBpm !== null ? Date.now() : 0;
+      _hrSamples.length = 0;
+      // Don't clear _hrCurrentBpm — we want the badge to keep showing
+      // the live BPM during the warm-up window, just without a baseline
+      // hint until the new window completes.
+      _renderBpmBadge();
+    }
+
+    return {
+      connect, disconnect, isConnected, setEnabled,
+      getCurrentBpm, getBaseline, getRelaxationScore, resetBaseline,
+    };
   })();
 
   $('hapticOptInThisSession')?.addEventListener('change', async e => {
@@ -39489,6 +39771,26 @@ Begin:`;
     const url = ($('sensorBridgeUrl')?.value || '').trim() || 'ws://localhost:8765';
     sensorBridge.disconnect();
     sensorBridge.connect(url);
+  });
+
+  // Round 29 — URL preset chips. Tap to fill the URL field with the
+  // common ports (generic 8765, HR-OBS 8080). If the bridge is already
+  // active, also reconnect immediately so the change takes effect without
+  // an extra tap on "reconnect". Delegated to the panel so future presets
+  // (Polar adapter, Muse bridge, etc.) drop in without extra wiring.
+  document.querySelectorAll('.sensor-bridge-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const url = btn.getAttribute('data-url');
+      if (!url) return;
+      const input = $('sensorBridgeUrl');
+      if (input) input.value = url;
+      if ($('sensorBridgeOptInThisSession')?.checked) {
+        sensorBridge.disconnect();
+        sensorBridge.connect(url);
+      } else {
+        notify.info(`URL set to ${url} — toggle the bridge on to connect.`, 4000);
+      }
+    });
   });
 
   const HNE_USER_PATTERNS_KEY = 'hne_user_funscript_patterns_v1';
