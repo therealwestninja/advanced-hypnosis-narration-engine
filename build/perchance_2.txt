@@ -5404,7 +5404,7 @@ padding: 6px 10px; font-size: 1.1rem;
           <button class="btn secondary" id="recraftBtn">re-craft</button>
           <button class="btn secondary" id="editCraftedBtn">edit manually</button>
           <button class="btn secondary" id="saveEditBtn" style="display:none">save edit</button>
-          <button class="btn secondary" id="craftedSymbolBtn" title="Generate an abstract visual anchor for post-hypnotic recall (requires remote processing opt-in)">🎨 symbol</button>
+          <button class="btn secondary" id="craftedSymbolBtn" title="Generate an abstract visual anchor for post-hypnotic recall (requires Cloud sync in Options ▸ Use External Devices)">🎨 symbol</button>
           <button class="btn secondary" id="craftedVoicePreviewBtn" title="Hear the suggestion in your selected narrator voice">▶ preview voice</button>
           <button class="btn secondary" id="craftedVoiceStopBtn" style="display:none">⏹ stop</button>
         </div>
@@ -7043,16 +7043,17 @@ I return to myself easily"></textarea>
 
 <div class="modal-backdrop" id="remoteConsentModal">
   <div class="modal">
-    <h2>Enable remote backup + processing?</h2>
+    <h2>Allow cloud sync &amp; AI image processing?</h2>
     <div class="field">
       <div style="font-size:0.9rem; line-height:1.6; color:var(--text-dim)">
-        If you turn this on, some of your data may be sent to a remote server for backup and further processing.
-        This is optional, disabled by default, and you can turn it off later.
+        Cloud sync is the only external-device class that sends data to a remote server.
+        Enabling it allows AI portrait/symbol generation, settings backup, and account features.
+        Other device classes (webcam, microphone, heart rate, haptics) all process locally and never leave your machine.
       </div>
     </div>
     <div class="field">
       <div style="font-size:0.82rem; line-height:1.6; color:var(--text-faint)">
-        Only enable this if you understand and agree to that behavior.
+        Off by default. You can revoke at any time in Options ▸ Use External Devices.
       </div>
     </div>
     <div class="modal-actions">
@@ -7305,13 +7306,76 @@ I return to myself easily"></textarea>
         <!-- Populated at boot from root.hneLanguagePacks. Falls back to a single English entry if perchance_1.txt's hneLanguagePacks list isn't accessible. -->
         <option value="en">English (default)</option>
       </select>
-      <label class="toggle-row" for="remoteProcessingOptIn" style="align-items:flex-start">
-        <input type="checkbox" id="remoteProcessingOptIn">
-        <span>
-          Enable remote backup + processing
-          <span class="hint">Off by default. Requires explicit consent.</span>
-        </span>
-      </label>
+      <!-- Round 30 — Use External Devices. Replaces the single "Enable
+           remote backup + processing" toggle with a master allow-list
+           gating which external devices/services the app may access.
+           Five device rows in a scrollable list:
+             • Webcam       — face presence / eye state / ambient light
+             • Microphone   — breath-aware pacing
+             • Heart rate   — biometric sensor bridge (HR-OBS, generic)
+             • Haptics      — Intiface / Buttplug
+             • Cloud        — formerly "remote backup + processing"
+           Each device permission is an allow-list bit. The actual
+           per-session opt-in toggles in Step 5 are gated by these — a
+           user must allow the device class here before the per-session
+           checkbox can be ticked. The legacy state.remoteProcessingOptIn
+           field is kept as an alias for the cloud bit, so all existing
+           call sites (AI portrait, AI symbol, etc.) keep working
+           unchanged. Migration: any existing remoteProcessingOptIn=true
+           is mapped to devicePermissions.cloud=true at load time. -->
+      <div class="pf-label" style="margin-top:14px;margin-bottom:6px">🔌 Use External Devices</div>
+      <div class="sublabel" style="font-size:0.62rem;line-height:1.4;color:var(--text-faint);margin-bottom:6px">
+        Allow-list for external hardware and remote services. Per-session toggles in Step 5 are disabled until the matching device class is allowed here. All processing is local-only except where explicitly noted (cloud).
+      </div>
+      <!-- Scrollable device list — capped height so the Options panel
+           stays compact. Each row is a toggle-row reused from the
+           profile sidebar styling; standardized icon + name + hint
+           layout makes the list scannable at a glance. -->
+      <div id="devicePermissionsList" style="max-height:240px;overflow-y:auto;padding:6px 8px;background:rgba(0,0,0,0.18);border:0.5px solid var(--glass-border);border-radius:4px;margin-bottom:8px">
+        <label class="toggle-row toggle-row-cb" for="devPermWebcam" style="align-items:flex-start;padding:6px 0">
+          <input type="checkbox" id="devPermWebcam">
+          <span>
+            📷 Webcam
+            <span class="hint">Face presence, eye state, and ambient brightness via on-device MediaPipe (~3-5 MB on first enable). Local-only — never transmitted.</span>
+          </span>
+        </label>
+        <label class="toggle-row toggle-row-cb" for="devPermMicrophone" style="align-items:flex-start;padding:6px 0;margin-top:4px;border-top:0.5px solid rgba(255,255,255,0.05)">
+          <input type="checkbox" id="devPermMicrophone">
+          <span>
+            🎙 Microphone
+            <span class="hint">Breath-aware pacing — detects exhale rhythm to adapt pause durations. No audio recorded, never transmitted.</span>
+          </span>
+        </label>
+        <label class="toggle-row toggle-row-cb" for="devPermHeartRate" style="align-items:flex-start;padding:6px 0;margin-top:4px;border-top:0.5px solid rgba(255,255,255,0.05)">
+          <input type="checkbox" id="devPermHeartRate">
+          <span>
+            ♥ Heart rate sensor
+            <span class="hint">Biometric sensor bridge over local WebSocket. Native support for Heart Rate OBS Monitor v2 (Samsung Galaxy Fit / Watch, Mi Band, Fitbit via Gadgetbridge) and any generic adapter speaking the HNE signal protocol. Loopback-only — nothing leaves your machine.</span>
+          </span>
+        </label>
+        <label class="toggle-row toggle-row-cb" for="devPermHaptic" style="align-items:flex-start;padding:6px 0;margin-top:4px;border-top:0.5px solid rgba(255,255,255,0.05)">
+          <input type="checkbox" id="devPermHaptic">
+          <span>
+            🌀 Haptic devices
+            <span class="hint">External haptic device support via local <a href="https://intiface.com/central/" target="_blank" rel="noopener" style="color:var(--text-dim);text-decoration:underline">Intiface Central</a>. Loopback-only.</span>
+          </span>
+        </label>
+        <label class="toggle-row toggle-row-cb" for="devPermCloud" style="align-items:flex-start;padding:6px 0;margin-top:4px;border-top:0.5px solid rgba(255,255,255,0.05)">
+          <input type="checkbox" id="devPermCloud">
+          <span>
+            ☁ Cloud sync &amp; AI image processing
+            <span class="hint">Off by default — the only device class that sends data to a remote server. Enables AI portrait/symbol generation, cloud backup of settings, and account features. Requires explicit consent.</span>
+          </span>
+        </label>
+      </div>
+      <!-- Legacy hidden checkbox preserved as a state mirror for
+           backward compatibility. Many existing code paths read
+           $('remoteProcessingOptIn').checked directly; rather than
+           touch them all, we keep the input element but hide it and
+           drive its checked state from the cloud permission row above.
+           When the cloud row toggles, this mirror updates; reads
+           continue to work as before. -->
+      <input type="checkbox" id="remoteProcessingOptIn" style="display:none">
       <!-- Adult-content toggle — moved here from the Profile sidebar
            where the long descriptive copy was wrapping awkwardly into
            the narrow profile column. Same IDs preserved (pfAdultUnlock,
@@ -8248,6 +8312,20 @@ I return to myself easily"></textarea>
     generatedPhaseOrder: [],
     scriptSections: [],
     remoteProcessingOptIn: false,
+    // Round 30 — devicePermissions allow-list. Each bit gates an entire
+    // class of external device or remote service. The legacy
+    // remoteProcessingOptIn field above is now an alias for
+    // devicePermissions.cloud (kept for backward compatibility with the
+    // ~10 call sites that read it directly). Default-off for everything;
+    // the user explicitly opts each class in via Options ▸ Use External
+    // Devices. Per-session toggles in Step 5 are gated by these.
+    devicePermissions: {
+      webcam:     false,
+      microphone: false,
+      heartRate:  false,
+      haptic:     false,
+      cloud:      false,
+    },
     smartDirectorEnabled: true,
 
     aiSceneDirectivesEnabled: true,
@@ -11783,6 +11861,18 @@ I return to myself easily"></textarea>
 
       reimagineMode: state.reimagineMode || 'smart',
       remoteProcessingOptIn: !!$('remoteProcessingOptIn')?.checked,
+      // Round 30 — persist the device permissions allow-list. Read from
+      // the live checkboxes so the saved state always matches what the
+      // user sees. Cloud bit mirrors remoteProcessingOptIn for legacy
+      // call sites; both fields are written so a downgrade-and-reload
+      // path (e.g. older cached JS) doesn't lose the consent state.
+      devicePermissions: {
+        webcam:     !!$('devPermWebcam')?.checked,
+        microphone: !!$('devPermMicrophone')?.checked,
+        heartRate:  !!$('devPermHeartRate')?.checked,
+        haptic:     !!$('devPermHaptic')?.checked,
+        cloud:      !!$('devPermCloud')?.checked,
+      },
       smartDirectorEnabled: !!$('smartDirectorEnabled')?.checked,
 
       aiSceneDirectivesEnabled: state.aiSceneDirectivesEnabled !== false,
@@ -12230,6 +12320,39 @@ I return to myself easily"></textarea>
       state.reimagineMode = s.reimagineMode || (s.smartDirectorEnabled === false ? 'guide' : 'smart');
       state.remoteProcessingOptIn = !!s.remoteProcessingOptIn;
       const rpcb = $('remoteProcessingOptIn'); if (rpcb) rpcb.checked = !!state.remoteProcessingOptIn;
+
+      // Round 30 — load device permissions. Migration path: when a
+      // saved record predates the devicePermissions field, the legacy
+      // remoteProcessingOptIn=true (single-toggle for cloud features)
+      // maps to devicePermissions.cloud=true. Other classes default to
+      // false — users must explicitly grant each one. The legacy
+      // remoteProcessingOptIn state field is also kept in sync with
+      // .cloud so the ~10 read sites (AI portrait, AI symbol, etc.)
+      // see consistent state.
+      const incoming = (s.devicePermissions && typeof s.devicePermissions === 'object') ? s.devicePermissions : null;
+      state.devicePermissions = {
+        webcam:     incoming ? !!incoming.webcam     : false,
+        microphone: incoming ? !!incoming.microphone : false,
+        heartRate:  incoming ? !!incoming.heartRate  : false,
+        haptic:     incoming ? !!incoming.haptic     : false,
+        // Migration: if no devicePermissions saved but the legacy
+        // remoteProcessingOptIn is true, treat that as a cloud allow.
+        cloud:      incoming ? !!incoming.cloud      : !!s.remoteProcessingOptIn,
+      };
+      // Keep the legacy mirror in lock-step with the cloud bit.
+      state.remoteProcessingOptIn = !!state.devicePermissions.cloud;
+      const rpcbMirror = $('remoteProcessingOptIn'); if (rpcbMirror) rpcbMirror.checked = state.remoteProcessingOptIn;
+      // Reflect each permission on its UI checkbox.
+      const _setDevPermUI = (id, v) => { const el = $(id); if (el) el.checked = !!v; };
+      _setDevPermUI('devPermWebcam',     state.devicePermissions.webcam);
+      _setDevPermUI('devPermMicrophone', state.devicePermissions.microphone);
+      _setDevPermUI('devPermHeartRate',  state.devicePermissions.heartRate);
+      _setDevPermUI('devPermHaptic',     state.devicePermissions.haptic);
+      _setDevPermUI('devPermCloud',      state.devicePermissions.cloud);
+      // Apply the gating to per-session toggles so the user sees the
+      // current state immediately (rather than only after first
+      // interaction with Step 5).
+      try { _applyDevicePermissionGating(); } catch {}
       state.smartDirectorEnabled = s.smartDirectorEnabled !== false;
       const sdcb = $('smartDirectorEnabled'); if (sdcb) sdcb.checked = state.smartDirectorEnabled;
 
@@ -18346,7 +18469,7 @@ ${messages}
       return null;
     }
     if (!state.remoteProcessingOptIn) {
-      notify.warn('Portraits require remote processing opt-in (in Options).');
+      notify.warn('Portraits require Cloud sync to be allowed (Options ▸ Use External Devices).');
       return null;
     }
 
@@ -18426,7 +18549,7 @@ ${messages}
       return null;
     }
     if (!state.remoteProcessingOptIn) {
-      notify.warn('Symbols require remote processing opt-in (in Options).');
+      notify.warn('Symbols require Cloud sync to be allowed (Options ▸ Use External Devices).');
       return null;
     }
     const promise = (async () => {
@@ -42519,16 +42642,99 @@ Begin:`;
       'Thanks for helping make HNE better.');
   });
 
-  $('remoteProcessingOptIn')?.addEventListener('change', e => {
-    if (e.target.checked && !state.remoteProcessingOptIn) {
+  // Round 30 — Device permission gating. Per-session device toggles in
+  // Step 5 are disabled when the matching permission class isn't
+  // granted in Options. Tapping a disabled toggle pulses an inline
+  // hint and offers a one-click jump to the permissions panel.
+  // Idempotent — safe to call multiple times. Reads the current
+  // state.devicePermissions and applies disabled / opacity / hint
+  // state to each per-session checkbox + its containing toggle-row.
+  const _DEVICE_PERMISSION_TOGGLES = [
+    { perm: 'webcam',     toggleId: 'webcamOptInThisSession',       label: 'Webcam' },
+    { perm: 'microphone', toggleId: 'micOptInThisSession',          label: 'Microphone' },
+    { perm: 'heartRate',  toggleId: 'sensorBridgeOptInThisSession', label: 'Heart rate sensor' },
+    { perm: 'haptic',     toggleId: 'hapticOptInThisSession',       label: 'Haptic devices' },
+  ];
+  function _applyDevicePermissionGating() {
+    const perms = state.devicePermissions || {};
+    for (const { perm, toggleId, label } of _DEVICE_PERMISSION_TOGGLES) {
+      const cb = document.getElementById(toggleId);
+      if (!cb) continue;
+      const allowed = !!perms[perm];
+      const row = cb.closest('label.toggle-row') || cb.parentElement;
+      if (!allowed) {
+        // Force off if it was on and the user just revoked permission.
+        if (cb.checked) {
+          cb.checked = false;
+          cb.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        cb.disabled = true;
+        if (row) {
+          row.style.opacity = '0.5';
+          row.title = `${label} requires the matching permission in Options ▸ Use External Devices.`;
+        }
+      } else {
+        cb.disabled = false;
+        if (row) {
+          row.style.opacity = '';
+          row.title = '';
+        }
+      }
+    }
+  }
+
+  // Round 30 — open the cloud-consent modal (formerly opened from the
+  // single remoteProcessingOptIn toggle). Reuses the existing modal
+  // markup at #remoteConsentModal — only the cloud permission needs
+  // explicit consent because it's the only class that transmits data
+  // off the device.
+  function _openCloudConsentModal() {
+    if (typeof openRemoteConsentModal === 'function') openRemoteConsentModal();
+  }
+
+  // Round 30 — generic device permission change handler. Shared by
+  // four of the five rows; the cloud row has its own handler that
+  // routes through the consent modal first.
+  function _wireDevicePermission(checkboxId, permKey, label) {
+    const cb = document.getElementById(checkboxId);
+    if (!cb) return;
+    cb.addEventListener('change', e => {
+      if (!state.devicePermissions) state.devicePermissions = {};
+      state.devicePermissions[permKey] = !!e.target.checked;
+      _applyDevicePermissionGating();
+      saveUserSettings();
+      notify.info(`${label}: ${e.target.checked ? 'allowed' : 'blocked'}.`);
+    });
+  }
+  _wireDevicePermission('devPermWebcam',     'webcam',     '📷 Webcam');
+  _wireDevicePermission('devPermMicrophone', 'microphone', '🎙 Microphone');
+  _wireDevicePermission('devPermHeartRate',  'heartRate',  '♥ Heart rate sensor');
+  _wireDevicePermission('devPermHaptic',     'haptic',     '🌀 Haptic devices');
+
+  // Cloud row — gated by the existing consent modal. Rejects the
+  // checkbox flip until the user explicitly agrees in the modal; the
+  // modal's I-Agree button then re-checks and saves.
+  $('devPermCloud')?.addEventListener('change', e => {
+    if (!state.devicePermissions) state.devicePermissions = {};
+    if (e.target.checked && !state.devicePermissions.cloud) {
+      // Roll the visible state back; the consent modal will set it
+      // forward only after the user agrees.
       e.target.checked = false;
-      openRemoteConsentModal();
+      _openCloudConsentModal();
       return;
     }
-    state.remoteProcessingOptIn = !!e.target.checked;
+    state.devicePermissions.cloud = !!e.target.checked;
+    state.remoteProcessingOptIn = state.devicePermissions.cloud;
+    const mirror = $('remoteProcessingOptIn'); if (mirror) mirror.checked = state.remoteProcessingOptIn;
+    _applyDevicePermissionGating();
     saveUserSettings();
-    notify.info(state.remoteProcessingOptIn ? 'Remote backup + processing enabled.' : 'Remote backup + processing disabled.');
+    notify.info(state.devicePermissions.cloud ? '☁ Cloud sync allowed.' : '☁ Cloud sync blocked.');
   });
+
+  // Apply the gating once at boot so per-session toggles in Step 5
+  // start with the correct enabled/disabled state even before the
+  // user opens Options.
+  setTimeout(() => { try { _applyDevicePermissionGating(); } catch {} }, 100);
   $('smartDirectorEnabled')?.addEventListener('change', e => {
     state.smartDirectorEnabled = !!e.target.checked;
     saveUserSettings();
@@ -42837,15 +43043,26 @@ Begin:`;
   $('remoteConsentCancelBtn')?.addEventListener('click', () => {
     const cb = $('remoteProcessingOptIn'); if (cb) cb.checked = false;
     state.remoteProcessingOptIn = false;
+    // Round 30 — keep the cloud row in the device list in sync.
+    if (state.devicePermissions) state.devicePermissions.cloud = false;
+    const cloudRow = $('devPermCloud'); if (cloudRow) cloudRow.checked = false;
     saveUserSettings();
     closeRemoteConsentModal();
   });
   $('remoteConsentAgreeBtn')?.addEventListener('click', () => {
     const cb = $('remoteProcessingOptIn'); if (cb) cb.checked = true;
     state.remoteProcessingOptIn = true;
+    // Round 30 — also flip the cloud device-permission row and trigger
+    // the gating refresh (no-op for non-Step-5 toggles, but keeps the
+    // mental model "all device classes go through the same allow-list
+    // surface" consistent).
+    if (!state.devicePermissions) state.devicePermissions = {};
+    state.devicePermissions.cloud = true;
+    const cloudRow = $('devPermCloud'); if (cloudRow) cloudRow.checked = true;
+    try { _applyDevicePermissionGating(); } catch {}
     saveUserSettings();
     closeRemoteConsentModal();
-    notify.info('Remote backup + processing enabled.');
+    notify.info('☁ Cloud sync allowed.');
   });
   $('remoteConsentModal')?.addEventListener('click', e => {
     if (e.target?.id === 'remoteConsentModal') closeRemoteConsentModal();
