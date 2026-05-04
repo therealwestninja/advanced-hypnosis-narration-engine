@@ -13566,6 +13566,43 @@ I return to myself easily"></textarea>
       );
     }
 
+    // Round 31 — inferred preferences. Pulls patterns from the user's
+    // session history (best method/persona, what time-of-day works,
+    // imagery their journals keep mentioning) so the AI can lean into
+    // what's been working rather than starting from zero each time.
+    // All thresholded inside personalInsights — null/empty result for
+    // thin histories means this block silently emits nothing.
+    try {
+      if (typeof personalInsights !== 'undefined' && typeof idbGet === 'function') {
+        // We need a sync read here (getProfileContext is sync). The
+        // history is loaded once at startup and cached in state for
+        // exactly this kind of read; if not cached yet, just skip.
+        const histCache = state._profileContextHistoryCache;
+        if (Array.isArray(histCache) && histCache.length >= 5) {
+          const prefs = personalInsights.inferPreferences(histCache);
+          if (prefs) {
+            const lines = [];
+            if (prefs.bestMethod) {
+              lines.push(`Their strongest method by track record is "${prefs.bestMethod.key}" — averages +${prefs.bestMethod.avgDelta} mood lift across ${prefs.bestMethod.n} sessions.`);
+            }
+            if (prefs.bestPersona) {
+              lines.push(`Their strongest guide is "${prefs.bestPersona.key}" (avg +${prefs.bestPersona.avgDelta} mood, n=${prefs.bestPersona.n}).`);
+            }
+            if (prefs.bestTimeOfDay) {
+              lines.push(`${prefs.bestTimeOfDay.bucket} sessions land best for them (avg +${prefs.bestTimeOfDay.avgDelta} mood, ${Math.round(prefs.bestTimeOfDay.completionRate * 100)}% completion, n=${prefs.bestTimeOfDay.n}).`);
+            }
+            if (prefs.imageryPreferences && prefs.imageryPreferences.length) {
+              const imgList = prefs.imageryPreferences.map(p => p.cat).join(', ');
+              lines.push(`Imagery their journal entries return to: ${imgList}. Lean into these metaphor families when picking anchors — they're already resonant for this person.`);
+            }
+            if (lines.length) {
+              parts.push('LEARNED PREFERENCES (from past sessions): ' + lines.join(' ') + ' These are observations, not constraints — current session settings still take priority.');
+            }
+          }
+        }
+      }
+    } catch (e) { /* never block prompt building on insights errors */ }
+
     // Round 29 — live heart-rate context. When the sensor bridge is
     // connected and producing data, surface the user's current state to
     // the AI so it can write a script that meets the body where it is.
@@ -14526,6 +14563,338 @@ I return to myself easily"></textarea>
     apply(w.s, record.soundscape);
     apply(w.ln, record.length);
   }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Round 31 — Personal Insights module.
+  //
+  // Pure functions that derive deeper observations from the session
+  // history we already collect (postMood, postAlertness, postDepth, HR
+  // traces from Round 29, completion, durations, journals). All on-device,
+  // no telemetry, no new data collection — just better use of what's
+  // there. Two consumer surfaces:
+  //
+  //   1. Profile sidebar — derivePatternCallouts() + renderSidebarStats()
+  //      pull from these to surface trends inline (the existing UI panel
+  //      the user pointed at).
+  //   2. AI prompt context — getProfileContext() reads inferPreferences()
+  //      to enrich script generation with what actually works for this
+  //      practitioner.
+  //
+  // Each function is defensive: every record field can be missing, and
+  // missing data collapses to "insufficient" rather than throwing. Min
+  // sample thresholds prevent claims like "your best method is X" when
+  // there's only 1 data point.
+  // ════════════════════════════════════════════════════════════════════════
+  const personalInsights = (() => {
+    const MIN_SAMPLES_FOR_RANKING = 3;
+    const RECENT_WINDOW = 5;
+    // Imagery keyword regexes — scanned over journal text to infer
+    // preferred metaphor anchors. Names match the canonical anchor
+    // categories used elsewhere (freshSeeds, persona prompts).
+    const IMAGERY_KEYWORDS = {
+      ocean:    /\b(ocean|sea|wave|tide|shore|salt[- ]?water)\b/i,
+      forest:   /\b(forest|tree|wood|grove|leaves|moss)\b/i,
+      light:    /\b(light|sun|glow|warmth|golden|honey)\b/i,
+      water:    /\b(water|river|stream|rain|drift)\b/i,
+      mountain: /\b(mountain|peak|summit|valley|stone|rock)\b/i,
+      sky:      /\b(sky|cloud|star|moon|constellation)\b/i,
+      garden:   /\b(garden|flower|petal|bloom|seed)\b/i,
+      spaces:   /\b(room|hall|chamber|library|sanctuary|temple)\b/i,
+    };
+
+    // ─── helpers ─────────────────────────────────────────────────────
+    function _scorable(history) {
+      return (history || []).filter(r =>
+        r && Number.isFinite(r.preMood) && Number.isFinite(r.postMood) &&
+        (r.completed === true ||
+         (Number.isFinite(r.durationSec) && r.durationSec >= 60))
+      );
+    }
+    const _delta = r => (r.postMood || 0) - (r.preMood || 0);
+    const _mean = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+    // ─── Effectiveness ranking ───────────────────────────────────────
+    // Group sessions by a key, compute per-group avg mood delta +
+    // completion rate, return top entries with sample counts. Sample-
+    // count is exposed so callers can include "(n=5)" — the user
+    // sees how much evidence backs each claim.
+    function _rankByKey(history, keyFn, opts = {}) {
+      const minN = opts.minSamples || MIN_SAMPLES_FOR_RANKING;
+      const groups = new Map();
+      for (const r of _scorable(history)) {
+        const key = keyFn(r);
+        if (!key) continue;
+        const g = groups.get(key) || { key, deltas: [], completed: 0, total: 0 };
+        g.total++;
+        if (r.completed) g.completed++;
+        g.deltas.push(_delta(r));
+        groups.set(key, g);
+      }
+      const ranked = [];
+      for (const g of groups.values()) {
+        if (g.total < minN) continue;
+        const avgDelta = _mean(g.deltas);
+        const completion = g.completed / g.total;
+        // Score: mood delta primary (×3 weight), completion rate
+        // secondary. Range roughly -3..+12 — rankable but not
+        // user-facing (we surface delta + completion separately).
+        const score = avgDelta * 3 + completion * 2;
+        ranked.push({
+          key: g.key,
+          n: g.total,
+          avgDelta: +avgDelta.toFixed(2),
+          completionRate: +completion.toFixed(2),
+          score: +score.toFixed(2),
+        });
+      }
+      return ranked.sort((a, b) => b.score - a.score);
+    }
+    function rankMethods(h)    { return _rankByKey(h, r => r.methodId   || r.method); }
+    function rankPersonas(h)   { return _rankByKey(h, r => r.personaId  || r.guide); }
+    function rankSoundscapes(h){ return _rankByKey(h, r => r.soundscape, { minSamples: 2 }); }
+    function rankLengths(h)    { return _rankByKey(h, r => r.length); }
+
+    // ─── Time-of-day pattern ─────────────────────────────────────────
+    // Bucket sessions by morning / afternoon / evening / late-night
+    // and compute per-bucket completion + avg mood delta. Useful for
+    // surfacing "evening sessions complete 90% of the time vs 50%
+    // morning" style observations.
+    function computeTimeOfDayPattern(history) {
+      const buckets = {
+        morning:    { range: [5, 11],  total: 0, completed: 0, deltas: [] },
+        afternoon:  { range: [12, 16], total: 0, completed: 0, deltas: [] },
+        evening:    { range: [17, 21], total: 0, completed: 0, deltas: [] },
+        'late-night': { range: [22, 4], total: 0, completed: 0, deltas: [] },
+      };
+      for (const r of (history || [])) {
+        if (!r || !r.date) continue;
+        const hour = new Date(r.date).getHours();
+        let key;
+        if (hour >= 5  && hour <= 11) key = 'morning';
+        else if (hour >= 12 && hour <= 16) key = 'afternoon';
+        else if (hour >= 17 && hour <= 21) key = 'evening';
+        else key = 'late-night';
+        const b = buckets[key];
+        b.total++;
+        if (r.completed) b.completed++;
+        if (Number.isFinite(r.preMood) && Number.isFinite(r.postMood)) {
+          b.deltas.push(_delta(r));
+        }
+      }
+      const out = {};
+      for (const [k, b] of Object.entries(buckets)) {
+        if (b.total < 2) continue;
+        out[k] = {
+          n: b.total,
+          completionRate: +(b.completed / b.total).toFixed(2),
+          avgDelta: b.deltas.length ? +_mean(b.deltas).toFixed(2) : null,
+        };
+      }
+      return out;
+    }
+
+    // ─── HR trends from Round 29 trace data ──────────────────────────
+    // Compares baseline drift and drop-from-baseline trends. Rising
+    // baseline = potential burnout signal; improving drop = practice
+    // working. Only fires when at least 4 sessions had locked HR data.
+    function computeHrTrends(history) {
+      const withHr = (history || [])
+        .filter(r => r && r.heartRate &&
+                     Number.isFinite(r.heartRate.baselineBpm) &&
+                     Number.isFinite(r.heartRate.minBpm))
+        .slice(0, 12); // most recent 12
+      if (withHr.length < 4) return null;
+      const baselines = withHr.map(r => r.heartRate.baselineBpm);
+      const drops     = withHr.map(r => r.heartRate.baselineBpm - r.heartRate.minBpm);
+      // Compare oldest half to newest half — captures direction without
+      // requiring a least-squares fit (overkill for n<12).
+      const half = Math.floor(withHr.length / 2);
+      const oldBase = _mean(baselines.slice(half));   // older
+      const newBase = _mean(baselines.slice(0, half));// newer
+      const oldDrop = _mean(drops.slice(half));
+      const newDrop = _mean(drops.slice(0, half));
+      return {
+        n: withHr.length,
+        baselineTrend: +(newBase - oldBase).toFixed(1),  // positive = rising
+        dropTrend:     +(newDrop - oldDrop).toFixed(1),  // positive = bigger drops (better)
+        avgBaseline:   Math.round(_mean(baselines)),
+        avgDrop:       +_mean(drops).toFixed(1),
+        bestDrop:      Math.max(...drops),
+      };
+    }
+
+    // ─── Imagery preferences from journal text ───────────────────────
+    // Counts keyword mentions across journal entries and returns ranked
+    // categories. Crude (regex, not embedding) but completely on-device
+    // and good enough for biasing AI prompts toward what's resonating.
+    function computeImageryPreferences(history) {
+      const counts = {};
+      let totalJournals = 0;
+      for (const r of (history || [])) {
+        const text = (r && (r.journal || r.journalText || '')) || '';
+        if (!text || text.length < 10) continue;
+        totalJournals++;
+        for (const [cat, re] of Object.entries(IMAGERY_KEYWORDS)) {
+          if (re.test(text)) counts[cat] = (counts[cat] || 0) + 1;
+        }
+      }
+      if (totalJournals < 2) return null;
+      const ranked = Object.entries(counts)
+        .map(([cat, count]) => ({ cat, count, share: +(count / totalJournals).toFixed(2) }))
+        .filter(x => x.share >= 0.25)  // mentioned in at least 25% of journals
+        .sort((a, b) => b.count - a.count);
+      return ranked.length ? { totalJournals, top: ranked.slice(0, 3) } : null;
+    }
+
+    // ─── Anomaly detection — today vs historical baseline ────────────
+    // Compares the most recent session's pre-state to the user's
+    // historical pre-state mean. Flags sessions where the user is
+    // noticeably worse off (suggest gentler) or noticeably better off
+    // (suggest going deeper). Returns null if no anchor available.
+    function detectAnomaly(history, currentPreMood) {
+      const h = (history || []).filter(r => r && Number.isFinite(r.preMood));
+      if (h.length < 5) return null;
+      if (!Number.isFinite(currentPreMood)) return null;
+      const historicalMean = _mean(h.slice(0, 20).map(r => r.preMood));
+      const delta = currentPreMood - historicalMean;
+      // ±2 on a 0-10 scale is meaningful; smaller deltas are noise.
+      if (Math.abs(delta) < 2) return null;
+      return {
+        delta: +delta.toFixed(1),
+        historicalMean: +historicalMean.toFixed(1),
+        direction: delta > 0 ? 'better' : 'worse',
+      };
+    }
+
+    // ─── Burnout score ───────────────────────────────────────────────
+    // Composite signal: completion rate dropping + HR baseline rising
+    // + post-mood declining. Each component scored 0-1; final score
+    // 0-1 (1 = strong burnout signal). Threshold ~0.6 worth surfacing.
+    function computeBurnoutScore(history) {
+      const h = (history || []).filter(r => r);
+      if (h.length < 8) return null;
+      const recent = h.slice(0, RECENT_WINDOW);
+      const older  = h.slice(RECENT_WINDOW, RECENT_WINDOW * 2);
+      if (older.length < 3) return null;
+      const completionDrop = Math.max(0,
+        (older.filter(r => r.completed).length / older.length) -
+        (recent.filter(r => r.completed).length / recent.length));
+      const recentMoods = recent.filter(r => Number.isFinite(r.postMood)).map(r => r.postMood);
+      const olderMoods  = older.filter(r => Number.isFinite(r.postMood)).map(r => r.postMood);
+      const moodDrop = (recentMoods.length && olderMoods.length)
+        ? Math.max(0, (_mean(olderMoods) - _mean(recentMoods)) / 5)
+        : 0;
+      const hr = computeHrTrends(history);
+      // Baseline rising > 5 bpm over the trend window is a meaningful
+      // signal; cap at 15 bpm so it doesn't dominate the composite.
+      const hrSignal = hr ? Math.max(0, Math.min(1, hr.baselineTrend / 15)) : 0;
+      const score = completionDrop * 0.4 + moodDrop * 0.3 + hrSignal * 0.3;
+      return {
+        score: +score.toFixed(2),
+        components: {
+          completionDrop: +completionDrop.toFixed(2),
+          moodDrop:       +moodDrop.toFixed(2),
+          hrBaselineRise: hr ? hr.baselineTrend : null,
+        },
+      };
+    }
+
+    // ─── Streak + consistency ────────────────────────────────────────
+    function computeConsistency(history) {
+      const h = (history || []).filter(r => r && r.date);
+      if (h.length === 0) return null;
+      const now = Date.now();
+      const dayMs = 86400000;
+      const weekAgo  = now - 7 * dayMs;
+      const monthAgo = now - 28 * dayMs;
+      const thisWeek = h.filter(r => r.date >= weekAgo).length;
+      const last4Wk  = h.filter(r => r.date >= monthAgo).length;
+      // Average over the 4-week window (sessions per week)
+      const weeklyAvg = +(last4Wk / 4).toFixed(1);
+      return { thisWeek, last4WeekAvg: weeklyAvg, totalSessions: h.length };
+    }
+
+    // ─── Predicted session outcome ───────────────────────────────────
+    // Find similar past sessions (matching method, persona, length,
+    // and time-of-day bucket where possible) and return a predicted
+    // mood-delta range. Falls back to broader matching on lower
+    // sample counts. Used by the Step 6 setup summary to set
+    // expectations before the user hits "begin".
+    function predictOutcome(history, params) {
+      const all = _scorable(history);
+      if (all.length < 5) return null;
+      const tier1 = all.filter(r =>
+        (r.methodId  || r.method) === params.methodId &&
+        (r.personaId || r.guide)  === params.personaId &&
+        r.length === params.length);
+      const tier2 = all.filter(r => (r.methodId || r.method) === params.methodId);
+      const tier3 = all;
+      let pool, tier;
+      if (tier1.length >= 3)      { pool = tier1; tier = 'exact'; }
+      else if (tier2.length >= 5) { pool = tier2; tier = 'method'; }
+      else                        { pool = tier3; tier = 'global'; }
+      const deltas = pool.map(_delta);
+      const avg = _mean(deltas);
+      // Use spread (max-min) capped to ±2 either side of mean for
+      // range — robust to outliers without resorting to quantiles
+      // on small samples.
+      const min = Math.max(avg - 2, Math.min(...deltas));
+      const max = Math.min(avg + 2, Math.max(...deltas));
+      return {
+        n: pool.length,
+        tier,
+        avgDelta: +avg.toFixed(1),
+        min: +min.toFixed(1),
+        max: +max.toFixed(1),
+      };
+    }
+
+    // ─── inferPreferences — feeds AI prompt context ──────────────────
+    // Aggregates the most actionable inferences into a single shape
+    // that getProfileContext() can serialize into the script-gen
+    // prompt. Keep it tight — the AI doesn't need the whole story,
+    // just the strongest signals.
+    function inferPreferences(history) {
+      const out = {};
+      const methods   = rankMethods(history);
+      const personas  = rankPersonas(history);
+      const lengths   = rankLengths(history);
+      const tod       = computeTimeOfDayPattern(history);
+      const imagery   = computeImageryPreferences(history);
+      // Only surface if the top option is meaningfully better than the
+      // second — avoids "your best method is X" when X and Y are tied.
+      const topGap = (arr) => arr.length >= 2 ? arr[0].score - arr[1].score : (arr[0]?.score || 0);
+      if (methods.length  && topGap(methods)  > 1) out.bestMethod   = methods[0];
+      if (personas.length && topGap(personas) > 1) out.bestPersona  = personas[0];
+      if (lengths.length  && topGap(lengths)  > 1) out.bestLength   = lengths[0];
+      // Best time-of-day — the bucket with both highest completion
+      // AND positive avg delta. Don't recommend a bucket that
+      // completes well but produces no mood lift.
+      if (Object.keys(tod).length) {
+        let best = null;
+        for (const [k, v] of Object.entries(tod)) {
+          if (v.avgDelta == null || v.avgDelta < 0.5) continue;
+          if (!best || v.completionRate > best.v.completionRate) best = { k, v };
+        }
+        if (best) out.bestTimeOfDay = { bucket: best.k, ...best.v };
+      }
+      if (imagery && imagery.top.length) out.imageryPreferences = imagery.top.slice(0, 3);
+      return Object.keys(out).length ? out : null;
+    }
+
+    return {
+      // Pure analytics
+      rankMethods, rankPersonas, rankSoundscapes, rankLengths,
+      computeTimeOfDayPattern, computeHrTrends, computeImageryPreferences,
+      computeBurnoutScore, computeConsistency,
+      // Per-session helpers
+      detectAnomaly, predictOutcome,
+      // Bundled output for AI prompts
+      inferPreferences,
+      // Constants for testing
+      MIN_SAMPLES_FOR_RANKING, RECENT_WINDOW,
+    };
+  })();
 
   function computeDifficulty(sig, currentDiff) {
     const target = sig.completionRate * 0.4 + sig.avgImprovement * 0.3 + sig.depthNorm * 0.3;
@@ -25688,6 +26057,71 @@ Start immediately:`;
     if (lastDeltas.length === 3 && lastDeltas.every(d => d >= 2)) {
       out.push({ rank: 6, msg: `Last 3 sessions all produced strong mood improvement (+2 or more). Whatever you're doing — keep going.` });
     }
+
+    // ─── Round 31 — deeper inferences from personalInsights ────────────
+    // Pull in best-method, HR trend, burnout, and imagery callouts
+    // when there's enough data to make confident claims. Each one
+    // is gated by its own sample-count threshold inside the module,
+    // so the early-return guard at the top of this function (h<3)
+    // is sufficient — these calls return null/empty for thin data.
+    try {
+      // Best-method callout — only fires when the top method is
+      // meaningfully better than the runner-up (gap > 1.5 score).
+      const methods = personalInsights.rankMethods(h);
+      if (methods.length >= 2 && (methods[0].score - methods[1].score) > 1.5 && methods[0].avgDelta > 1) {
+        const m = methods[0];
+        out.push({
+          rank: 7,
+          msg: `${m.key} is your strongest method — averages +${m.avgDelta} mood lift and ${Math.round(m.completionRate * 100)}% completion (n=${m.n}).`,
+        });
+      }
+      // HR practice-improving callout (Round 29 data)
+      const hr = personalInsights.computeHrTrends(h);
+      if (hr) {
+        if (hr.dropTrend > 2) {
+          out.push({
+            rank: 7,
+            msg: `Your nervous system is settling deeper across recent sessions — average HR drop has improved by ${hr.dropTrend.toFixed(1)} bpm. Practice is working.`,
+          });
+        } else if (hr.baselineTrend > 5) {
+          out.push({
+            rank: 9,
+            msg: `Your resting heart rate has drifted up ${hr.baselineTrend.toFixed(1)} bpm across recent sessions. Worth checking how you've been sleeping / how stressful the day-to-day has been.`,
+          });
+        }
+      }
+      // Burnout composite — only surface when score is genuinely high.
+      const burn = personalInsights.computeBurnoutScore(h);
+      if (burn && burn.score >= 0.55) {
+        out.push({
+          rank: 11,
+          msg: 'Your last several sessions have been getting harder to complete and less restorative. Consider a 2–3 day pause, or a much shorter / gentler session.',
+        });
+      }
+      // Time-of-day insight — surface when there's a clear winner.
+      const tod = personalInsights.computeTimeOfDayPattern(h);
+      const todEntries = Object.entries(tod).filter(([, v]) => v.avgDelta != null);
+      if (todEntries.length >= 2) {
+        const ranked = todEntries.sort((a, b) => (b[1].avgDelta - a[1].avgDelta));
+        const top = ranked[0];
+        const other = ranked[1];
+        if (top[1].avgDelta - other[1].avgDelta > 1 && top[1].n >= 3) {
+          out.push({
+            rank: 4,
+            msg: `${top[0]} sessions land best for you — averaging +${top[1].avgDelta} mood vs +${other[1].avgDelta} ${other[0]} (n=${top[1].n}).`,
+          });
+        }
+      }
+      // Best persona / guide — surface only with strong evidence
+      const personas = personalInsights.rankPersonas(h);
+      if (personas.length >= 2 && (personas[0].score - personas[1].score) > 1.5 && personas[0].avgDelta > 1) {
+        out.push({
+          rank: 6,
+          msg: `${personas[0].key} produces your strongest results — +${personas[0].avgDelta} avg mood lift across ${personas[0].n} sessions.`,
+        });
+      }
+    } catch (e) { console.warn('[insights derivePatternCallouts]', e); }
+
     out.sort((a, b) => b.rank - a.rank);
     return out.slice(0, 2).map(x => x.msg);
   }
@@ -25696,6 +26130,11 @@ Start immediately:`;
     const statsEl = $('sidebarStats');
     const streakEl = $('sidebarStreak');
     const history = (await idbGet('stillness_history_v1')) || [];
+    // Round 31 — cache for sync reads (getProfileContext is sync; AI
+    // prompt path can't await IDB). Refreshed every time the sidebar
+    // renders, which happens on session-end + on profile changes —
+    // the only times the cache could meaningfully be stale.
+    state._profileContextHistoryCache = history;
     const analytics = await getAnalytics();
 
     state._pickerStats = computePickerStats(history);
@@ -25774,6 +26213,137 @@ Start immediately:`;
           html += `</div>`;
         } catch {}
       }
+
+      // ─── Round 31 — deeper insights expandable section ───────────────
+      // Lazy-built from the personalInsights module. Collapsed by
+      // default; the summary line shows enough hint to be useful at a
+      // glance ("3 patterns observed" etc.) and expanding reveals the
+      // ranked breakdowns. Sample counts shown alongside every claim
+      // so the user sees how much evidence each is built on.
+      try {
+        if (history.length >= 5 && typeof personalInsights !== 'undefined') {
+          const methods   = personalInsights.rankMethods(history);
+          const personas  = personalInsights.rankPersonas(history);
+          const tod       = personalInsights.computeTimeOfDayPattern(history);
+          const hr        = personalInsights.computeHrTrends(history);
+          const imagery   = personalInsights.computeImageryPreferences(history);
+          const burn      = personalInsights.computeBurnoutScore(history);
+          const consist   = personalInsights.computeConsistency(history);
+
+          const sections = [];
+
+          // Effectiveness ranking — top 3 methods
+          if (methods.length >= 2) {
+            const rows = methods.slice(0, 3).map(m => {
+              const deltaTxt = m.avgDelta >= 0 ? `+${m.avgDelta}` : `${m.avgDelta}`;
+              const color = m.avgDelta >= 1 ? 'var(--accent-green)'
+                          : m.avgDelta >= 0 ? 'var(--text)'
+                          : 'var(--neon-amber)';
+              return `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
+                <span style="color:var(--text-dim)">${escapeHtml(m.key)}</span>
+                <span style="color:${color}">${deltaTxt} mood · ${Math.round(m.completionRate * 100)}% · n=${m.n}</span>
+              </div>`;
+            }).join('');
+            sections.push(`<div style="margin-top:8px"><div style="font-size:0.6rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">methods by effect</div>${rows}</div>`);
+          }
+
+          // Best personas
+          if (personas.length >= 2) {
+            const rows = personas.slice(0, 3).map(p => {
+              const deltaTxt = p.avgDelta >= 0 ? `+${p.avgDelta}` : `${p.avgDelta}`;
+              const color = p.avgDelta >= 1 ? 'var(--accent-green)' : 'var(--text)';
+              return `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
+                <span style="color:var(--text-dim)">${escapeHtml(p.key)}</span>
+                <span style="color:${color}">${deltaTxt} · n=${p.n}</span>
+              </div>`;
+            }).join('');
+            sections.push(`<div style="margin-top:8px"><div style="font-size:0.6rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">guides by effect</div>${rows}</div>`);
+          }
+
+          // Time-of-day breakdown
+          const todEntries = Object.entries(tod || {}).filter(([, v]) => v.avgDelta != null);
+          if (todEntries.length >= 2) {
+            const rows = todEntries
+              .sort((a, b) => b[1].avgDelta - a[1].avgDelta)
+              .map(([bucket, v]) => `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
+                <span style="color:var(--text-dim)">${bucket}</span>
+                <span>${v.avgDelta >= 0 ? '+' : ''}${v.avgDelta} · ${Math.round(v.completionRate * 100)}% · n=${v.n}</span>
+              </div>`).join('');
+            sections.push(`<div style="margin-top:8px"><div style="font-size:0.6rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">time of day</div>${rows}</div>`);
+          }
+
+          // HR trends — only when bridge data is present
+          if (hr) {
+            const dropArrow = hr.dropTrend > 0.5 ? '↑' : hr.dropTrend < -0.5 ? '↓' : '→';
+            const baseArrow = hr.baselineTrend > 1 ? '↑' : hr.baselineTrend < -1 ? '↓' : '→';
+            const dropColor = hr.dropTrend > 0.5 ? 'var(--accent-green)' : hr.dropTrend < -0.5 ? 'var(--neon-amber)' : 'var(--text)';
+            const baseColor = hr.baselineTrend > 3 ? 'var(--neon-amber)' : 'var(--text)';
+            sections.push(`<div style="margin-top:8px">
+              <div style="font-size:0.6rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">heart rate (n=${hr.n})</div>
+              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
+                <span style="color:var(--text-dim)">avg drop from baseline</span>
+                <span style="color:${dropColor}">${hr.avgDrop} bpm ${dropArrow}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
+                <span style="color:var(--text-dim)">resting baseline</span>
+                <span style="color:${baseColor}">${hr.avgBaseline} bpm ${baseArrow}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
+                <span style="color:var(--text-dim)">best drop</span>
+                <span>${hr.bestDrop} bpm</span>
+              </div>
+            </div>`);
+          }
+
+          // Imagery preferences — what shows up in their journal
+          if (imagery && imagery.top.length) {
+            const rows = imagery.top.map(t =>
+              `<span style="display:inline-block;padding:2px 6px;margin:1px;background:rgba(255,255,255,0.04);border-radius:8px;font-size:0.6rem;color:var(--text-dim)">${escapeHtml(t.cat)} · ${Math.round(t.share * 100)}%</span>`
+            ).join('');
+            sections.push(`<div style="margin-top:8px">
+              <div style="font-size:0.6rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">your journal imagery</div>
+              <div>${rows}</div>
+              <div style="font-size:0.56rem;color:var(--text-faint);margin-top:2px">across ${imagery.totalJournals} journal entries — script generation leans toward these</div>
+            </div>`);
+          }
+
+          // Consistency
+          if (consist) {
+            const trend = consist.thisWeek > consist.last4WeekAvg ? '↑'
+                        : consist.thisWeek < consist.last4WeekAvg ? '↓' : '→';
+            const trendColor = consist.thisWeek > consist.last4WeekAvg ? 'var(--accent-green)'
+                              : consist.thisWeek < consist.last4WeekAvg ? 'var(--text-dim)' : 'var(--text)';
+            sections.push(`<div style="margin-top:8px"><div style="font-size:0.6rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">consistency</div>
+              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
+                <span style="color:var(--text-dim)">this week</span>
+                <span style="color:${trendColor}">${consist.thisWeek} session${consist.thisWeek === 1 ? '' : 's'} ${trend}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
+                <span style="color:var(--text-dim)">4-week avg</span>
+                <span>${consist.last4WeekAvg}/wk</span>
+              </div>
+            </div>`);
+          }
+
+          // Burnout warning — only render when significant
+          if (burn && burn.score >= 0.55) {
+            sections.push(`<div style="margin-top:8px;padding:6px 8px;background:rgba(255,171,0,0.06);border-left:2px solid var(--neon-amber);font-size:0.62rem;line-height:1.5;color:var(--text-dim)">
+              <span style="color:var(--neon-amber);text-transform:uppercase;letter-spacing:0.06em;font-size:0.56rem">⚠ recovery signal</span><br>
+              Recent sessions showing strain (completion ${Math.round(burn.components.completionDrop * 100)}% lower, mood ${Math.round(burn.components.moodDrop * 100)}% lower). Consider a 2–3 day rest or shorter sessions.
+            </div>`);
+          }
+
+          if (sections.length) {
+            html += `<details style="margin-top:8px;border-top:1px solid var(--glass-border);padding-top:6px">
+              <summary style="font-size:0.66rem;color:var(--text-dim);cursor:pointer;list-style:none">
+                <span style="color:var(--neon-cyan)">▸</span> deeper insights
+                <span style="color:var(--text-faint);font-size:0.58rem"> · ${sections.length} pattern${sections.length === 1 ? '' : 's'} observed</span>
+              </summary>
+              <div style="font-size:0.66rem">${sections.join('')}</div>
+            </details>`;
+          }
+        }
+      } catch (e) { console.warn('[deeper-insights]', e); }
 
       statsEl.innerHTML = html;
     }
