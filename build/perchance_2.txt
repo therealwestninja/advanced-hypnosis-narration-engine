@@ -2409,14 +2409,22 @@ min-width: 28px; min-height: 0;
     to   { transform: translate(-50%, -50%) rotate(360deg); }
   }
   .pulse-rings { position: absolute; inset: 0; }
+  /* Round 29 — animation-duration is now driven by --pulse-cycle, a CSS
+     custom property updated live from the heart-rate sensor bridge.
+     Falls back to 6s (the legacy hard-coded calm-breathing rate) when
+     no bridge is connected, so pre-existing sessions look identical.
+     We multiply by 4 for the actual ring expansion so each ring spans
+     ~4 heartbeats — too-fast a ring expansion looks anxious, not
+     hypnotic. The tighter --pulse-beat property is used elsewhere
+     (e.g. for the HR-synced soundscape) to expose the raw beat. */
   .pulse-ring {
     position: absolute; top: 50%; left: 50%;
     border: 1px solid rgba(107, 148, 184, 0.3);
 transform: translate(-50%, -50%);
-    animation: ring-expand 6s ease-out infinite;
+    animation: ring-expand calc(var(--pulse-cycle, 6s) * 1) ease-out infinite;
   }
-  .pulse-ring:nth-child(2) { animation-delay: 2s; }
-  .pulse-ring:nth-child(3) { animation-delay: 4s; }
+  .pulse-ring:nth-child(2) { animation-delay: calc(var(--pulse-cycle, 6s) * 0.33); }
+  .pulse-ring:nth-child(3) { animation-delay: calc(var(--pulse-cycle, 6s) * 0.66); }
   @keyframes ring-expand {
     0%   { width: 20px; height: 20px; opacity: 0.8; }
     100% { width: 320px; height: 320px; opacity: 0; }
@@ -6200,6 +6208,7 @@ I return to myself easily"></textarea>
                     <option value="engagement">engagement</option>
                     <option value="step">step</option>
                     <option value="adaptive">adaptive (time+eng)</option>
+                    <option value="relaxation">relaxation (HR)</option>
                   </select>
                   <label style="color:var(--text-dim)">curve</label>
                   <select id="rampCurve" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem">
@@ -6249,7 +6258,11 @@ I return to myself easily"></textarea>
                   <input id="pacingSmooth" type="number" min="0" max="30" step="0.5" value="4" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem;font-family:monospace" title="EMA time constant in seconds — larger = smoother but slower to react">
                   <label style="color:var(--text-dim)">lock for</label>
                   <input id="pacingLock" type="number" min="0" max="60" step="1" value="0" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem;font-family:monospace" title="Hold speed for N seconds after a change — debounce">
-                  <span></span><span></span>
+                  <label style="color:var(--text-dim)">source</label>
+                  <select id="pacingSource" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem" title="Which signal drives the speed mapping">
+                    <option value="engagement">engagement</option>
+                    <option value="relaxation">relaxation (HR)</option>
+                  </select>
                 </div>
                 <div id="pacingStatusLine" style="margin-top:6px;font-size:0.62rem;color:var(--text-faint);font-family:monospace"></div>
               </div>
@@ -6654,6 +6667,12 @@ I return to myself easily"></textarea>
         <div class="post-card" id="postProgramBox" style="display:none"></div>
         <!-- Director Brief reasoning (shown only when Smart Director ran and a brief was captured) -->
         <div class="post-card" id="postDirectorBriefBox" style="display:none"></div>
+        <!-- Round 29 — Heart-rate summary card. Populated from the
+             per-session HR trace when a sensor bridge was active and
+             produced data. Hidden otherwise so unsensored sessions look
+             unchanged. Sits in the post-card stack alongside reflection /
+             program-progress / director-brief cards. -->
+        <div class="post-card" id="postHrSummaryBox" style="display:none"></div>
         <!-- Pre-gen offer (shown when a program advanced to next day and
              cache is empty). Asks the user before firing AI calls in the
              background — respects user control over quota/cost. -->
@@ -7452,6 +7471,7 @@ I return to myself easily"></textarea>
             <option value="time">Time curve</option>
             <option value="engagement">Engagement</option>
             <option value="adaptive">Adaptive (both)</option>
+            <option value="relaxation">Relaxation (HR-derived)</option>
           </select>
           <label for="pdCurve">Time curve shape</label>
           <select id="pdCurve" style="font-size:0.74rem;padding:3px 6px">
@@ -8975,6 +8995,26 @@ I return to myself easily"></textarea>
       tickPlaybackDynamics(frameSec);
 
       _tickDynamicPacing(frameSec);
+
+      // Round 29 — sample heart rate into the session trace. The function
+      // is internally throttled to HR_TRACE_INTERVAL_MS so calling it
+      // every frame is essentially free. No-ops outside an active
+      // session and when no bridge is connected.
+      _tickHrTrace();
+
+      // Round 29 — sync the .pulse-rings CSS animation to live BPM.
+      // Coalesced inside _tickHrPulseCss (only writes when the cycle
+      // duration actually changed) so this is also essentially free.
+      _tickHrPulseCss();
+
+      // Round 29 — apply the relax bias to the active soundscape engine
+      // a few times per second (throttled so we're not spamming the
+      // Web Audio scheduler). This shifts binaural/isochronic beat
+      // frequencies toward delta/theta as the user relaxes — calmer
+      // entrainment that mirrors the body's actual state. No-op for
+      // every other soundscape type and when no bridge is connected.
+      _tickSoundscapeRelaxBias();
+
       a._rafHandle = requestAnimationFrame(tick);
     };
     a._rafHandle = requestAnimationFrame(tick);
@@ -8987,10 +9027,50 @@ I return to myself easily"></textarea>
     a.voicePulse = 0; a.voiceEnvelope = 0; a.active = false;
   }
 
+  // Round 29 — heartbeat phase tracker. Phase advances at the live BPM
+  // rate (or the legacy 60 bpm fallback) and exposes both a continuous
+  // 0-1 phase and a brief 0-1 pulse that spikes once per beat. Visualizers
+  // that read the legacy `mod.pulse` (voice-derived) keep working
+  // unchanged; visualizers that opt in to `mod.heartbeat` get a real-
+  // physiology pulse instead. Tracking is module-global so the phase
+  // stays continuous across getAudioMod() calls — re-deriving it from
+  // wallclock each call would lose the smooth phase the visualizers
+  // depend on.
+  let _hbPhase = 0;
+  let _hbLastTickMs = null;
+  function _advanceHeartbeatPhase() {
+    const nowMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    if (_hbLastTickMs == null) { _hbLastTickMs = nowMs; return; }
+    const dtSec = Math.max(0, Math.min(0.25, (nowMs - _hbLastTickMs) / 1000));
+    _hbLastTickMs = nowMs;
+    let bpm = null;
+    if (typeof sensorBridge !== 'undefined' && sensorBridge.getCurrentBpm) {
+      bpm = sensorBridge.getCurrentBpm();
+    }
+    // Fallback: 60 bpm so visualizers that opt in still animate
+    // sensibly without a bridge — same idea as --pulse-cycle.
+    const effBpm = (Number.isFinite(bpm) && bpm >= 35 && bpm <= 180) ? bpm : 60;
+    _hbPhase = (_hbPhase + dtSec * (effBpm / 60)) % 1;
+  }
+
   function getAudioMod() {
+    _advanceHeartbeatPhase();
     const a = state.audioReactive;
     if (!a || !a.active || a.gain === 0) {
-      return { overall: 0, bass: 0, mid: 0, treble: 0, pulse: 0, envelope: 0 };
+      // Round 29 — even when audio reactivity is off, expose HR-derived
+      // signals so visualizers and renderers can still respond to the
+      // body. Otherwise enabling "subtle" audio mode would be the only
+      // way to get HR-aware visuals, which would be confusing.
+      const relaxIdle = (typeof getEngineMetric === 'function')
+        ? Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0))
+        : 0;
+      // Brief pulse window — fires for the first 12% of each phase cycle.
+      // Short enough to read as a beat, long enough to render at 60fps.
+      const heartbeatPulseIdle = _hbPhase < 0.12 ? (1 - _hbPhase / 0.12) : 0;
+      return {
+        overall: 0, bass: 0, mid: 0, treble: 0, pulse: 0, envelope: 0,
+        relax: relaxIdle, heartbeat: heartbeatPulseIdle, heartbeatPhase: _hbPhase,
+      };
     }
 
     const dim = state.ambientDimScale ?? 1.0;
@@ -9001,6 +9081,14 @@ I return to myself easily"></textarea>
       breathBoost = 1.0 + normalized * 0.3;
     }
     const g = a.gain * dim;
+    // Round 29 — relax (0-1 from getEngineMetric) and heartbeat (0-1
+    // pulse once per beat) added to the base mod object. Both stay at
+    // 0 when no bridge is connected, so any visualizer that reads them
+    // degrades to legacy behavior automatically.
+    const relax = (typeof getEngineMetric === 'function')
+      ? Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0))
+      : 0;
+    const heartbeatPulse = _hbPhase < 0.12 ? (1 - _hbPhase / 0.12) : 0;
     return {
       overall:  a.overall       * g,
       bass:     a.bass          * g,
@@ -9008,6 +9096,9 @@ I return to myself easily"></textarea>
       treble:   a.treble        * g,
       pulse:    a.voicePulse    * g * breathBoost,
       envelope: a.voiceEnvelope * g,
+      relax,
+      heartbeat:      heartbeatPulse,
+      heartbeatPhase: _hbPhase,
     };
   }
 
@@ -9195,6 +9286,118 @@ I return to myself easily"></textarea>
       currentPhase: null, phaseKind: null, phaseSec: 0,
       playing: false, paused: false,
     };
+    // Round 29 — also clear the per-session HR trace buffer so previous-
+    // session samples don't leak into the next session's history record.
+    // Safe to call before sensorBridge is defined: _resetHrTrace just
+    // zeroes an array on `state`.
+    try { _resetHrTrace(); } catch {}
+  }
+
+  // Round 29 — heart-rate trace buffer for session history. State lives
+  // on `state` (not module-private) so it's visible to finishSession
+  // (where we serialize it into the session record) and gets cleared in
+  // the standard session-teardown paths alongside other ephemeral
+  // runtime state. The trace is sampled from sensorBridge.getCurrentBpm()
+  // at HR_TRACE_INTERVAL_MS — a slow enough rate that a 30-min session
+  // stores ~600 samples (~5 KB pre-gzip), but dense enough that the
+  // sparkline shape is meaningful.
+  const HR_TRACE_INTERVAL_MS = 3000;
+  const HR_TRACE_MAX_SAMPLES = 600;  // 30 min @ 3s/sample — hard cap
+
+  function _tickHrTrace() {
+    if (!state._sessionStartTime || state.paused || state.abortFlag) return;
+    if (typeof sensorBridge === 'undefined' || !sensorBridge.getCurrentBpm) return;
+    const bpm = sensorBridge.getCurrentBpm();
+    if (!Number.isFinite(bpm)) return;
+    const now = Date.now();
+    state._hrTrace = state._hrTrace || [];
+    const last = state._hrTrace[state._hrTrace.length - 1];
+    if (last && now - last.t < HR_TRACE_INTERVAL_MS) return;
+    // Hard cap rather than ring-buffer: preserves the start-of-session
+    // anchor (so the sparkline shows the full settling curve) at the
+    // cost of clipping the tail of very long sessions. Acceptable trade
+    // because the safety layer caps sessions at ~25 min anyway.
+    if (state._hrTrace.length >= HR_TRACE_MAX_SAMPLES) return;
+    state._hrTrace.push({ t: now, bpm: Math.round(bpm) });
+  }
+
+  function _resetHrTrace() {
+    state._hrTrace = [];
+  }
+
+  // Round 29 — Heart-rate-driven CSS variable. Updates `--pulse-cycle` on
+  // <html> so the .pulse-ring visualizer animation tracks the user's
+  // actual heartbeat. CSS animation-duration changes are interpolated by
+  // the browser (no jank), so even per-frame updates here are smooth.
+  // We also expose `--pulse-beat` (single-beat duration in seconds) for
+  // any future visual that wants the raw beat. Cycle = 4 beats so the
+  // ring expansion stays a slow, hypnotic ~3-4 s rather than racing at
+  // ~1 beat/second — tied to physiology but visually calm.
+  let _lastPulseCycleSec = null;
+  function _tickHrPulseCss() {
+    if (typeof sensorBridge === 'undefined' || !sensorBridge.getCurrentBpm) return;
+    const bpm = sensorBridge.getCurrentBpm();
+    let cycleSec, beatSec;
+    if (Number.isFinite(bpm) && bpm > 0) {
+      beatSec  = 60 / bpm;
+      cycleSec = beatSec * 4;
+    } else {
+      // Fallback: legacy 6 s breathing-rate cycle. Setting back to the
+      // default (rather than leaving the last live value stuck) means
+      // the visualizer cleanly relaxes back to "calm breathing" if the
+      // bridge drops mid-session — important so a watch sync glitch
+      // doesn't leave the rings frozen.
+      beatSec  = 1.5;
+      cycleSec = 6;
+    }
+    // Coalesce — only write when the value meaningfully changed. Avoids
+    // forcing a style recalc 60 times a second when BPM is constant.
+    if (_lastPulseCycleSec !== null && Math.abs(cycleSec - _lastPulseCycleSec) < 0.02) return;
+    _lastPulseCycleSec = cycleSec;
+    document.documentElement.style.setProperty('--pulse-cycle', cycleSec.toFixed(2) + 's');
+    document.documentElement.style.setProperty('--pulse-beat',  beatSec.toFixed(3) + 's');
+  }
+
+  // Round 29 — Soundscape relax bias tick. Throttled to once per ~2s
+  // (the underlying Web Audio ramp is 8s long anyway, so faster ticks
+  // would just queue redundant ramps). Reads the live relaxation score
+  // and pokes the active drone if it supports relax-aware tuning.
+  // No-op for soundscapes that don't implement setRelaxBias (drone,
+  // ocean, fire, etc. — only binaural and isochronic actually use it).
+  let _lastRelaxBiasTickMs = 0;
+  function _tickSoundscapeRelaxBias() {
+    const nowMs = Date.now();
+    if (nowMs - _lastRelaxBiasTickMs < 2000) return;
+    _lastRelaxBiasTickMs = nowMs;
+    if (typeof drone === 'undefined' || !drone || !drone.running) return;
+    if (typeof drone.setRelaxBias !== 'function') return;
+    const relax = (typeof getEngineMetric === 'function')
+      ? Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0))
+      : 0;
+    try { drone.setRelaxBias(relax); }
+    catch (e) { console.warn('[soundscape] setRelaxBias failed:', e); }
+  }
+
+  // Round 29 — collapse the in-memory trace into a compact serializable
+  // form for the session history record. Compact array form ([tSec, bpm]
+  // pairs, with tSec being seconds since session start) halves storage
+  // vs the {t, bpm} object form once gzipped, and makes downstream
+  // sparkline rendering trivial. Also emits min/mean/max so the history
+  // list can show summary numbers without re-walking the array.
+  function _summarizeHrTrace(trace, baselineBpm) {
+    if (!Array.isArray(trace) || !trace.length) return null;
+    const bpms = trace.map(s => s.bpm).filter(Number.isFinite);
+    if (!bpms.length) return null;
+    const t0 = trace[0].t;
+    const sum = bpms.reduce((a, b) => a + b, 0);
+    return {
+      samples: trace.map(s => [Math.round((s.t - t0) / 1000), s.bpm]),
+      baselineBpm: Number.isFinite(baselineBpm) ? Math.round(baselineBpm) : null,
+      minBpm:  Math.min(...bpms),
+      maxBpm:  Math.max(...bpms),
+      meanBpm: Math.round(sum / bpms.length),
+      sampleCount: bpms.length,
+    };
   }
 
   const RULES_VALID_ACTIONS = new Set([
@@ -9328,7 +9531,7 @@ I return to myself easily"></textarea>
           if (!param || typeof param !== 'object') break;
           const r = state.rampSettings || (state.rampSettings = loadRampSettings());
           if (typeof param.enabled === 'boolean') r.enabled = param.enabled;
-          if (['time','engagement','step','adaptive'].includes(param.mode))   r.mode = param.mode;
+          if (['time','engagement','step','adaptive','relaxation'].includes(param.mode))   r.mode = param.mode;
           if (['linear','exponential','sine'].includes(param.curve))          r.curve = param.curve;
           if (['max','add','replace'].includes(param.blendMode))              r.blendMode = param.blendMode;
           if (Number.isFinite(param.startVal)) r.startVal = Math.max(0, Math.min(2, param.startVal));
@@ -9485,6 +9688,48 @@ I return to myself easily"></textarea>
       durationSec: 600,
       cooldownSec: 1800,
       action: { type: 'notifyMessage', param: 'You can close your eyes anytime.' },
+    }),
+
+    // Round 29 — Heart-rate-aware default rules. All three are safe to
+    // ship enabled by default: when no biometric bridge is connected,
+    // `heartRate` and `relaxation` stay at 0 (see getEngineMetric), which
+    // never satisfies the > thresholds below. So they're inert for users
+    // who haven't plugged in a watch — and quietly come alive for those
+    // who have, with no extra config required. The `condition` op is `>`
+    // not `>=` specifically so the inert-at-zero case stays inert.
+    normalizeRule({
+      name: 'Deepen ducking when relaxation locks in (HR-derived)',
+      enabled: true,
+      // Sustained drop from baseline of ~10 bpm or more. Ducks the
+      // soundscape harder than the work-phase rule above so narration
+      // sits further forward when the body is genuinely settling.
+      condition: { metric: 'relaxation', op: '>', value: 0.5 },
+      durationSec: 12,
+      cooldownSec: 90,
+      action: { type: 'duckAudio', param: 0.10 },
+    }),
+    normalizeRule({
+      name: 'Reassure when heart rate spikes during a work phase (HR-derived)',
+      enabled: true,
+      // Raw normalized heartRate > 0.65 ≈ ~130 bpm — well above any
+      // resting/relaxation context. Treated as a stress flag, not a
+      // pause-trigger: just a soft on-screen reassurance, long cooldown
+      // so we don't pile up if the user is genuinely unsettled.
+      condition: { metric: 'heartRate', op: '>', value: 0.65 },
+      durationSec: 20,
+      cooldownSec: 300,
+      action: { type: 'showOnScreenText', param: 'Whatever\u2019s coming up is welcome. Long, slow exhale.' },
+    }),
+    normalizeRule({
+      name: 'Slow speech when deeply relaxed (HR-derived)',
+      enabled: true,
+      // Strong relaxation signal — slow narration further so it matches
+      // the body's pace. setSpeechRate is clamped by the safety layer
+      // so 0.85x can't drop below the configured floor regardless.
+      condition: { metric: 'relaxation', op: '>', value: 0.7 },
+      durationSec: 20,
+      cooldownSec: 120,
+      action: { type: 'setSpeechRate', param: 0.85 },
     }),
   ];
 
@@ -10333,6 +10578,7 @@ I return to myself easily"></textarea>
         set('pacingCurve',  p.curve);
         set('pacingSmooth', p.smoothingSec);
         set('pacingLock',   p.lockDuringSec);
+        set('pacingSource', p.source);
       } catch {}
 
       _resetDynamicPacing();
@@ -10394,6 +10640,16 @@ I return to myself easily"></textarea>
     if (c.mode === 'engagement' || c.mode === 'adaptive') {
       const eng = es.engagement || 0;
       intensity = Math.max(intensity, eng);
+    }
+    // Round 29 — relaxation mode pulls speech rate from the HR-derived
+    // relaxation signal. Inverted vs engagement mode at the call site:
+    // here we pass the score directly so a SLOWER user (relaxation = 1)
+    // gets the LOWER end of the speed range — see the .endScale ceiling
+    // typically being 1.10x. Pair this with `endScale < startScale` in
+    // the UI for the canonical "slow as you go deeper" curve.
+    if (c.mode === 'relaxation') {
+      const relax = (typeof getEngineMetric === 'function') ? (getEngineMetric('relaxation') || 0) : 0;
+      intensity = Math.max(intensity, relax);
     }
 
     const lo = (c.mode === 'engagement') ? c.engagementMin : c.startScale;
@@ -12051,7 +12307,7 @@ I return to myself easily"></textarea>
 
       if (s.playbackDynamics && typeof s.playbackDynamics === 'object') {
         const pd = s.playbackDynamics;
-        const validModes  = new Set(['time', 'engagement', 'adaptive']);
+        const validModes  = new Set(['time', 'engagement', 'adaptive', 'relaxation']);
         const validCurves = new Set(['linear', 'sine', 'exponential']);
         state.playbackDynamics = {
           enabled:        pd.enabled === true,
@@ -13187,6 +13443,44 @@ I return to myself easily"></textarea>
       );
     }
 
+    // Round 29 — live heart-rate context. When the sensor bridge is
+    // connected and producing data, surface the user's current state to
+    // the AI so it can write a script that meets the body where it is.
+    // Only included when actually useful (bridge connected + has a
+    // current reading); never leaked when the user has no watch. Three
+    // signals are emitted, in priority order:
+    //   • Current state (calm / settling / elevated) — drives opening tone
+    //   • Baseline (when locked) — gives the AI a reference for "deepen"
+    //   • Drift since baseline — confirms whether settling is actually
+    //     happening (so the AI doesn't write deepening cues into a
+    //     session where the body is still climbing)
+    try {
+      if (typeof sensorBridge !== 'undefined' && sensorBridge.getCurrentBpm) {
+        const bpm = sensorBridge.getCurrentBpm();
+        const baseline = sensorBridge.getBaseline ? sensorBridge.getBaseline() : null;
+        if (Number.isFinite(bpm)) {
+          const stateLabel =
+            bpm < 65 ? 'calm / resting'
+            : bpm < 85 ? 'comfortable, settling'
+            : bpm < 105 ? 'mildly elevated'
+            : 'noticeably elevated';
+          const hrParts = [`Live heart rate: ${Math.round(bpm)} bpm (${stateLabel}).`];
+          if (Number.isFinite(baseline)) {
+            const drift = baseline - bpm;
+            const driftLabel =
+              drift > 8 ? 'significantly below baseline (good parasympathetic shift — the body has settled)'
+              : drift > 3 ? 'a few beats below baseline (settling)'
+              : drift > -3 ? 'near baseline'
+              : drift > -8 ? 'slightly above baseline (mild activation — keep early phases gentle)'
+              : 'above baseline (the body is activated — open with grounding before deepening)';
+            hrParts.push(`Baseline (this session): ${Math.round(baseline)} bpm. Currently ${driftLabel}.`);
+          }
+          hrParts.push('Use this only as a soft input — write to where the body actually is, not where you wish it were. Do NOT mention heart rate or numbers in the script itself; the listener won\'t hear them.');
+          parts.push(hrParts.join(' '));
+        }
+      }
+    } catch (e) { /* never block prompt building on HR errors */ }
+
     const result = parts.length > 0 ? '\nSUBJECT PROFILE: ' + parts.join(' ') : '';
     sdLog('getProfileContext built', { fieldCount: parts.length, charCount: result.length });
     return result;
@@ -14077,7 +14371,28 @@ I return to myself easily"></textarea>
 
   function computeReward(record, wasEmergency) {
     const delta = (record.postMood ?? 5) - (record.preMood ?? 5);
-    return delta + (record.completed ? 1 : -1) - (wasEmergency ? 2 : 0);
+    let reward = delta + (record.completed ? 1 : -1) - (wasEmergency ? 2 : 0);
+
+    // Round 29 — HR-derived reward bonus. When a heartRate trace was
+    // recorded with a locked baseline, add a small bonus proportional to
+    // the trough drop-from-baseline (parasympathetic shift = good
+    // session). Capped at +1.5 so HR data biases — but doesn't dominate
+    // — adaptive weighting. Sessions without a watch get the legacy
+    // mood-only reward unchanged. Negative drift (HR climbed) adds a
+    // small penalty, capped at -1, so the adaptive profile learns
+    // which method/persona combos actually settle this user's body.
+    const hr = record.heartRate;
+    if (hr && Number.isFinite(hr.baselineBpm) && Number.isFinite(hr.minBpm)) {
+      const lowestDrop = hr.baselineBpm - hr.minBpm;
+      if (lowestDrop > 0) {
+        // 5 bpm = +0.5 bonus, 15 bpm = +1.5 (capped)
+        reward += Math.min(1.5, lowestDrop / 10);
+      } else if (lowestDrop < -5) {
+        // session ended with HR significantly above baseline
+        reward += Math.max(-1, lowestDrop / 10);
+      }
+    }
+    return reward;
   }
 
   function updateWeights(w, record, reward) {
@@ -16070,7 +16385,22 @@ ${messages}
             g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
             o.start(t); o.stop(t + 0.3);
           });
-          setTimeout(beat, 1050 + Math.random() * 120);
+          // Round 29 — heartbeat synth tracks real BPM when the bridge
+          // is connected; otherwise falls through to the legacy ~57 BPM
+          // (1050 ± 120 ms jitter) "ambient resting heartbeat" sound.
+          // The clamp to a safe range protects against a runaway socket
+          // value firing oscillators at 5 Hz. Small jitter is preserved
+          // even in synced mode so the synth doesn't sound robotic —
+          // real heartbeats have natural micro-variation too.
+          let nextMs = 1050 + Math.random() * 120;
+          if (typeof sensorBridge !== 'undefined' && sensorBridge.getCurrentBpm) {
+            const liveBpm = sensorBridge.getCurrentBpm();
+            if (Number.isFinite(liveBpm) && liveBpm >= 35 && liveBpm <= 180) {
+              const baseMs = (60 / liveBpm) * 1000;
+              nextMs = baseMs + (Math.random() - 0.5) * 60;  // ±30 ms jitter
+            }
+          }
+          setTimeout(beat, nextMs);
         };
         beat();
       } else if (type === 'binaural') {
@@ -16435,6 +16765,9 @@ ${messages}
 
     setPhaseFreq(phase) {
       const baseKey = String(phase || '').replace(/-\d+$/, '');
+      // Round 29 — remember the active phase so setRelaxBias can use the
+      // correct beat-frequency baseline when applying its calm-shift.
+      this._currentPhase = baseKey;
 
       if (this.type === 'drone' && this.ctx) {
         const freqMap = { settling: 70, induction: 67, deepener: 63, level: 62, work: 60, affirm: 64, lightener: 66, wake: 72, reintroduction: 74, emergence: 72 };
@@ -16470,6 +16803,44 @@ ${messages}
         const { lfo } = this._isochronicRefs;
         if (lfo?.frequency) {
           lfo.frequency.linearRampToValueAtTime(beatHz, this.ctx.currentTime + 6);
+        }
+      }
+    }
+
+    // Round 29 — relax bias for binaural/isochronic. Called periodically
+    // from the audio-reactive tick. Rather than overwriting the phase-
+    // anchored beat frequency, we apply a small downward nudge as
+    // relaxation rises — at relax=1, beat frequency drops by 1.5 Hz
+    // (e.g. work-phase 5 Hz → 3.5 Hz, sliding from theta toward delta).
+    // The nudge is small on purpose: large beat-frequency swings are
+    // disorienting in entrainment audio. Cached lastTarget prevents
+    // re-scheduling identical ramps every tick.
+    setRelaxBias(relax01) {
+      if (!this.ctx || !Number.isFinite(relax01)) return;
+      const r = Math.max(0, Math.min(1, relax01));
+      const baseKey = String(this._currentPhase || '').replace(/-\d+$/, '');
+      const phaseBeat = ({
+        settling: 8, induction: 6, deepener: 3.5, level: 4, work: 5,
+        affirm: 5, lightener: 7, wake: 12, reintroduction: 14, emergence: 12,
+      })[baseKey] ?? 6;
+      // Cap downward shift at the delta/theta floor so we don't push
+      // the beat frequency below ~2 Hz where the entrainment effect
+      // collapses into a slow tremolo.
+      const shifted = Math.max(2.0, phaseBeat - r * 1.5);
+      if (Math.abs(shifted - (this._relaxBiasLastBeatHz ?? -1)) < 0.05) return;
+      this._relaxBiasLastBeatHz = shifted;
+      const ramp = this.ctx.currentTime + 8;  // long ramp — calm transitions
+      if (this.type === 'binaural' && this._binauralRefs) {
+        const { oL, oR, carrier } = this._binauralRefs;
+        if (oL?.frequency && oR?.frequency) {
+          oL.frequency.linearRampToValueAtTime(carrier - shifted / 2, ramp);
+          oR.frequency.linearRampToValueAtTime(carrier + shifted / 2, ramp);
+        }
+      }
+      if (this.type === 'isochronic' && this._isochronicRefs) {
+        const { lfo } = this._isochronicRefs;
+        if (lfo?.frequency) {
+          lfo.frequency.linearRampToValueAtTime(shifted, ramp);
         }
       }
     }
@@ -18663,9 +19034,16 @@ ${messages}
     const cx = W/2, cy = H/2, petals = 8, rgb = hexToRgb(color);
     const mod = getAudioMod();
 
-    const speedMul = 1 + mod.overall;
-    const armBright = 0.7 + mod.pulse * 0.3;
-    const petalScale = 1 + mod.bass * 0.35;
+    // Round 29 — relax-aware speed and bloom. As the user relaxes
+    // the mandala rotation slows (down to 65% of nominal at relax=1)
+    // and the petal bloom tightens slightly, giving a visible "settling
+    // inward" feel that mirrors the body's parasympathetic shift.
+    // Heartbeat adds a tiny petal-scale pulse, perceptible only when a
+    // bridge is connected — degrades to no-op without one.
+    const relaxSlow = 1 - (mod.relax || 0) * 0.35;
+    const speedMul = (1 + mod.overall) * relaxSlow;
+    const armBright = 0.7 + mod.pulse * 0.3 + (mod.heartbeat || 0) * 0.15;
+    const petalScale = (1 + mod.bass * 0.35 + (mod.heartbeat || 0) * 0.05) * (1 - (mod.relax || 0) * 0.05);
     ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fillRect(0,0,W,H);
     ctx.strokeStyle = `rgba(${rgb},${armBright})`; ctx.shadowColor = color; ctx.shadowBlur = 12 + mod.pulse * 18;
     for (let layer = 0; layer < 4; layer++) {
@@ -18713,13 +19091,22 @@ ${messages}
 
   function renderCanvasPulse(ctx, W, H, t, color) {
     const cx = W/2, cy = H/2, rgb = hexToRgb(color), maxR = Math.min(W,H)*0.46;
+    // Round 29 — read the HR-aware mod once. When a bridge is connected,
+    // the center dot becomes a literal heart pulse (size scales with the
+    // current beat phase). When not, the legacy 3 Hz wobble takes over.
+    const mod = getAudioMod();
     ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
     for (let i = 0; i < 6; i++) {
       const phase = (t*0.45 + i/6) % 1, r = phase*maxR, alpha = (1-phase)*0.7;
       ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
       ctx.strokeStyle = `rgba(${rgb},${alpha})`; ctx.lineWidth = 2+(1-phase)*5; ctx.stroke();
     }
-    ctx.beginPath(); ctx.arc(cx,cy,10+4*Math.sin(t*3),0,Math.PI*2);
+    // The center "heart" — sized from the heartbeat pulse if available,
+    // otherwise the 3 Hz fallback. Offsetting by mod.heartbeat directly
+    // scales the visual with real BPM without changing the renderer's
+    // overall pacing.
+    const beatBoost = (mod.heartbeat || 0) * 8;
+    ctx.beginPath(); ctx.arc(cx,cy,10+4*Math.sin(t*3) + beatBoost,0,Math.PI*2);
     ctx.fillStyle = `rgba(${rgb},0.85)`; ctx.fill();
   }
 
@@ -18900,7 +19287,15 @@ ${messages}
       });
     }
     ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0, 0, W, H);
-    const speed = 1.5 + Math.sin(t * 0.3) * 0.5;
+    // Round 29 — relax-aware warp speed. As the user relaxes, the
+    // starfield slows to a drift (down to 50% nominal at relax=1) — the
+    // mind sinking inward, the visible field pacing down to match.
+    // Heartbeat adds a tiny synchronous nudge so each beat carries the
+    // stars a fraction faster, perceptible only with a bridge.
+    const mod = getAudioMod();
+    const relaxSlow = 1 - (mod.relax || 0) * 0.5;
+    const beatNudge = (mod.heartbeat || 0) * 0.4;
+    const speed = (1.5 + Math.sin(t * 0.3) * 0.5) * relaxSlow + beatNudge;
     for (const s of renderStarfield._pool) {
       const psx = s.psx, psy = s.psy;
       s.z -= speed;
@@ -18925,9 +19320,17 @@ ${messages}
     const cx = W/2, cy = H * 0.4, rgb = hexToRgb(color);
     ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.fillRect(0, 0, W, H);
 
-    const jx = cx + (Math.random() - 0.5) * 4;
-    const jy = cy + (Math.random() - 0.5) * 3;
-    const baseR = 30 + Math.sin(t * 2.5) * 5 + Math.sin(t * 4.1) * 3;
+    // Round 29 — relax-aware flame jitter. At relax=1 the flame is rock-
+    // steady (jitter scaled to 30%), the candle visibly settling with the
+    // body. Heartbeat adds a brief warmth pulse on each beat — perceptible
+    // only when a bridge is connected because mod.heartbeat stays at 0
+    // otherwise. Both inputs are additive over the legacy 4×3 jitter.
+    const mod = getAudioMod();
+    const jitterScale = 1 - (mod.relax || 0) * 0.7;
+    const jx = cx + (Math.random() - 0.5) * 4 * jitterScale;
+    const jy = cy + (Math.random() - 0.5) * 3 * jitterScale;
+    const heartGlow = (mod.heartbeat || 0) * 4;
+    const baseR = 30 + Math.sin(t * 2.5) * 5 + Math.sin(t * 4.1) * 3 + heartGlow;
 
     const outer = ctx.createRadialGradient(jx, jy, 0, jx, jy, baseR * 3);
     outer.addColorStop(0, `rgba(${rgb},0.15)`);
@@ -19242,6 +19645,20 @@ ${messages}
     if (mod.pulse > 0.5 && now - renderRipples._lastSpawn > 250) {
       renderRipples._lastSpawn = now;
       renderRipples._r.push({ x: W/2, y: H/2, born: now, life: 4000 });
+    }
+    // Round 29 — also spawn a ripple on each real heartbeat when the
+    // bridge is connected. mod.heartbeat is non-zero only briefly at
+    // the start of each beat phase; the 250 ms guard above already
+    // dedupes against rapid re-fires. The small offset keeps the
+    // heartbeat-driven ripple visually distinct from voice-pulse
+    // ripples (slightly off-center, slightly shorter life).
+    if (mod.heartbeat > 0.7 && now - renderRipples._lastSpawn > 250) {
+      renderRipples._lastSpawn = now;
+      renderRipples._r.push({
+        x: W/2 + (Math.random() - 0.5) * 12,
+        y: H/2 + (Math.random() - 0.5) * 12,
+        born: now, life: 3200,
+      });
     }
 
     renderRipples._r = renderRipples._r.filter(r => now - r.born < r.life);
@@ -24079,12 +24496,27 @@ Start immediately:`;
     const sensorOn = !!$('sensorBridgeOptInThisSession')?.checked;
     const micOn    = !!$('micOptInThisSession')?.checked;
     const pacingEnabled = !!state.pacingSettings?.enabled;
-    if (pacingEnabled && !webcamOn && !sensorOn) {
+    // Round 29 — pacing source is now configurable. Engagement-source
+    // pacing needs webcam OR sensor; relaxation-source pacing strictly
+    // needs the sensor bridge connected (relaxation is HR-derived).
+    const pacingSource = state.pacingSettings?.source || 'engagement';
+    if (pacingEnabled && pacingSource === 'engagement' && !webcamOn && !sensorOn) {
       out.push({
         id: 'pacing_no_signal',
         severity: 'warn',
         title: 'Dynamic pacing has no engagement source',
         detail: 'Dynamic pacing modulates speed from the engagement score. With neither webcam attention nor sensor bridge active, engagement stays at a default 0.5 and pacing won\'t track real signals — it\'ll just hold a midpoint speed.',
+        action: { label: 'Open Step 5 controls', fn: () => {
+          const stepBtn = document.querySelector('[data-step="5"]'); if (stepBtn) stepBtn.click();
+        }},
+      });
+    }
+    if (pacingEnabled && pacingSource === 'relaxation' && !sensorOn) {
+      out.push({
+        id: 'pacing_no_hr',
+        severity: 'warn',
+        title: 'Relaxation-driven pacing needs the sensor bridge',
+        detail: 'Pacing source is "relaxation (HR)" but the biometric sensor bridge is off. Relaxation is derived from heart rate — without a connected watch, the score stays at 0 and pacing will hold at the minimum speed for the whole session. Either enable the sensor bridge in Step 5 or switch the source back to "engagement".',
         action: { label: 'Open Step 5 controls', fn: () => {
           const stepBtn = document.querySelector('[data-step="5"]'); if (stepBtn) stepBtn.click();
         }},
@@ -24099,6 +24531,61 @@ Start immediately:`;
         detail: `Intensity ramp mode is "${rampMode}" but no engagement source is enabled. The ramp will use whatever default engagement value the engine reports (typically 0.5), which makes the curve degenerate. Switch to mode "time" or enable webcam / sensor bridge.`,
       });
     }
+    if (state.rampSettings?.enabled && rampMode === 'relaxation' && !sensorOn) {
+      out.push({
+        id: 'ramp_no_hr',
+        severity: 'warn',
+        title: 'Relaxation-driven ramp needs the sensor bridge',
+        detail: 'Intensity ramp mode is "relaxation" but the biometric sensor bridge is off. The ramp will sit at startVal for the whole session because relaxation needs heart rate to compute. Enable the sensor bridge in Step 5 or switch the ramp mode.',
+      });
+    }
+    // Round 29 — playback dynamics + relaxation mode also depends on HR.
+    if (state.playbackDynamics?.enabled && state.playbackDynamics.mode === 'relaxation' && !sensorOn) {
+      out.push({
+        id: 'pd_no_hr',
+        severity: 'warn',
+        title: 'Relaxation-driven speech rate needs the sensor bridge',
+        detail: 'Playback dynamics mode is "relaxation" but the biometric sensor bridge is off. Speech rate will pin to the start scale for the whole session. Enable the sensor bridge or change the playback dynamics mode.',
+      });
+    }
+    // Round 29 — flag custom rules referencing HR metrics when the bridge
+    // is off. Default rules are inert at zero so we don't warn on those —
+    // only on user-authored rules where the intent was clearly "use HR".
+    // (We can't distinguish reliably, so we warn when ANY enabled rule
+    // references HR metrics. Acceptable: the message is informational.)
+    const HR_METRICS = new Set(['heartRate', 'relaxation', 'heartRateBpm']);
+    const activeRules = Array.isArray(state.runtimeRules) ? state.runtimeRules : (typeof DEFAULT_RUNTIME_RULES !== 'undefined' ? DEFAULT_RUNTIME_RULES : []);
+    const hrRuleNames = activeRules.filter(r => r.enabled && HR_METRICS.has(r.condition?.metric)).map(r => r.name);
+    if (hrRuleNames.length && !sensorOn) {
+      out.push({
+        id: 'hr_rules_no_bridge',
+        severity: 'info',
+        title: `${hrRuleNames.length} rule${hrRuleNames.length === 1 ? '' : 's'} reference heart rate but no bridge is connected`,
+        detail: `Heart-rate metrics stay at 0 without the sensor bridge, so these rules will never fire: ${hrRuleNames.slice(0, 3).join(', ')}${hrRuleNames.length > 3 ? `, +${hrRuleNames.length - 3} more` : ''}. Enable the bridge in Step 5 to activate them, or disable the rules in Options ▸ Rules if you don't have a watch.`,
+        action: { label: 'Open Step 5 controls', fn: () => {
+          const stepBtn = document.querySelector('[data-step="5"]'); if (stepBtn) stepBtn.click();
+        }},
+      });
+    }
+
+    // Round 29 — heartbeat-sync method shines when the sensor bridge is
+    // connected (synth heartbeat + visualizer pulse-rings sync to real
+    // BPM). Without a bridge it still works, but the user may not know
+    // they're missing the marquee feature. Info-level — not blocking.
+    try {
+      const methodNow = (typeof getMethod === 'function') ? getMethod() : null;
+      if (methodNow?.id === 'heartbeat-sync' && !sensorOn) {
+        out.push({
+          id: 'heartbeat_method_no_bridge',
+          severity: 'info',
+          title: 'Heartbeat sync method works best with a sensor bridge',
+          detail: 'The Heartbeat Synchronization method pairs especially well with a connected heart-rate watch — the soundscape and visualizer pulse-rings lock to your actual beats. Without a bridge it falls back to a stylized ~60 bpm pattern.',
+          action: { label: 'Open Step 5 controls', fn: () => {
+            const stepBtn = document.querySelector('[data-step="5"]'); if (stepBtn) stepBtn.click();
+          }},
+        });
+      }
+    } catch {}
 
     const hapticOn = !!$('hapticOptInThisSession')?.checked;
     if (hapticOn && !hapticBridge.isReady?.()) {
@@ -24767,12 +25254,64 @@ Start immediately:`;
       const compareChecked = state._historyCompareSel.includes(String(s.date));
       const compareCheckbox = `<input type="checkbox" class="h-compare-check" data-sid="${escapeHtml(String(s.date))}" ${compareChecked ? 'checked' : ''}>`;
 
+      // Round 29 — HR mini-sparkline. Built as inline SVG (no canvas
+      // resize observer needed inside a list — SVG scales for free) and
+      // dropped between the meta line and the preview text. Tooltip
+      // surfaces baseline / min / mean / max so the chart isn't lonely
+      // numerically. Hidden entirely when no trace was collected — the
+      // record's `heartRate` key will be missing for unsensored sessions.
+      let hrSparkHtml = '';
+      const hr = s.heartRate;
+      if (hr && Array.isArray(hr.samples) && hr.samples.length >= 2) {
+        const samples = hr.samples;
+        const xs = samples.map(p => p[0]);
+        const ys = samples.map(p => p[1]);
+        const xMax = Math.max(...xs) || 1;
+        const yMin = Math.min(...ys);
+        const yMax = Math.max(...ys);
+        // Pad y-range a touch when the data is dead-flat so the line
+        // doesn't sit on the bottom edge with no headroom (a 60-bpm
+        // session that spent the whole time at 60 should still show a
+        // nice mid-line trace).
+        const yRange = Math.max(2, yMax - yMin);
+        const W = 220, H = 28, pad = 2;
+        const path = samples.map((p, i) => {
+          const x = pad + (p[0] / xMax) * (W - pad * 2);
+          const y = H - pad - ((p[1] - yMin) / yRange) * (H - pad * 2);
+          return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+        // Optional baseline guide line, drawn behind the trace, when
+        // the baseline falls inside the y-range (otherwise it'd just
+        // pin to a corner with no useful context).
+        let baselineLine = '';
+        if (Number.isFinite(hr.baselineBpm) && hr.baselineBpm >= yMin && hr.baselineBpm <= yMax) {
+          const by = H - pad - ((hr.baselineBpm - yMin) / yRange) * (H - pad * 2);
+          baselineLine = `<line x1="${pad}" x2="${W - pad}" y1="${by.toFixed(1)}" y2="${by.toFixed(1)}" stroke="rgba(184,154,74,0.35)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+        }
+        const tipParts = [
+          `min ${hr.minBpm}`, `mean ${hr.meanBpm}`, `max ${hr.maxBpm}`,
+          Number.isFinite(hr.baselineBpm) ? `base ${hr.baselineBpm}` : null,
+          `${hr.sampleCount} samples`,
+        ].filter(Boolean);
+        const tip = `Heart rate: ${tipParts.join(' · ')}`;
+        hrSparkHtml = `
+          <div class="h-hr-spark" title="${escapeHtml(tip)}" style="margin-top:4px;display:flex;align-items:center;gap:6px;font-size:0.62rem;color:var(--text-faint);font-family:monospace">
+            <span style="color:#e85a8e">♥</span>
+            <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;max-width:220px;height:${H}px;display:block;flex:1;min-width:0">
+              ${baselineLine}
+              <path d="${path}" fill="none" stroke="#e85a8e" stroke-width="1.2"/>
+            </svg>
+            <span style="white-space:nowrap">${hr.minBpm}\u2013${hr.maxBpm} bpm</span>
+          </div>`;
+      }
+
       const item = document.createElement('div');
       item.className = 'history-item';
       item.innerHTML = `
         ${compareCheckbox}
         <div class="h-title">${modeBadge}${dateStr} ${timeStr} · ${status}</div>
         <div class="h-meta">${escapeHtml(s.guide || '—')} · ${escapeHtml(s.method || '—')} · ${phaseCount} phases · ${workBlocks} work block${workBlocks === 1 ? '' : 's'}${affirmMode ? ' · ' + escapeHtml(affirmMode) : ''}${profileName ? ' · ' + escapeHtml(profileName) : ''}${s.intentionText ? ' · ' + escapeHtml(s.intentionText.substring(0, 30)) : ''}</div>
+        ${hrSparkHtml}
         ${preview ? `<div class="h-preview">${escapeHtml(preview)}</div>` : '<div class="h-no-script">no script stored</div>'}
         ${tagsHtml}
         <div class="h-actions">
@@ -28458,6 +28997,22 @@ Start immediately:`;
 
       ...(state._sessionMode && !state._sosKind ? { mode: state._sessionMode } : {}),
 
+      // Round 29 — heart-rate trace, when available. _summarizeHrTrace
+      // returns null if no samples were collected (no bridge connected
+      // or bridge dropped before producing data). Spread is conditional
+      // so the key isn't even present in records from unsensored
+      // sessions — keeps history-search/analytics shape stable. The
+      // compact [tSec, bpm] sample form keeps a 30-min session under
+      // ~5 KB pre-gzip, well within the per-record budget.
+      ...(state._hrTrace && state._hrTrace.length
+        ? { heartRate: _summarizeHrTrace(
+              state._hrTrace,
+              (typeof sensorBridge !== 'undefined' && sensorBridge.getBaseline)
+                ? sensorBridge.getBaseline()
+                : null
+            ) }
+        : {}),
+
       susceptibilityAtSessionStart: ($('pfSusceptibility')?.value || ''),
       workflowVersion: 12,
       stepsTotal: 6,
@@ -28657,6 +29212,78 @@ Start immediately:`;
       } else {
         briefBox.style.display = 'none';
         briefBox.innerHTML = '';
+      }
+    }
+
+    // Round 29 — heart-rate summary card. Renders min / mean / max BPM,
+    // baseline anchor, total drop from baseline (a parasympathetic
+    // proxy), and a chart-like inline SVG sparkline of the trace. Only
+    // shown when the session collected at least 2 samples — matches the
+    // history-list sparkline gate. No emergency-exit gating here because
+    // even on an early end the trace tells a useful story (often the
+    // most useful: where exactly did the spike happen?).
+    const hrSummaryBox = $('postHrSummaryBox');
+    if (hrSummaryBox) {
+      const trace = state._hrTrace;
+      const baseline = (typeof sensorBridge !== 'undefined' && sensorBridge.getBaseline)
+        ? sensorBridge.getBaseline()
+        : null;
+      const summary = (trace && trace.length >= 2 && typeof _summarizeHrTrace === 'function')
+        ? _summarizeHrTrace(trace, baseline)
+        : null;
+      if (summary) {
+        // Build the same SVG sparkline the history list renders, sized
+        // a bit larger here since the post-card has more horizontal real
+        // estate. The shape matches so users learn the visual once.
+        const W = 360, H = 44, pad = 4;
+        const ys = summary.samples.map(p => p[1]);
+        const xMax = Math.max(...summary.samples.map(p => p[0])) || 1;
+        const yMin = Math.min(...ys), yMax = Math.max(...ys);
+        const yRange = Math.max(2, yMax - yMin);
+        const path = summary.samples.map((p, i) => {
+          const x = pad + (p[0] / xMax) * (W - pad * 2);
+          const y = H - pad - ((p[1] - yMin) / yRange) * (H - pad * 2);
+          return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+        let baselineLine = '';
+        if (Number.isFinite(summary.baselineBpm) && summary.baselineBpm >= yMin && summary.baselineBpm <= yMax) {
+          const by = H - pad - ((summary.baselineBpm - yMin) / yRange) * (H - pad * 2);
+          baselineLine = `<line x1="${pad}" x2="${W - pad}" y1="${by.toFixed(1)}" y2="${by.toFixed(1)}" stroke="rgba(184,154,74,0.35)" stroke-width="0.5" stroke-dasharray="3,3"/>`;
+        }
+        // Compute drop-from-baseline if both baseline and minimum are
+        // available — this is the most plain-language-actionable number
+        // for relaxation-focused sessions. Negative numbers (HR went
+        // up) are still informative; we show them as +N to be clear.
+        let dropLine = '';
+        if (Number.isFinite(summary.baselineBpm)) {
+          const lowestDelta = summary.baselineBpm - summary.minBpm;
+          if (lowestDelta > 0) {
+            dropLine = `<div style="font-size:0.74rem;color:var(--accent-green);margin-top:6px">heart rate dropped <strong>${lowestDelta}</strong> bpm below your starting baseline at its lowest — a clear parasympathetic shift.</div>`;
+          } else if (lowestDelta < -3) {
+            dropLine = `<div style="font-size:0.74rem;color:var(--text-dim);margin-top:6px">heart rate stayed <strong>${Math.abs(lowestDelta)}</strong> bpm above baseline. Worth checking the post-checkin below — the body may not have settled into rest mode this session.</div>`;
+          }
+        }
+        const baselineCell = Number.isFinite(summary.baselineBpm)
+          ? `<div class="summary-card"><div class="summary-label">baseline</div><div class="summary-value">${summary.baselineBpm}</div></div>`
+          : '';
+        hrSummaryBox.style.display = '';
+        hrSummaryBox.innerHTML = `
+          <div class="post-card-title">♥ heart rate this session</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:8px;margin-bottom:10px">
+            <div class="summary-card"><div class="summary-label">min</div><div class="summary-value">${summary.minBpm}</div></div>
+            <div class="summary-card"><div class="summary-label">mean</div><div class="summary-value">${summary.meanBpm}</div></div>
+            <div class="summary-card"><div class="summary-label">max</div><div class="summary-value">${summary.maxBpm}</div></div>
+            ${baselineCell}
+          </div>
+          <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:${H}px;display:block;background:rgba(0,0,0,0.18);border:0.5px solid rgba(255,255,255,0.06);border-radius:3px">
+            ${baselineLine}
+            <path d="${path}" fill="none" stroke="#e85a8e" stroke-width="1.4"/>
+          </svg>
+          <div style="font-size:0.66rem;color:var(--text-faint);margin-top:4px;font-family:monospace">${summary.sampleCount} samples${Number.isFinite(summary.baselineBpm) ? ' · dashed line = baseline' : ''}</div>
+          ${dropLine}`;
+      } else {
+        hrSummaryBox.style.display = 'none';
+        hrSummaryBox.innerHTML = '';
       }
     }
 
@@ -37789,6 +38416,14 @@ Begin:`;
       const timeT = _applyRampCurve(tFraction, r.curve);
       const blend = (timeT + eng) / 2;
       target = r.startVal + (r.endVal - r.startVal) * blend;
+    } else if (r.mode === 'relaxation') {
+      // Round 29 — ramp tracks the HR-derived relaxation score directly.
+      // For the canonical "intensity rises as the user goes deeper" curve,
+      // pair with startVal=low, endVal=high (e.g. 0.3 → 1.4) so the
+      // visualizer / haptic intensity climbs as the body settles. Inert
+      // when no bridge connected (relaxation stays at 0 → target = startVal).
+      const relax = (typeof getEngineMetric === 'function') ? Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0)) : 0;
+      target = r.startVal + (r.endVal - r.startVal) * _applyRampCurve(relax, r.curve);
     }
     return Math.max(0, Math.min(2, target));
   }
@@ -37811,6 +38446,11 @@ Begin:`;
     state._rampActiveIntensity = Math.max(0, Math.min(2, result));
   }
 
+  // Round 29 — `source` field: which engine signal drives the speed
+  // mapping. Default 'engagement' preserves legacy behavior. 'relaxation'
+  // routes the HR-derived relaxation signal through the same min→max
+  // speed range, so a relaxing user gets a (typically) slower narrator
+  // with no extra wiring. Validated in _normalizePacingSettings.
   const PACING_DEFAULTS = Object.freeze({
     enabled:       false,
     minSpeed:      0.5,
@@ -37818,6 +38458,7 @@ Begin:`;
     smoothingSec:  4,
     curve:         'linear',
     lockDuringSec: 0,
+    source:        'engagement',
   });
   const HNE_PACING_KEY = 'hne_pacing_settings_v1';
   function loadPacingSettings() {
@@ -37842,6 +38483,7 @@ Begin:`;
       smoothingSec:  Number.isFinite(p.smoothingSec)  ? Math.max(0,    Math.min(30, p.smoothingSec))  : base.smoothingSec,
       curve:         ['linear','exponential','sine'].includes(p.curve) ? p.curve : base.curve,
       lockDuringSec: Number.isFinite(p.lockDuringSec) ? Math.max(0,    Math.min(60, p.lockDuringSec)) : base.lockDuringSec,
+      source:        ['engagement', 'relaxation'].includes(p.source) ? p.source : base.source,
     };
   }
 
@@ -37858,12 +38500,19 @@ Begin:`;
     const es = state.engineState;
     if (!es) return;
 
-    const engagement = Math.max(0, Math.min(1, Number(es.engagement) || 0));
+    // Round 29 — pacing source is configurable. 'engagement' is the legacy
+    // default; 'relaxation' routes the HR-derived score through the same
+    // min→max speed envelope. Falls back to engagement for any unknown
+    // value so legacy stored settings keep working.
+    let signal = Math.max(0, Math.min(1, Number(es.engagement) || 0));
+    if (ps.source === 'relaxation' && typeof getEngineMetric === 'function') {
+      signal = Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0));
+    }
 
     const sessionTime = es.sessionSec ?? es.sessionTime ?? 0;
     if (ps.lockDuringSec > 0 && (sessionTime - _pacingLastChangeAt) < ps.lockDuringSec) return;
 
-    const t = _applyRampCurve(engagement, ps.curve);
+    const t = _applyRampCurve(signal, ps.curve);
     const targetSpeed = ps.minSpeed + t * (ps.maxSpeed - ps.minSpeed);
 
     const alpha = ps.smoothingSec > 0 ? Math.min(1, frameSec / ps.smoothingSec) : 1;
@@ -39702,6 +40351,7 @@ Begin:`;
       setIfPresent('pacingCurve',  pacing.curve);
       setIfPresent('pacingSmooth', pacing.smoothingSec);
       setIfPresent('pacingLock',   pacing.lockDuringSec);
+      setIfPresent('pacingSource', pacing.source);
       const _persistPacing = () => {
         state.pacingSettings = _normalizePacingSettings(pacing);
         savePacingSettings(state.pacingSettings);
@@ -39736,6 +40386,13 @@ Begin:`;
         const v = Math.max(0, Math.min(60, parseFloat(e.target.value) || 0));
         pacing.lockDuringSec = v; e.target.value = v; _persistPacing();
       });
+      // Round 29 — pacing source picker. Switching to 'relaxation' makes
+      // the speed envelope track the HR-derived score instead of voice
+      // engagement. Same min/max/curve apply, just a different signal.
+      $('pacingSource')?.addEventListener('change', e => {
+        pacing.source = ['engagement', 'relaxation'].includes(e.target.value) ? e.target.value : 'engagement';
+        _persistPacing();
+      });
 
       setInterval(() => {
         const det = $('liveControlDetails');
@@ -39743,9 +40400,23 @@ Begin:`;
         const line = $('pacingStatusLine');
         if (!line) return;
         if (!pacing.enabled) { line.textContent = ''; return; }
-        const eng = state.engineState?.engagement;
-        const engTxt = (typeof eng === 'number') ? eng.toFixed(2) : '—';
-        line.textContent = `pacing: ${_pacingCurrentSpeed.toFixed(2)}× (engagement: ${engTxt})`;
+        // Round 29 — status line now reports the actual source signal
+        // driving the speed envelope. When source = relaxation we also
+        // surface the live BPM and baseline so the user can see the
+        // physiological number behind the pacing decision.
+        if (pacing.source === 'relaxation') {
+          const relax = (typeof getEngineMetric === 'function') ? Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0)) : 0;
+          const bpm = (typeof sensorBridge !== 'undefined' && sensorBridge.getCurrentBpm) ? sensorBridge.getCurrentBpm() : null;
+          const baseline = (typeof sensorBridge !== 'undefined' && sensorBridge.getBaseline) ? sensorBridge.getBaseline() : null;
+          const hrTxt = Number.isFinite(bpm)
+            ? ` · ♥ ${Math.round(bpm)}${Number.isFinite(baseline) ? ` (base ${Math.round(baseline)})` : ''}`
+            : ' · ♥ —';
+          line.textContent = `pacing: ${_pacingCurrentSpeed.toFixed(2)}× (relaxation: ${relax.toFixed(2)}${hrTxt})`;
+        } else {
+          const eng = state.engineState?.engagement;
+          const engTxt = (typeof eng === 'number') ? eng.toFixed(2) : '—';
+          line.textContent = `pacing: ${_pacingCurrentSpeed.toFixed(2)}× (engagement: ${engTxt})`;
+        }
       }, 500);
     }
   }
