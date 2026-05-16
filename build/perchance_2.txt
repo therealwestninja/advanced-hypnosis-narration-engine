@@ -2409,22 +2409,14 @@ min-width: 28px; min-height: 0;
     to   { transform: translate(-50%, -50%) rotate(360deg); }
   }
   .pulse-rings { position: absolute; inset: 0; }
-  /* Round 29 — animation-duration is now driven by --pulse-cycle, a CSS
-     custom property updated live from the heart-rate sensor bridge.
-     Falls back to 6s (the legacy hard-coded calm-breathing rate) when
-     no bridge is connected, so pre-existing sessions look identical.
-     We multiply by 4 for the actual ring expansion so each ring spans
-     ~4 heartbeats — too-fast a ring expansion looks anxious, not
-     hypnotic. The tighter --pulse-beat property is used elsewhere
-     (e.g. for the HR-synced soundscape) to expose the raw beat. */
   .pulse-ring {
     position: absolute; top: 50%; left: 50%;
     border: 1px solid rgba(107, 148, 184, 0.3);
 transform: translate(-50%, -50%);
-    animation: ring-expand calc(var(--pulse-cycle, 6s) * 1) ease-out infinite;
+    animation: ring-expand 6s ease-out infinite;
   }
-  .pulse-ring:nth-child(2) { animation-delay: calc(var(--pulse-cycle, 6s) * 0.33); }
-  .pulse-ring:nth-child(3) { animation-delay: calc(var(--pulse-cycle, 6s) * 0.66); }
+  .pulse-ring:nth-child(2) { animation-delay: 2s; }
+  .pulse-ring:nth-child(3) { animation-delay: 4s; }
   @keyframes ring-expand {
     0%   { width: 20px; height: 20px; opacity: 0.8; }
     100% { width: 320px; height: 320px; opacity: 0; }
@@ -5400,11 +5392,15 @@ padding: 6px 10px; font-size: 1.1rem;
           <img id="craftedSymbolImg" alt="Suggestion symbol" style="max-width:240px;width:100%;border-radius:8px;border:1px solid var(--glass-border)">
           <div class="sublabel" style="font-size:0.66rem;margin-top:4px;color:var(--text-faint)">A visual anchor for post-hypnotic recall.</div>
         </div>
+        <!-- Through-line / Motif Engine chip — shows the recurring session
+             motif once it has been picked at generation time. Populated by
+             MotifEngine.renderChip(); stays empty when the engine is off. -->
+        <div id="motifChipWrap"></div>
         <div class="crafted-actions">
           <button class="btn secondary" id="recraftBtn">re-craft</button>
           <button class="btn secondary" id="editCraftedBtn">edit manually</button>
           <button class="btn secondary" id="saveEditBtn" style="display:none">save edit</button>
-          <button class="btn secondary" id="craftedSymbolBtn" title="Generate an abstract visual anchor for post-hypnotic recall (requires Cloud sync in Options ▸ Use External Devices)">🎨 symbol</button>
+          <button class="btn secondary" id="craftedSymbolBtn" title="Generate an abstract visual anchor for post-hypnotic recall (requires remote processing opt-in)">🎨 symbol</button>
           <button class="btn secondary" id="craftedVoicePreviewBtn" title="Hear the suggestion in your selected narrator voice">▶ preview voice</button>
           <button class="btn secondary" id="craftedVoiceStopBtn" style="display:none">⏹ stop</button>
         </div>
@@ -6023,25 +6019,17 @@ I return to myself easily"></textarea>
           <span id="micStatusDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;margin-right:6px;vertical-align:middle"></span>
           <span id="micStatusText">listening…</span>
         </div>
-        <!-- Biometric sensor bridge (Round 25, Pass 9; HR-OBS native protocol added Round 29).
-             Same per-session opt-in pattern; loopback WebSocket to a local adapter that
-             pushes biometric signals into the engagement engine. Two protocols are
-             auto-detected on the same socket:
-               • Generic HNE format: {"signal":"heartRate","value":0.5,"weight":0.4}
-               • HR-OBS Monitor v2: {"type":"heart_rate","data":{"bpm":72}}  ← translated
-                 internally to normalized heartRate + derived relaxation (drop from
-                 personal baseline). Lets users plug in the open-source Heart Rate
-                 OBS Monitor (Samsung / Wear OS / Mi Band / Fitbit via Gadgetbridge)
-                 with zero glue code. -->
+        <!-- Biometric sensor bridge (Round 25, Pass 9). Same per-session
+             opt-in pattern; loopback WebSocket to a local adapter that
+             pushes biometric signals into the engagement engine. -->
         <label class="toggle-row toggle-row-cb" for="sensorBridgeOptInThisSession" style="align-items:flex-start;padding:6px 0;margin-top:4px">
           <input type="checkbox" id="sensorBridgeOptInThisSession">
           <span>
-            📈 Biometric sensor bridge <span style="color:var(--text-faint);font-weight:400">— heart rate, HRV, breath, EEG</span>
+            📈 Biometric sensor bridge
             <span class="hint" style="line-height:1.5">
-              Connects to a local adapter pushing biometric data over WebSocket. Two protocols auto-detected:
-              <br>• <strong>Generic HNE</strong> (default <code style="font-size:0.65rem">ws://localhost:8765</code>): <code style="font-size:0.65rem">\{"signal":"heartRate","value":0.5,"weight":0.4\}</code>. Signals: heartRate, hrv, gsr, breath, eegFocus, custom1-3.
-              <br>• <strong>Heart Rate OBS Monitor v2</strong> (<code style="font-size:0.65rem">ws://localhost:8080</code>): supports Samsung Galaxy Fit/Watch, Mi Band, Fitbit via Gadgetbridge — sends raw BPM, HNE auto-normalizes and derives a <em>relaxation</em> signal (drop from personal baseline). No glue code needed.
-              <br>Each feeds the engagement engine and is exposed to rules as <code style="font-size:0.65rem">heartRate</code>, <code style="font-size:0.65rem">relaxation</code>, <code style="font-size:0.65rem">heartRateBpm</code>.
+              Connects to a local adapter (default <code style="font-size:0.65rem">ws://localhost:8765</code>) pushing JSON like
+              <code style="font-size:0.65rem">\{"signal":"heartRate","value":0.5,"weight":0.4\}</code>.
+              Recognized signals: heartRate, hrv, gsr, breath, eegFocus, custom1-3. Each feeds the engagement engine. Intended for self-hosted bridges (e.g. a Polar/Muse adapter you run locally).
             </span>
           </span>
         </label>
@@ -6049,17 +6037,8 @@ I return to myself easily"></textarea>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span id="sensorBridgeDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;vertical-align:middle"></span>
             <span id="sensorBridgeStatusText">not connected</span>
-            <span id="sensorBridgeBpmBadge" style="display:none;align-items:center;gap:3px;padding:1px 6px;background:rgba(255,80,100,0.10);border:0.5px solid rgba(255,80,100,0.35);border-radius:10px;color:#ff8a96;font-family:monospace;font-size:0.64rem"><span style="font-size:0.7rem;line-height:1">♥</span><span id="sensorBridgeBpmValue">—</span><span style="color:var(--text-faint);font-size:0.58rem">bpm</span></span>
             <input type="text" id="sensorBridgeUrl" value="ws://localhost:8765" style="background:rgba(0,0,0,0.3);border:0.5px solid var(--border,rgba(255,255,255,0.15));border-radius:4px;color:var(--text);font-size:0.66rem;padding:2px 6px;width:170px;font-family:monospace">
             <button type="button" id="sensorBridgeReconnectBtn" class="btn secondary" style="padding:2px 10px;font-size:0.66rem">reconnect</button>
-          </div>
-          <!-- Quick URL presets — one tap to switch between the generic adapter
-               port and the HR-OBS Monitor port. Saves typing for the common
-               cases. The custom button just focuses the field. -->
-          <div style="display:flex;align-items:center;gap:4px;margin-top:4px;font-size:0.6rem">
-            <span style="color:var(--text-faint)">presets:</span>
-            <button type="button" class="btn secondary sensor-bridge-preset" data-url="ws://localhost:8765" style="padding:1px 7px;font-size:0.6rem" title="Generic HNE biometric adapter — Polar/Muse-style bridges">generic :8765</button>
-            <button type="button" class="btn secondary sensor-bridge-preset" data-url="ws://localhost:8080" style="padding:1px 7px;font-size:0.6rem" title="Heart Rate OBS Monitor (github.com — Samsung/Wear OS/Mi Band/Fitbit)">HR-OBS :8080</button>
           </div>
           <div id="sensorBridgeSignalsLine" style="font-size:0.62rem;color:var(--text-faint);margin-top:4px;font-family:monospace;min-height:1.3em"></div>
         </div>
@@ -6208,7 +6187,6 @@ I return to myself easily"></textarea>
                     <option value="engagement">engagement</option>
                     <option value="step">step</option>
                     <option value="adaptive">adaptive (time+eng)</option>
-                    <option value="relaxation">relaxation (HR)</option>
                   </select>
                   <label style="color:var(--text-dim)">curve</label>
                   <select id="rampCurve" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem">
@@ -6258,11 +6236,7 @@ I return to myself easily"></textarea>
                   <input id="pacingSmooth" type="number" min="0" max="30" step="0.5" value="4" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem;font-family:monospace" title="EMA time constant in seconds — larger = smoother but slower to react">
                   <label style="color:var(--text-dim)">lock for</label>
                   <input id="pacingLock" type="number" min="0" max="60" step="1" value="0" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem;font-family:monospace" title="Hold speed for N seconds after a change — debounce">
-                  <label style="color:var(--text-dim)">source</label>
-                  <select id="pacingSource" style="padding:3px 6px;background:var(--bg-deep);border:1px solid var(--glass-border);color:var(--text);font-size:0.66rem" title="Which signal drives the speed mapping">
-                    <option value="engagement">engagement</option>
-                    <option value="relaxation">relaxation (HR)</option>
-                  </select>
+                  <span></span><span></span>
                 </div>
                 <div id="pacingStatusLine" style="margin-top:6px;font-size:0.62rem;color:var(--text-faint);font-family:monospace"></div>
               </div>
@@ -6667,12 +6641,6 @@ I return to myself easily"></textarea>
         <div class="post-card" id="postProgramBox" style="display:none"></div>
         <!-- Director Brief reasoning (shown only when Smart Director ran and a brief was captured) -->
         <div class="post-card" id="postDirectorBriefBox" style="display:none"></div>
-        <!-- Round 29 — Heart-rate summary card. Populated from the
-             per-session HR trace when a sensor bridge was active and
-             produced data. Hidden otherwise so unsensored sessions look
-             unchanged. Sits in the post-card stack alongside reflection /
-             program-progress / director-brief cards. -->
-        <div class="post-card" id="postHrSummaryBox" style="display:none"></div>
         <!-- Pre-gen offer (shown when a program advanced to next day and
              cache is empty). Asks the user before firing AI calls in the
              background — respects user control over quota/cost. -->
@@ -7043,17 +7011,16 @@ I return to myself easily"></textarea>
 
 <div class="modal-backdrop" id="remoteConsentModal">
   <div class="modal">
-    <h2>Allow cloud sync &amp; AI image processing?</h2>
+    <h2>Enable remote backup + processing?</h2>
     <div class="field">
       <div style="font-size:0.9rem; line-height:1.6; color:var(--text-dim)">
-        Cloud sync is the only external-device class that sends data to a remote server.
-        Enabling it allows AI portrait/symbol generation, settings backup, and account features.
-        Other device classes (webcam, microphone, heart rate, haptics) all process locally and never leave your machine.
+        If you turn this on, some of your data may be sent to a remote server for backup and further processing.
+        This is optional, disabled by default, and you can turn it off later.
       </div>
     </div>
     <div class="field">
       <div style="font-size:0.82rem; line-height:1.6; color:var(--text-faint)">
-        Off by default. You can revoke at any time in Options ▸ Use External Devices.
+        Only enable this if you understand and agree to that behavior.
       </div>
     </div>
     <div class="modal-actions">
@@ -7306,76 +7273,13 @@ I return to myself easily"></textarea>
         <!-- Populated at boot from root.hneLanguagePacks. Falls back to a single English entry if perchance_1.txt's hneLanguagePacks list isn't accessible. -->
         <option value="en">English (default)</option>
       </select>
-      <!-- Round 30 — Use External Devices. Replaces the single "Enable
-           remote backup + processing" toggle with a master allow-list
-           gating which external devices/services the app may access.
-           Five device rows in a scrollable list:
-             • Webcam       — face presence / eye state / ambient light
-             • Microphone   — breath-aware pacing
-             • Heart rate   — biometric sensor bridge (HR-OBS, generic)
-             • Haptics      — Intiface / Buttplug
-             • Cloud        — formerly "remote backup + processing"
-           Each device permission is an allow-list bit. The actual
-           per-session opt-in toggles in Step 5 are gated by these — a
-           user must allow the device class here before the per-session
-           checkbox can be ticked. The legacy state.remoteProcessingOptIn
-           field is kept as an alias for the cloud bit, so all existing
-           call sites (AI portrait, AI symbol, etc.) keep working
-           unchanged. Migration: any existing remoteProcessingOptIn=true
-           is mapped to devicePermissions.cloud=true at load time. -->
-      <div class="pf-label" style="margin-top:14px;margin-bottom:6px">🔌 Use External Devices</div>
-      <div class="sublabel" style="font-size:0.62rem;line-height:1.4;color:var(--text-faint);margin-bottom:6px">
-        Allow-list for external hardware and remote services. Per-session toggles in Step 5 are disabled until the matching device class is allowed here. All processing is local-only except where explicitly noted (cloud).
-      </div>
-      <!-- Scrollable device list — capped height so the Options panel
-           stays compact. Each row is a toggle-row reused from the
-           profile sidebar styling; standardized icon + name + hint
-           layout makes the list scannable at a glance. -->
-      <div id="devicePermissionsList" style="max-height:240px;overflow-y:auto;padding:6px 8px;background:rgba(0,0,0,0.18);border:0.5px solid var(--glass-border);border-radius:4px;margin-bottom:8px">
-        <label class="toggle-row toggle-row-cb" for="devPermWebcam" style="align-items:flex-start;padding:6px 0">
-          <input type="checkbox" id="devPermWebcam">
-          <span>
-            📷 Webcam
-            <span class="hint">Face presence, eye state, and ambient brightness via on-device MediaPipe (~3-5 MB on first enable). Local-only — never transmitted.</span>
-          </span>
-        </label>
-        <label class="toggle-row toggle-row-cb" for="devPermMicrophone" style="align-items:flex-start;padding:6px 0;margin-top:4px;border-top:0.5px solid rgba(255,255,255,0.05)">
-          <input type="checkbox" id="devPermMicrophone">
-          <span>
-            🎙 Microphone
-            <span class="hint">Breath-aware pacing — detects exhale rhythm to adapt pause durations. No audio recorded, never transmitted.</span>
-          </span>
-        </label>
-        <label class="toggle-row toggle-row-cb" for="devPermHeartRate" style="align-items:flex-start;padding:6px 0;margin-top:4px;border-top:0.5px solid rgba(255,255,255,0.05)">
-          <input type="checkbox" id="devPermHeartRate">
-          <span>
-            ♥ Heart rate sensor
-            <span class="hint">Biometric sensor bridge over local WebSocket. Native support for Heart Rate OBS Monitor v2 (Samsung Galaxy Fit / Watch, Mi Band, Fitbit via Gadgetbridge) and any generic adapter speaking the HNE signal protocol. Loopback-only — nothing leaves your machine.</span>
-          </span>
-        </label>
-        <label class="toggle-row toggle-row-cb" for="devPermHaptic" style="align-items:flex-start;padding:6px 0;margin-top:4px;border-top:0.5px solid rgba(255,255,255,0.05)">
-          <input type="checkbox" id="devPermHaptic">
-          <span>
-            🌀 Haptic devices
-            <span class="hint">External haptic device support via local <a href="https://intiface.com/central/" target="_blank" rel="noopener" style="color:var(--text-dim);text-decoration:underline">Intiface Central</a>. Loopback-only.</span>
-          </span>
-        </label>
-        <label class="toggle-row toggle-row-cb" for="devPermCloud" style="align-items:flex-start;padding:6px 0;margin-top:4px;border-top:0.5px solid rgba(255,255,255,0.05)">
-          <input type="checkbox" id="devPermCloud">
-          <span>
-            ☁ Cloud sync &amp; AI image processing
-            <span class="hint">Off by default — the only device class that sends data to a remote server. Enables AI portrait/symbol generation, cloud backup of settings, and account features. Requires explicit consent.</span>
-          </span>
-        </label>
-      </div>
-      <!-- Legacy hidden checkbox preserved as a state mirror for
-           backward compatibility. Many existing code paths read
-           $('remoteProcessingOptIn').checked directly; rather than
-           touch them all, we keep the input element but hide it and
-           drive its checked state from the cloud permission row above.
-           When the cloud row toggles, this mirror updates; reads
-           continue to work as before. -->
-      <input type="checkbox" id="remoteProcessingOptIn" style="display:none">
+      <label class="toggle-row" for="remoteProcessingOptIn" style="align-items:flex-start">
+        <input type="checkbox" id="remoteProcessingOptIn">
+        <span>
+          Enable remote backup + processing
+          <span class="hint">Off by default. Requires explicit consent.</span>
+        </span>
+      </label>
       <!-- Adult-content toggle — moved here from the Profile sidebar
            where the long descriptive copy was wrapping awkwardly into
            the narrow profile column. Same IDs preserved (pfAdultUnlock,
@@ -7413,6 +7317,14 @@ I return to myself easily"></textarea>
         </span>
       </label>
       <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px">Off: your manual scene choices are preserved across the whole session. On (default): when the AI writes about rain, the soundscape can become rain.</div>
+      <label class="toggle-row" for="motifEngineEnabled" style="align-items:flex-start;margin-top:8px">
+        <input type="checkbox" id="motifEngineEnabled">
+        <span>
+          Session through-line
+          <span class="hint">Thread one recurring motif through the narration, visuals, and a soft cue — planted quietly, built into the work, handed back at the end.</span>
+        </span>
+      </label>
+      <div class="sublabel" style="font-size:0.62rem;line-height:1.4;margin-top:2px">On (default): one image recurs across the whole session and becomes the anchor you carry away. Off: each phase is generated independently.</div>
       <!-- Director calibration — shifts every rule threshold + AI tone directive. -->
       <div id="directorBiasRow" style="margin-top:12px;padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border)">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
@@ -7535,7 +7447,6 @@ I return to myself easily"></textarea>
             <option value="time">Time curve</option>
             <option value="engagement">Engagement</option>
             <option value="adaptive">Adaptive (both)</option>
-            <option value="relaxation">Relaxation (HR-derived)</option>
           </select>
           <label for="pdCurve">Time curve shape</label>
           <select id="pdCurve" style="font-size:0.74rem;padding:3px 6px">
@@ -8312,23 +8223,11 @@ I return to myself easily"></textarea>
     generatedPhaseOrder: [],
     scriptSections: [],
     remoteProcessingOptIn: false,
-    // Round 30 — devicePermissions allow-list. Each bit gates an entire
-    // class of external device or remote service. The legacy
-    // remoteProcessingOptIn field above is now an alias for
-    // devicePermissions.cloud (kept for backward compatibility with the
-    // ~10 call sites that read it directly). Default-off for everything;
-    // the user explicitly opts each class in via Options ▸ Use External
-    // Devices. Per-session toggles in Step 5 are gated by these.
-    devicePermissions: {
-      webcam:     false,
-      microphone: false,
-      heartRate:  false,
-      haptic:     false,
-      cloud:      false,
-    },
     smartDirectorEnabled: true,
 
     aiSceneDirectivesEnabled: true,
+    motifEngineEnabled: true,
+    sessionMotif: null,
     directorBias: 0,
 
     directorPace: 0,
@@ -9073,26 +8972,6 @@ I return to myself easily"></textarea>
       tickPlaybackDynamics(frameSec);
 
       _tickDynamicPacing(frameSec);
-
-      // Round 29 — sample heart rate into the session trace. The function
-      // is internally throttled to HR_TRACE_INTERVAL_MS so calling it
-      // every frame is essentially free. No-ops outside an active
-      // session and when no bridge is connected.
-      _tickHrTrace();
-
-      // Round 29 — sync the .pulse-rings CSS animation to live BPM.
-      // Coalesced inside _tickHrPulseCss (only writes when the cycle
-      // duration actually changed) so this is also essentially free.
-      _tickHrPulseCss();
-
-      // Round 29 — apply the relax bias to the active soundscape engine
-      // a few times per second (throttled so we're not spamming the
-      // Web Audio scheduler). This shifts binaural/isochronic beat
-      // frequencies toward delta/theta as the user relaxes — calmer
-      // entrainment that mirrors the body's actual state. No-op for
-      // every other soundscape type and when no bridge is connected.
-      _tickSoundscapeRelaxBias();
-
       a._rafHandle = requestAnimationFrame(tick);
     };
     a._rafHandle = requestAnimationFrame(tick);
@@ -9105,50 +8984,10 @@ I return to myself easily"></textarea>
     a.voicePulse = 0; a.voiceEnvelope = 0; a.active = false;
   }
 
-  // Round 29 — heartbeat phase tracker. Phase advances at the live BPM
-  // rate (or the legacy 60 bpm fallback) and exposes both a continuous
-  // 0-1 phase and a brief 0-1 pulse that spikes once per beat. Visualizers
-  // that read the legacy `mod.pulse` (voice-derived) keep working
-  // unchanged; visualizers that opt in to `mod.heartbeat` get a real-
-  // physiology pulse instead. Tracking is module-global so the phase
-  // stays continuous across getAudioMod() calls — re-deriving it from
-  // wallclock each call would lose the smooth phase the visualizers
-  // depend on.
-  let _hbPhase = 0;
-  let _hbLastTickMs = null;
-  function _advanceHeartbeatPhase() {
-    const nowMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    if (_hbLastTickMs == null) { _hbLastTickMs = nowMs; return; }
-    const dtSec = Math.max(0, Math.min(0.25, (nowMs - _hbLastTickMs) / 1000));
-    _hbLastTickMs = nowMs;
-    let bpm = null;
-    if (typeof sensorBridge !== 'undefined' && sensorBridge.getCurrentBpm) {
-      bpm = sensorBridge.getCurrentBpm();
-    }
-    // Fallback: 60 bpm so visualizers that opt in still animate
-    // sensibly without a bridge — same idea as --pulse-cycle.
-    const effBpm = (Number.isFinite(bpm) && bpm >= 35 && bpm <= 180) ? bpm : 60;
-    _hbPhase = (_hbPhase + dtSec * (effBpm / 60)) % 1;
-  }
-
   function getAudioMod() {
-    _advanceHeartbeatPhase();
     const a = state.audioReactive;
     if (!a || !a.active || a.gain === 0) {
-      // Round 29 — even when audio reactivity is off, expose HR-derived
-      // signals so visualizers and renderers can still respond to the
-      // body. Otherwise enabling "subtle" audio mode would be the only
-      // way to get HR-aware visuals, which would be confusing.
-      const relaxIdle = (typeof getEngineMetric === 'function')
-        ? Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0))
-        : 0;
-      // Brief pulse window — fires for the first 12% of each phase cycle.
-      // Short enough to read as a beat, long enough to render at 60fps.
-      const heartbeatPulseIdle = _hbPhase < 0.12 ? (1 - _hbPhase / 0.12) : 0;
-      return {
-        overall: 0, bass: 0, mid: 0, treble: 0, pulse: 0, envelope: 0,
-        relax: relaxIdle, heartbeat: heartbeatPulseIdle, heartbeatPhase: _hbPhase,
-      };
+      return { overall: 0, bass: 0, mid: 0, treble: 0, pulse: 0, envelope: 0 };
     }
 
     const dim = state.ambientDimScale ?? 1.0;
@@ -9159,14 +8998,6 @@ I return to myself easily"></textarea>
       breathBoost = 1.0 + normalized * 0.3;
     }
     const g = a.gain * dim;
-    // Round 29 — relax (0-1 from getEngineMetric) and heartbeat (0-1
-    // pulse once per beat) added to the base mod object. Both stay at
-    // 0 when no bridge is connected, so any visualizer that reads them
-    // degrades to legacy behavior automatically.
-    const relax = (typeof getEngineMetric === 'function')
-      ? Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0))
-      : 0;
-    const heartbeatPulse = _hbPhase < 0.12 ? (1 - _hbPhase / 0.12) : 0;
     return {
       overall:  a.overall       * g,
       bass:     a.bass          * g,
@@ -9174,9 +9005,6 @@ I return to myself easily"></textarea>
       treble:   a.treble        * g,
       pulse:    a.voicePulse    * g * breathBoost,
       envelope: a.voiceEnvelope * g,
-      relax,
-      heartbeat:      heartbeatPulse,
-      heartbeatPhase: _hbPhase,
     };
   }
 
@@ -9298,19 +9126,6 @@ I return to myself easily"></textarea>
       case 'faceDetected':      return state._webcam?.faceDetected ? 1 : 0;
       case 'ambientBrightness': return state.ambientBrightness ?? 0.5;
 
-      // Round 29 — heart-rate-derived metrics for the rules engine and HUD.
-      // `heartRate` and `relaxation` come from the external-signals map
-      // (populated by sensorBridge); `heartRateBpm` is the raw BPM from
-      // sensorBridge directly. All return 0 (not null) when unavailable
-      // so condition arithmetic stays well-defined — rules should AND
-      // their threshold check with `bridgeConnected` if a 0 reading
-      // would otherwise be a false positive.
-      case 'heartRate':         return _engineExternalSignals?.heartRate?.value ?? 0;
-      case 'relaxation':        return _engineExternalSignals?.relaxation?.value ?? 0;
-      case 'heartRateBpm':      return (typeof sensorBridge !== 'undefined' && sensorBridge.getCurrentBpm)
-                                  ? (sensorBridge.getCurrentBpm() ?? 0)
-                                  : 0;
-
       case 'liveIntensity':     return state._rampActiveIntensity ?? state.liveControl?.intensityScale ?? 1;
       case 'liveSpeed':         return state.liveControl?.speedScale ?? 1;
       case 'liveRandomness':    return state.liveControl?.randomness ?? 0;
@@ -9364,118 +9179,6 @@ I return to myself easily"></textarea>
       currentPhase: null, phaseKind: null, phaseSec: 0,
       playing: false, paused: false,
     };
-    // Round 29 — also clear the per-session HR trace buffer so previous-
-    // session samples don't leak into the next session's history record.
-    // Safe to call before sensorBridge is defined: _resetHrTrace just
-    // zeroes an array on `state`.
-    try { _resetHrTrace(); } catch {}
-  }
-
-  // Round 29 — heart-rate trace buffer for session history. State lives
-  // on `state` (not module-private) so it's visible to finishSession
-  // (where we serialize it into the session record) and gets cleared in
-  // the standard session-teardown paths alongside other ephemeral
-  // runtime state. The trace is sampled from sensorBridge.getCurrentBpm()
-  // at HR_TRACE_INTERVAL_MS — a slow enough rate that a 30-min session
-  // stores ~600 samples (~5 KB pre-gzip), but dense enough that the
-  // sparkline shape is meaningful.
-  const HR_TRACE_INTERVAL_MS = 3000;
-  const HR_TRACE_MAX_SAMPLES = 600;  // 30 min @ 3s/sample — hard cap
-
-  function _tickHrTrace() {
-    if (!state._sessionStartTime || state.paused || state.abortFlag) return;
-    if (typeof sensorBridge === 'undefined' || !sensorBridge.getCurrentBpm) return;
-    const bpm = sensorBridge.getCurrentBpm();
-    if (!Number.isFinite(bpm)) return;
-    const now = Date.now();
-    state._hrTrace = state._hrTrace || [];
-    const last = state._hrTrace[state._hrTrace.length - 1];
-    if (last && now - last.t < HR_TRACE_INTERVAL_MS) return;
-    // Hard cap rather than ring-buffer: preserves the start-of-session
-    // anchor (so the sparkline shows the full settling curve) at the
-    // cost of clipping the tail of very long sessions. Acceptable trade
-    // because the safety layer caps sessions at ~25 min anyway.
-    if (state._hrTrace.length >= HR_TRACE_MAX_SAMPLES) return;
-    state._hrTrace.push({ t: now, bpm: Math.round(bpm) });
-  }
-
-  function _resetHrTrace() {
-    state._hrTrace = [];
-  }
-
-  // Round 29 — Heart-rate-driven CSS variable. Updates `--pulse-cycle` on
-  // <html> so the .pulse-ring visualizer animation tracks the user's
-  // actual heartbeat. CSS animation-duration changes are interpolated by
-  // the browser (no jank), so even per-frame updates here are smooth.
-  // We also expose `--pulse-beat` (single-beat duration in seconds) for
-  // any future visual that wants the raw beat. Cycle = 4 beats so the
-  // ring expansion stays a slow, hypnotic ~3-4 s rather than racing at
-  // ~1 beat/second — tied to physiology but visually calm.
-  let _lastPulseCycleSec = null;
-  function _tickHrPulseCss() {
-    if (typeof sensorBridge === 'undefined' || !sensorBridge.getCurrentBpm) return;
-    const bpm = sensorBridge.getCurrentBpm();
-    let cycleSec, beatSec;
-    if (Number.isFinite(bpm) && bpm > 0) {
-      beatSec  = 60 / bpm;
-      cycleSec = beatSec * 4;
-    } else {
-      // Fallback: legacy 6 s breathing-rate cycle. Setting back to the
-      // default (rather than leaving the last live value stuck) means
-      // the visualizer cleanly relaxes back to "calm breathing" if the
-      // bridge drops mid-session — important so a watch sync glitch
-      // doesn't leave the rings frozen.
-      beatSec  = 1.5;
-      cycleSec = 6;
-    }
-    // Coalesce — only write when the value meaningfully changed. Avoids
-    // forcing a style recalc 60 times a second when BPM is constant.
-    if (_lastPulseCycleSec !== null && Math.abs(cycleSec - _lastPulseCycleSec) < 0.02) return;
-    _lastPulseCycleSec = cycleSec;
-    document.documentElement.style.setProperty('--pulse-cycle', cycleSec.toFixed(2) + 's');
-    document.documentElement.style.setProperty('--pulse-beat',  beatSec.toFixed(3) + 's');
-  }
-
-  // Round 29 — Soundscape relax bias tick. Throttled to once per ~2s
-  // (the underlying Web Audio ramp is 8s long anyway, so faster ticks
-  // would just queue redundant ramps). Reads the live relaxation score
-  // and pokes the active drone if it supports relax-aware tuning.
-  // No-op for soundscapes that don't implement setRelaxBias (drone,
-  // ocean, fire, etc. — only binaural and isochronic actually use it).
-  let _lastRelaxBiasTickMs = 0;
-  function _tickSoundscapeRelaxBias() {
-    const nowMs = Date.now();
-    if (nowMs - _lastRelaxBiasTickMs < 2000) return;
-    _lastRelaxBiasTickMs = nowMs;
-    if (typeof drone === 'undefined' || !drone || !drone.running) return;
-    if (typeof drone.setRelaxBias !== 'function') return;
-    const relax = (typeof getEngineMetric === 'function')
-      ? Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0))
-      : 0;
-    try { drone.setRelaxBias(relax); }
-    catch (e) { console.warn('[soundscape] setRelaxBias failed:', e); }
-  }
-
-  // Round 29 — collapse the in-memory trace into a compact serializable
-  // form for the session history record. Compact array form ([tSec, bpm]
-  // pairs, with tSec being seconds since session start) halves storage
-  // vs the {t, bpm} object form once gzipped, and makes downstream
-  // sparkline rendering trivial. Also emits min/mean/max so the history
-  // list can show summary numbers without re-walking the array.
-  function _summarizeHrTrace(trace, baselineBpm) {
-    if (!Array.isArray(trace) || !trace.length) return null;
-    const bpms = trace.map(s => s.bpm).filter(Number.isFinite);
-    if (!bpms.length) return null;
-    const t0 = trace[0].t;
-    const sum = bpms.reduce((a, b) => a + b, 0);
-    return {
-      samples: trace.map(s => [Math.round((s.t - t0) / 1000), s.bpm]),
-      baselineBpm: Number.isFinite(baselineBpm) ? Math.round(baselineBpm) : null,
-      minBpm:  Math.min(...bpms),
-      maxBpm:  Math.max(...bpms),
-      meanBpm: Math.round(sum / bpms.length),
-      sampleCount: bpms.length,
-    };
   }
 
   const RULES_VALID_ACTIONS = new Set([
@@ -9492,12 +9195,6 @@ I return to myself easily"></textarea>
     'phaseSec', 'phaseKind', 'currentPhase',
 
     'attention', 'wakefulness', 'faceDetected', 'ambientBrightness',
-
-    // Round 29 — heart-rate-aware rule metrics. heartRate / relaxation
-    // are normalized 0-1 (engagement-scale); heartRateBpm is the raw
-    // value (e.g. for `heartRateBpm < 70` rules). Available whether the
-    // user runs a generic adapter or HR-OBS Monitor v2.
-    'heartRate', 'relaxation', 'heartRateBpm',
 
     'liveIntensity', 'liveSpeed', 'liveRandomness', 'rampActive',
   ]);
@@ -9609,7 +9306,7 @@ I return to myself easily"></textarea>
           if (!param || typeof param !== 'object') break;
           const r = state.rampSettings || (state.rampSettings = loadRampSettings());
           if (typeof param.enabled === 'boolean') r.enabled = param.enabled;
-          if (['time','engagement','step','adaptive','relaxation'].includes(param.mode))   r.mode = param.mode;
+          if (['time','engagement','step','adaptive'].includes(param.mode))   r.mode = param.mode;
           if (['linear','exponential','sine'].includes(param.curve))          r.curve = param.curve;
           if (['max','add','replace'].includes(param.blendMode))              r.blendMode = param.blendMode;
           if (Number.isFinite(param.startVal)) r.startVal = Math.max(0, Math.min(2, param.startVal));
@@ -9766,48 +9463,6 @@ I return to myself easily"></textarea>
       durationSec: 600,
       cooldownSec: 1800,
       action: { type: 'notifyMessage', param: 'You can close your eyes anytime.' },
-    }),
-
-    // Round 29 — Heart-rate-aware default rules. All three are safe to
-    // ship enabled by default: when no biometric bridge is connected,
-    // `heartRate` and `relaxation` stay at 0 (see getEngineMetric), which
-    // never satisfies the > thresholds below. So they're inert for users
-    // who haven't plugged in a watch — and quietly come alive for those
-    // who have, with no extra config required. The `condition` op is `>`
-    // not `>=` specifically so the inert-at-zero case stays inert.
-    normalizeRule({
-      name: 'Deepen ducking when relaxation locks in (HR-derived)',
-      enabled: true,
-      // Sustained drop from baseline of ~10 bpm or more. Ducks the
-      // soundscape harder than the work-phase rule above so narration
-      // sits further forward when the body is genuinely settling.
-      condition: { metric: 'relaxation', op: '>', value: 0.5 },
-      durationSec: 12,
-      cooldownSec: 90,
-      action: { type: 'duckAudio', param: 0.10 },
-    }),
-    normalizeRule({
-      name: 'Reassure when heart rate spikes during a work phase (HR-derived)',
-      enabled: true,
-      // Raw normalized heartRate > 0.65 ≈ ~130 bpm — well above any
-      // resting/relaxation context. Treated as a stress flag, not a
-      // pause-trigger: just a soft on-screen reassurance, long cooldown
-      // so we don't pile up if the user is genuinely unsettled.
-      condition: { metric: 'heartRate', op: '>', value: 0.65 },
-      durationSec: 20,
-      cooldownSec: 300,
-      action: { type: 'showOnScreenText', param: 'Whatever\u2019s coming up is welcome. Long, slow exhale.' },
-    }),
-    normalizeRule({
-      name: 'Slow speech when deeply relaxed (HR-derived)',
-      enabled: true,
-      // Strong relaxation signal — slow narration further so it matches
-      // the body's pace. setSpeechRate is clamped by the safety layer
-      // so 0.85x can't drop below the configured floor regardless.
-      condition: { metric: 'relaxation', op: '>', value: 0.7 },
-      durationSec: 20,
-      cooldownSec: 120,
-      action: { type: 'setSpeechRate', param: 0.85 },
     }),
   ];
 
@@ -10656,7 +10311,6 @@ I return to myself easily"></textarea>
         set('pacingCurve',  p.curve);
         set('pacingSmooth', p.smoothingSec);
         set('pacingLock',   p.lockDuringSec);
-        set('pacingSource', p.source);
       } catch {}
 
       _resetDynamicPacing();
@@ -10718,16 +10372,6 @@ I return to myself easily"></textarea>
     if (c.mode === 'engagement' || c.mode === 'adaptive') {
       const eng = es.engagement || 0;
       intensity = Math.max(intensity, eng);
-    }
-    // Round 29 — relaxation mode pulls speech rate from the HR-derived
-    // relaxation signal. Inverted vs engagement mode at the call site:
-    // here we pass the score directly so a SLOWER user (relaxation = 1)
-    // gets the LOWER end of the speed range — see the .endScale ceiling
-    // typically being 1.10x. Pair this with `endScale < startScale` in
-    // the UI for the canonical "slow as you go deeper" curve.
-    if (c.mode === 'relaxation') {
-      const relax = (typeof getEngineMetric === 'function') ? (getEngineMetric('relaxation') || 0) : 0;
-      intensity = Math.max(intensity, relax);
     }
 
     const lo = (c.mode === 'engagement') ? c.engagementMin : c.startScale;
@@ -11500,6 +11144,7 @@ I return to myself easily"></textarea>
         bgActiveStylePresetIds: Array.isArray(state.bgActiveStylePresetIds) ? state.bgActiveStylePresetIds.slice() : [],
 
         craftedSuggestion: state.craftedSuggestion || null,
+        sessionMotif: state.sessionMotif || null,
 
         script: state.fullScript || null,
       },
@@ -11861,21 +11506,11 @@ I return to myself easily"></textarea>
 
       reimagineMode: state.reimagineMode || 'smart',
       remoteProcessingOptIn: !!$('remoteProcessingOptIn')?.checked,
-      // Round 30 — persist the device permissions allow-list. Read from
-      // the live checkboxes so the saved state always matches what the
-      // user sees. Cloud bit mirrors remoteProcessingOptIn for legacy
-      // call sites; both fields are written so a downgrade-and-reload
-      // path (e.g. older cached JS) doesn't lose the consent state.
-      devicePermissions: {
-        webcam:     !!$('devPermWebcam')?.checked,
-        microphone: !!$('devPermMicrophone')?.checked,
-        heartRate:  !!$('devPermHeartRate')?.checked,
-        haptic:     !!$('devPermHaptic')?.checked,
-        cloud:      !!$('devPermCloud')?.checked,
-      },
       smartDirectorEnabled: !!$('smartDirectorEnabled')?.checked,
 
       aiSceneDirectivesEnabled: state.aiSceneDirectivesEnabled !== false,
+      motifEngineEnabled: !!$('motifEngineEnabled')?.checked,
+      sessionMotif: state.sessionMotif || null,
       directorBias: Number($('directorBiasSlider')?.value ?? state.directorBias ?? 0),
       directorPace: Number($('directorPaceSlider')?.value ?? state.directorPace ?? 0),
       directorBiasByDomain: { ...(state.directorBiasByDomain || {}) },
@@ -11930,6 +11565,7 @@ I return to myself easily"></textarea>
     if (s.intentionInput == null && s.intentionText) s.intentionInput = s.intentionText;
     if (s.remoteProcessingOptIn == null) s.remoteProcessingOptIn = !!(s.remoteBackupOptIn || s.cloudSyncOptIn || s.serverConsent);
     if (s.smartDirectorEnabled == null) s.smartDirectorEnabled = s.profileInjectionEnabled == null ? true : !!s.profileInjectionEnabled;
+    if (s.motifEngineEnabled == null) s.motifEngineEnabled = true;
     if (s.directorBias == null) s.directorBias = 0;
 
     s.directorBias = Math.max(-3, Math.min(3, Math.round(Number(s.directorBias) || 0)));
@@ -12320,44 +11956,14 @@ I return to myself easily"></textarea>
       state.reimagineMode = s.reimagineMode || (s.smartDirectorEnabled === false ? 'guide' : 'smart');
       state.remoteProcessingOptIn = !!s.remoteProcessingOptIn;
       const rpcb = $('remoteProcessingOptIn'); if (rpcb) rpcb.checked = !!state.remoteProcessingOptIn;
-
-      // Round 30 — load device permissions. Migration path: when a
-      // saved record predates the devicePermissions field, the legacy
-      // remoteProcessingOptIn=true (single-toggle for cloud features)
-      // maps to devicePermissions.cloud=true. Other classes default to
-      // false — users must explicitly grant each one. The legacy
-      // remoteProcessingOptIn state field is also kept in sync with
-      // .cloud so the ~10 read sites (AI portrait, AI symbol, etc.)
-      // see consistent state.
-      const incoming = (s.devicePermissions && typeof s.devicePermissions === 'object') ? s.devicePermissions : null;
-      state.devicePermissions = {
-        webcam:     incoming ? !!incoming.webcam     : false,
-        microphone: incoming ? !!incoming.microphone : false,
-        heartRate:  incoming ? !!incoming.heartRate  : false,
-        haptic:     incoming ? !!incoming.haptic     : false,
-        // Migration: if no devicePermissions saved but the legacy
-        // remoteProcessingOptIn is true, treat that as a cloud allow.
-        cloud:      incoming ? !!incoming.cloud      : !!s.remoteProcessingOptIn,
-      };
-      // Keep the legacy mirror in lock-step with the cloud bit.
-      state.remoteProcessingOptIn = !!state.devicePermissions.cloud;
-      const rpcbMirror = $('remoteProcessingOptIn'); if (rpcbMirror) rpcbMirror.checked = state.remoteProcessingOptIn;
-      // Reflect each permission on its UI checkbox.
-      const _setDevPermUI = (id, v) => { const el = $(id); if (el) el.checked = !!v; };
-      _setDevPermUI('devPermWebcam',     state.devicePermissions.webcam);
-      _setDevPermUI('devPermMicrophone', state.devicePermissions.microphone);
-      _setDevPermUI('devPermHeartRate',  state.devicePermissions.heartRate);
-      _setDevPermUI('devPermHaptic',     state.devicePermissions.haptic);
-      _setDevPermUI('devPermCloud',      state.devicePermissions.cloud);
-      // Apply the gating to per-session toggles so the user sees the
-      // current state immediately (rather than only after first
-      // interaction with Step 5).
-      try { _applyDevicePermissionGating(); } catch {}
       state.smartDirectorEnabled = s.smartDirectorEnabled !== false;
       const sdcb = $('smartDirectorEnabled'); if (sdcb) sdcb.checked = state.smartDirectorEnabled;
 
       state.aiSceneDirectivesEnabled = s.aiSceneDirectivesEnabled !== false;
       const ascd = $('aiSceneDirectivesEnabled'); if (ascd) ascd.checked = state.aiSceneDirectivesEnabled;
+      state.motifEngineEnabled = s.motifEngineEnabled !== false;
+      const mecb = $('motifEngineEnabled'); if (mecb) mecb.checked = state.motifEngineEnabled;
+      if (s.sessionMotif) state.sessionMotif = s.sessionMotif;
       state.directorBias = s.directorBias ?? 0;
       const dbSlider = $('directorBiasSlider'); if (dbSlider) dbSlider.value = state.directorBias;
 
@@ -12430,7 +12036,7 @@ I return to myself easily"></textarea>
 
       if (s.playbackDynamics && typeof s.playbackDynamics === 'object') {
         const pd = s.playbackDynamics;
-        const validModes  = new Set(['time', 'engagement', 'adaptive', 'relaxation']);
+        const validModes  = new Set(['time', 'engagement', 'adaptive']);
         const validCurves = new Set(['linear', 'sine', 'exponential']);
         state.playbackDynamics = {
           enabled:        pd.enabled === true,
@@ -13566,81 +13172,6 @@ I return to myself easily"></textarea>
       );
     }
 
-    // Round 31 — inferred preferences. Pulls patterns from the user's
-    // session history (best method/persona, what time-of-day works,
-    // imagery their journals keep mentioning) so the AI can lean into
-    // what's been working rather than starting from zero each time.
-    // All thresholded inside personalInsights — null/empty result for
-    // thin histories means this block silently emits nothing.
-    try {
-      if (typeof personalInsights !== 'undefined' && typeof idbGet === 'function') {
-        // We need a sync read here (getProfileContext is sync). The
-        // history is loaded once at startup and cached in state for
-        // exactly this kind of read; if not cached yet, just skip.
-        const histCache = state._profileContextHistoryCache;
-        if (Array.isArray(histCache) && histCache.length >= 5) {
-          const prefs = personalInsights.inferPreferences(histCache);
-          if (prefs) {
-            const lines = [];
-            if (prefs.bestMethod) {
-              lines.push(`Their strongest method by track record is "${prefs.bestMethod.key}" — averages +${prefs.bestMethod.avgDelta} mood lift across ${prefs.bestMethod.n} sessions.`);
-            }
-            if (prefs.bestPersona) {
-              lines.push(`Their strongest guide is "${prefs.bestPersona.key}" (avg +${prefs.bestPersona.avgDelta} mood, n=${prefs.bestPersona.n}).`);
-            }
-            if (prefs.bestTimeOfDay) {
-              lines.push(`${prefs.bestTimeOfDay.bucket} sessions land best for them (avg +${prefs.bestTimeOfDay.avgDelta} mood, ${Math.round(prefs.bestTimeOfDay.completionRate * 100)}% completion, n=${prefs.bestTimeOfDay.n}).`);
-            }
-            if (prefs.imageryPreferences && prefs.imageryPreferences.length) {
-              const imgList = prefs.imageryPreferences.map(p => p.cat).join(', ');
-              lines.push(`Imagery their journal entries return to: ${imgList}. Lean into these metaphor families when picking anchors — they're already resonant for this person.`);
-            }
-            if (lines.length) {
-              parts.push('LEARNED PREFERENCES (from past sessions): ' + lines.join(' ') + ' These are observations, not constraints — current session settings still take priority.');
-            }
-          }
-        }
-      }
-    } catch (e) { /* never block prompt building on insights errors */ }
-
-    // Round 29 — live heart-rate context. When the sensor bridge is
-    // connected and producing data, surface the user's current state to
-    // the AI so it can write a script that meets the body where it is.
-    // Only included when actually useful (bridge connected + has a
-    // current reading); never leaked when the user has no watch. Three
-    // signals are emitted, in priority order:
-    //   • Current state (calm / settling / elevated) — drives opening tone
-    //   • Baseline (when locked) — gives the AI a reference for "deepen"
-    //   • Drift since baseline — confirms whether settling is actually
-    //     happening (so the AI doesn't write deepening cues into a
-    //     session where the body is still climbing)
-    try {
-      if (typeof sensorBridge !== 'undefined' && sensorBridge.getCurrentBpm) {
-        const bpm = sensorBridge.getCurrentBpm();
-        const baseline = sensorBridge.getBaseline ? sensorBridge.getBaseline() : null;
-        if (Number.isFinite(bpm)) {
-          const stateLabel =
-            bpm < 65 ? 'calm / resting'
-            : bpm < 85 ? 'comfortable, settling'
-            : bpm < 105 ? 'mildly elevated'
-            : 'noticeably elevated';
-          const hrParts = [`Live heart rate: ${Math.round(bpm)} bpm (${stateLabel}).`];
-          if (Number.isFinite(baseline)) {
-            const drift = baseline - bpm;
-            const driftLabel =
-              drift > 8 ? 'significantly below baseline (good parasympathetic shift — the body has settled)'
-              : drift > 3 ? 'a few beats below baseline (settling)'
-              : drift > -3 ? 'near baseline'
-              : drift > -8 ? 'slightly above baseline (mild activation — keep early phases gentle)'
-              : 'above baseline (the body is activated — open with grounding before deepening)';
-            hrParts.push(`Baseline (this session): ${Math.round(baseline)} bpm. Currently ${driftLabel}.`);
-          }
-          hrParts.push('Use this only as a soft input — write to where the body actually is, not where you wish it were. Do NOT mention heart rate or numbers in the script itself; the listener won\'t hear them.');
-          parts.push(hrParts.join(' '));
-        }
-      }
-    } catch (e) { /* never block prompt building on HR errors */ }
-
     const result = parts.length > 0 ? '\nSUBJECT PROFILE: ' + parts.join(' ') : '';
     sdLog('getProfileContext built', { fieldCount: parts.length, charCount: result.length });
     return result;
@@ -13712,6 +13243,415 @@ I return to myself easily"></textarea>
       return '';
     }
   }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // HNE THROUGH-LINE / MOTIF ENGINE  —  HTML-pane module
+  //
+  // Lives in the main inline script, directly after buildFreshnessBlock(),
+  // sharing its scope — reuses `state`, `idbGet` / `idbSet`, `phaseBase`,
+  // `deriveProfileTags`, `sdLog`, `$`, `notify`, `escapeHtml`.
+  //
+  // WHAT IT DOES
+  //   Picks ONE concrete sensory motif per session and threads it across all
+  //   three output channels with a deliberate amplification curve:
+  //
+  //     narration   a persistent prompt block + a per-phase directive that
+  //                 tells the AI how prominent the motif should be in each
+  //                 phase (plant → weave → amplify → anchor → callback).
+  //     visuals     nudges the WebGL background palette toward the motif's
+  //                 own colours as the session amplifies it.
+  //     audio       fires one soft one-shot cue when the motif reaches full
+  //                 presence (first work phase) and one when it returns
+  //                 (first closing phase).
+  //
+  // This is the hypnotic convincer/anchor mechanism made structural: the same
+  // image, recognised again and again, is what deepens trance and what the
+  // listener carries out of the session. It COMPLETES HNE's existing
+  // suggestion-symbol overlay rather than competing with it.
+  //
+  // Adapted from the "Pattern Amplification System" (UNME design doc §5.7).
+  // See HNE-Through-Line-Design.md for full rationale + every splice point.
+  // ════════════════════════════════════════════════════════════════════════
+
+  // ── The amplification curve ─────────────────────────────────────────────
+  // Maps a phase BASE id (post-phaseBase()) to a curve stage. Phases not
+  // listed get no motif directive — a deliberate gap is fine.
+  const MOTIF_CURVE = {
+    introduction: 'plant',  permission: 'plant',  settling: 'plant',  teaching: 'plant',
+    induction:    'weave-in',
+    deepener:     'weave',  level: 'weave',  sounding: 'weave',  pendulation: 'weave',
+    work:         'amplify', affirm: 'amplify', training: 'amplify', mission: 'amplify', goal: 'amplify',
+    praise:       'anchor', reward: 'anchor',
+    lightener:    'callback', wake: 'callback', reintroduction: 'callback', emergence: 'callback',
+  };
+
+  // How strongly each stage tints the visual palette toward the motif's colours.
+  const MOTIF_TINT_BY_STAGE = {
+    'plant': 0.00, 'weave-in': 0.10, 'weave': 0.18,
+    'amplify': 0.42, 'anchor': 0.50, 'callback': 0.30,
+  };
+
+  // Fallback palette/viz/cue when a motif has no structural metadata
+  // (e.g. an AI-tailored motif — see MotifEngine.aiSuggest).
+  const MOTIF_SENSE_DEFAULTS = {
+    visual:      { palette: { a: [0.10,0.12,0.30], b: [0.82,0.70,0.40] }, viz: ['colorwash','aurora','candle'],   cue: 'chime' },
+    auditory:    { palette: { a: [0.16,0.14,0.34], b: [0.50,0.44,0.70] }, viz: ['waveform','ripples','lissajous'], cue: 'bell'  },
+    tactile:     { palette: { a: [0.28,0.20,0.12], b: [0.78,0.58,0.30] }, viz: ['breathing','pulse','candle'],     cue: 'bowl'  },
+    kinesthetic: { palette: { a: [0.12,0.22,0.28] }, viz: ['ripples','colorwash','breathing'],                     cue: 'drop'  },
+  };
+  // kinesthetic default needs a `b` — patched here to keep the literal readable.
+  MOTIF_SENSE_DEFAULTS.kinesthetic.palette.b = [0.56,0.58,0.40];
+
+  // Tiny safety-net corpus — used ONLY if the data pack / freshMotifs export
+  // failed to load. Not a second source of truth; just enough to not break.
+  const MOTIF_FALLBACK = [
+    { id: 'far-window',  sense: 'visual',  image: 'a single lit window, far down a darkening street',
+      essence: 'one warm point that holds steady while the rest dims', tags: 'focus|trance|sleep' },
+    { id: 'smooth-stone', sense: 'tactile', image: 'a river stone, cool and perfectly smooth in the palm',
+      essence: 'something the water has already finished worrying', tags: 'anxiety|release|grounding' },
+    { id: 'ember', sense: 'visual', image: 'a single ember holding its heat beneath grey ash',
+      essence: 'warmth that was never in danger of going out', tags: 'emotional|confidence|grounding' },
+  ];
+
+  const MOTIF_HISTORY_KEY = 'stillness_motif_history_v1';
+  const MOTIF_HISTORY_CAP = 8;   // remember the last N motifs so repeat users get fresh ones
+
+  const MotifEngine = (() => {
+    let _cueCtx = null;          // lazily-created AudioContext for one-shot cues
+    let _cuedStages = new Set(); // stages whose cue has already fired this session
+
+    // ── enable / disable ──────────────────────────────────────────────────
+    // Defaults ON, matching aiSceneDirectivesEnabled. Honours the Smart
+    // Director master switch — when the Director is off, so is the through-line.
+    function enabled() {
+      return state.motifEngineEnabled !== false && state.smartDirectorEnabled !== false;
+    }
+
+    // ── rotation memory ───────────────────────────────────────────────────
+    async function _loadHistory() {
+      try {
+        const h = await idbGet(MOTIF_HISTORY_KEY);
+        return Array.isArray(h) ? h : [];
+      } catch { return []; }
+    }
+    async function _pushHistory(id) {
+      if (!id) return;
+      try {
+        let h = await _loadHistory();
+        h = h.filter(x => x !== id);
+        h.push(id);
+        if (h.length > MOTIF_HISTORY_CAP) h = h.slice(-MOTIF_HISTORY_CAP);
+        await idbSet(MOTIF_HISTORY_KEY, h);
+      } catch (e) { console.warn('[MotifEngine] history write failed:', e?.message || e); }
+    }
+
+    // Normalise any motif object so the rest of the engine can trust its shape.
+    function _normalise(m) {
+      if (!m || typeof m !== 'object') return null;
+      const sense = ['visual','auditory','tactile','kinesthetic'].includes(m.sense) ? m.sense : 'visual';
+      const dflt = MOTIF_SENSE_DEFAULTS[sense];
+      const pal = (m.palette && Array.isArray(m.palette.a) && Array.isArray(m.palette.b))
+        ? m.palette : dflt.palette;
+      return {
+        id:      m.id || ('motif-' + Math.random().toString(36).slice(2, 9)),
+        image:   String(m.image || '').trim(),
+        essence: String(m.essence || '').trim(),
+        sense,
+        tags:    m.tags || '',
+        palette: { a: pal.a.slice(), b: pal.b.slice() },
+        viz:     Array.isArray(m.viz) && m.viz.length ? m.viz.slice() : dflt.viz.slice(),
+        cue:     ['bell','bowl','chime','drop','none'].includes(m.cue) ? m.cue : dflt.cue,
+        tailored: !!m.tailored,
+      };
+    }
+
+    // ── pick a motif for the session ──────────────────────────────────────
+    // Rotation-aware: excludes recently-used motifs so a returning user gets a
+    // different through-line each session. Always resolves to SOMETHING.
+    async function pick(opts = {}) {
+      let tags = Array.isArray(opts.profileTags) ? opts.profileTags : null;
+      if (!tags && typeof deriveProfileTags === 'function') {
+        try { tags = deriveProfileTags(); } catch { tags = []; }
+      }
+      tags = tags || [];
+
+      const recent = await _loadHistory();
+      let chosen = null;
+
+      if (typeof root !== 'undefined' && typeof root.freshMotifs === 'function') {
+        try {
+          const got = root.freshMotifs({ profileTags: tags, n: 1, excludeSet: recent });
+          if (Array.isArray(got) && got[0]) chosen = got[0];
+        } catch (e) { console.warn('[MotifEngine] freshMotifs failed:', e); }
+      }
+      if (!chosen) {
+        // safety net — pick a fallback the user hasn't seen most recently
+        const pool = MOTIF_FALLBACK.filter(m => !recent.includes(m.id));
+        chosen = (pool.length ? pool : MOTIF_FALLBACK)[Math.floor(Math.random() * (pool.length || MOTIF_FALLBACK.length))];
+      }
+
+      const motif = _normalise(chosen);
+      setActive(motif);
+      await _pushHistory(motif.id);
+      sdLog('motif picked', { id: motif.id, sense: motif.sense, tags });
+      return motif;
+    }
+
+    // ── AI-tailored motif (optional — opt-in via the chip's "tailor" action) ─
+    // Asks the model for a bespoke image tied to THIS intention + suggestion.
+    // Structural metadata (palette/viz/cue) is filled from the sense, since
+    // models are unreliable at colour. Falls back to a corpus pick on failure.
+    async function aiSuggest({ intention, crafted } = {}) {
+      if (typeof root === 'undefined' || typeof root.aiTextPlugin !== 'function') {
+        return pick();
+      }
+      const goal = (crafted && crafted.coreResponse) ? crafted.coreResponse : (intention || 'a calm, settled state');
+      const instruction = [
+        'Choose ONE concrete sensory MOTIF for a hypnosis session — a single image, sound,',
+        'or physical sensation that can recur quietly throughout the session and become the',
+        'anchor the listener carries away.',
+        `SESSION INTENTION: "${(intention || '').slice(0, 200)}"`,
+        `INTENDED EFFECT: "${String(goal).slice(0, 120)}"`,
+        'Rules: the motif must be a small, ordinary, concrete thing (not abstract, not grand,',
+        'not a metaphor stack). It must hold the intended effect naturally.',
+        'Output EXACTLY this JSON, no other text, no markdown fences:',
+        '{"image":"4-10 words, one concrete object/sound/sensation",' +
+        '"essence":"6-12 words — the meaning it quietly carries",' +
+        '"sense":"visual|auditory|tactile|kinesthetic"}',
+      ].join('\n');
+      try {
+        const data = await root.aiTextPlugin({
+          instruction, startWith: '{', stopSequences: ['\n\n', '\n[['], hideStartWith: true,
+        });
+        if (!data || data.stopReason === 'error') throw new Error('AI error');
+        let text = (data.generatedText || '').trim();
+        if (!text.startsWith('{')) text = '{' + text;
+        const lb = text.lastIndexOf('}'); if (lb > -1) text = text.slice(0, lb + 1);
+        const parsed = JSON.parse(text);
+        if (!parsed.image) throw new Error('empty motif');
+        const motif = _normalise({ ...parsed, id: 'tailored-' + Date.now().toString(36), tailored: true });
+        setActive(motif);
+        sdLog('motif tailored by AI', { image: motif.image, sense: motif.sense });
+        return motif;
+      } catch (e) {
+        console.warn('[MotifEngine] aiSuggest failed, using corpus:', e?.message || e);
+        notify?.info?.('Could not tailor a motif — used a curated one instead.');
+        return pick();
+      }
+    }
+
+    // ── active-motif accessors ────────────────────────────────────────────
+    // The active motif lives on `state.sessionMotif` so it is saved with the
+    // session config and replays identically from a share link.
+    function setActive(m) { state.sessionMotif = m || null; _cuedStages = new Set(); }
+    function get()        { return state.sessionMotif || null; }
+    function clear()      { state.sessionMotif = null; _cuedStages = new Set(); }
+
+    function stageFor(phaseId) {
+      if (!enabled() || !get()) return null;
+      const base = (typeof phaseBase === 'function') ? phaseBase(phaseId) : String(phaseId || '').replace(/-\d+$/, '');
+      return MOTIF_CURVE[base] || null;
+    }
+
+    // ── prompt: the persistent shared block ───────────────────────────────
+    // Goes into the script-generation sharedContext array, alongside the
+    // freshSeeds block, at priority 3.
+    function sharedBlock() {
+      const m = get();
+      if (!enabled() || !m || !m.image) return '';
+      return [
+        '',
+        'THROUGH-LINE (one recurring motif for this ENTIRE session — deliberate repetition is the point;',
+        'this is the spine the session is built on):',
+        `  Motif:   ${m.image}`,
+        m.essence ? `  Carries: ${m.essence}` : '',
+        'Treat it as a SINGLE recurring image. Re-introduce it across phases — never re-explain it.',
+        'Each phase task says how prominent it should be: barely-noticed at the start, the centre of',
+        'the work in the middle, a final quiet callback at the end. Never call attention to the',
+        'repetition itself — the motif should feel discovered, not inserted. If it clashes with a',
+        'phase, a light touch always beats forcing it.',
+      ].filter(Boolean).join('\n');
+    }
+
+    // ── prompt: the per-phase directive ───────────────────────────────────
+    // Appended to each phase's instruction in buildPhaseInstructions().
+    function phaseDirective(phaseId, crafted) {
+      const m = get();
+      const stage = stageFor(phaseId);
+      if (!m || !stage) return '';
+      const img = `"${m.image}"`;
+      const ess = m.essence || 'the state this session is building';
+      let body;
+      switch (stage) {
+        case 'plant':
+          body = `THROUGH-LINE — PLANT: let the session motif — ${img} — appear exactly ONCE here, ` +
+            `incidental and unremarked, simply present in the scene. Do not develop it, explain it, ` +
+            `or return to it. The listener should barely register it.`;
+          break;
+        case 'weave-in':
+          body = `THROUGH-LINE — WEAVE IN: the motif — ${img} — may surface once or twice inside the ` +
+            `induction imagery, a little nearer now, its detail slightly more real. Let it belong to ` +
+            `the scene; do not announce its return.`;
+          break;
+        case 'weave':
+          body = `THROUGH-LINE — WEAVE: let the motif — ${img} — recur naturally, now familiar — a ` +
+            `touchstone the listener returns to as they go deeper. Re-introduce it, never re-explain ` +
+            `it. Once, gently, is enough for this phase.`;
+          break;
+        case 'amplify': {
+          const fuse = (crafted && crafted.coreResponse)
+            ? `to meet the motif again IS the moment of "${crafted.coreResponse}"`
+            : ess;
+          body = `THROUGH-LINE — AMPLIFY: the motif — ${img} — is now the carrier of the work. Let the ` +
+            `suggestion travel THROUGH it: ${fuse}. Fuse the image and the change until they are a ` +
+            `single thing in the listener's mind. Give the motif real room here — this is where it works.`;
+          break;
+        }
+        case 'anchor':
+          body = `THROUGH-LINE — ANCHOR: make the motif — ${img} — the take-home anchor. State plainly ` +
+            `that from now on, meeting it again — in the mind, or out in the world — brings this state ` +
+            `back. ${ess}. Keep it warm and certain.`;
+          break;
+        case 'callback':
+          body = `THROUGH-LINE — CALLBACK: give the motif — ${img} — one last clean recurrence the ` +
+            `listener carries out of the session and into the day. Close the loop: the same image they ` +
+            `barely noticed at the start is now theirs. One mention, unhurried — do not re-explain it.`;
+          break;
+        default:
+          return '';
+      }
+      return `\n\n${body} (Still: output script text only — no stage directions, no bracket notes.)`;
+    }
+
+    // ── visuals: palette tinting ──────────────────────────────────────────
+    // Wraps the phase palette lookup in the WebGL background's _updatePalette().
+    // `base` is the plain NB_PHASE_PALETTES entry; returns it lerped toward the
+    // motif's colours by the current stage's strength.
+    function tintPalette(base, phaseId) {
+      const m = get();
+      const stage = stageFor(phaseId);
+      if (!m || !stage || !base) return base;
+      const k = MOTIF_TINT_BY_STAGE[stage] || 0;
+      if (k <= 0 || !m.palette) return base;
+      const lerp3 = (x, y) => x.map((v, i) => v + ((y[i] ?? v) - v) * k);
+      return { a: lerp3(base.a, m.palette.a), b: lerp3(base.b, m.palette.b) };
+    }
+
+    // Recommended visualizer for the motif — the host may use this as the
+    // default scene when the user hasn't picked one explicitly.
+    function suggestViz() {
+      const m = get();
+      return (m && m.viz && m.viz[0]) || null;
+    }
+
+    // ── audio: one-shot motif cue ─────────────────────────────────────────
+    // A soft, short, low-gain tone. Synthesised inline so it never depends on
+    // soundscape internals. Fires at most twice a session (see onPhaseEnter).
+    function playCue(name) {
+      if (!name || name === 'none') return;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        _cueCtx = _cueCtx || new AC();
+        if (_cueCtx.state === 'suspended') _cueCtx.resume().catch(() => {});
+        const ctx = _cueCtx, t0 = ctx.currentTime;
+
+        const voice = (freq, decay, type, gain) => {
+          const osc = ctx.createOscillator();
+          const amp = ctx.createGain();
+          osc.type = type || 'sine';
+          osc.frequency.setValueAtTime(freq, t0);
+          amp.gain.setValueAtTime(0.0001, t0);
+          amp.gain.exponentialRampToValueAtTime(gain, t0 + 0.04);
+          amp.gain.exponentialRampToValueAtTime(0.0001, t0 + decay);
+          osc.connect(amp); amp.connect(ctx.destination);
+          osc.start(t0); osc.stop(t0 + decay + 0.1);
+        };
+
+        switch (name) {
+          case 'bell':  voice(523.25, 3.2, 'sine', 0.12); voice(1046.5, 2.0, 'sine', 0.04); break;
+          case 'bowl':  voice(196.00, 6.0, 'sine', 0.13); voice(294.00, 4.5, 'sine', 0.05); break;
+          case 'chime': voice(784.00, 2.4, 'triangle', 0.09); voice(1174.7, 1.8, 'sine', 0.04); break;
+          case 'drop':  voice(330.00, 1.4, 'sine', 0.11);
+                        { const o = ctx.createOscillator(), g = ctx.createGain();
+                          o.type = 'sine'; o.frequency.setValueAtTime(330, t0);
+                          o.frequency.exponentialRampToValueAtTime(180, t0 + 0.5);
+                          g.gain.setValueAtTime(0.10, t0);
+                          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.3);
+                          o.connect(g); g.connect(ctx.destination);
+                          o.start(t0); o.stop(t0 + 1.5); }
+                        break;
+        }
+      } catch (e) { console.warn('[MotifEngine] cue failed:', e?.message || e); }
+    }
+
+    // Call from the session playback loop each time a phase begins.
+    // Fires the motif cue ONCE when the motif reaches full presence
+    // (first amplify phase) and ONCE when it returns (first callback phase).
+    function onPhaseEnter(phaseId) {
+      const m = get();
+      if (!m || !enabled()) return;
+      const stage = stageFor(phaseId);
+      if (stage !== 'amplify' && stage !== 'callback') return;
+      if (_cuedStages.has(stage)) return;
+      _cuedStages.add(stage);
+      playCue(m.cue);
+      sdLog('motif cue', { stage, cue: m.cue, phase: phaseId });
+    }
+
+    // ── optional: a small UI chip ─────────────────────────────────────────
+    // Renders the current motif with shuffle + tailor controls. Call after
+    // the crafted-suggestion preview. Entirely optional — the engine works
+    // headless without ever rendering this.
+    function renderChip(container) {
+      if (!container) return;
+      const m = get();
+      if (!enabled() || !m) { container.innerHTML = ''; return; }
+      container.innerHTML =
+        `<div class="motif-chip" style="display:flex;gap:10px;align-items:flex-start;` +
+          `padding:10px 12px;background:var(--glass);border:1px solid var(--glass-border);margin-top:8px">` +
+          `<span style="font-size:1.1rem;line-height:1.2" aria-hidden="true">🜂</span>` +
+          `<div style="flex:1;min-width:0">` +
+            `<div style="font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;` +
+              `color:var(--text-faint);margin-bottom:3px">Through-line${m.tailored ? ' · tailored' : ''}</div>` +
+            `<div style="font-size:0.84rem;color:var(--text)">${escapeHtml(m.image)}</div>` +
+            (m.essence ? `<div style="font-size:0.7rem;color:var(--text-dim);margin-top:2px">` +
+              `${escapeHtml(m.essence)}</div>` : '') +
+          `</div>` +
+          `<div style="display:flex;flex-direction:column;gap:4px">` +
+            `<button type="button" data-motif-act="shuffle" title="Different motif" ` +
+              `style="background:none;border:1px solid var(--glass-border);color:var(--text-dim);` +
+              `cursor:pointer;font-size:0.72rem;padding:3px 7px">⟳</button>` +
+            `<button type="button" data-motif-act="tailor" title="Tailor to this intention" ` +
+              `style="background:none;border:1px solid var(--glass-border);color:var(--text-dim);` +
+              `cursor:pointer;font-size:0.72rem;padding:3px 7px">✦</button>` +
+          `</div>` +
+        `</div>`;
+      const shuffleBtn = container.querySelector('[data-motif-act="shuffle"]');
+      const tailorBtn  = container.querySelector('[data-motif-act="tailor"]');
+      if (shuffleBtn) shuffleBtn.onclick = async () => {
+        shuffleBtn.disabled = true;
+        try { await pick(); renderChip(container); } finally { shuffleBtn.disabled = false; }
+      };
+      if (tailorBtn) tailorBtn.onclick = async () => {
+        tailorBtn.disabled = true; tailorBtn.textContent = '…';
+        try {
+          await aiSuggest({
+            intention: $('intentionInput')?.value || '',
+            crafted:   state.craftedSuggestion || null,
+          });
+          renderChip(container);
+        } finally { tailorBtn.disabled = false; tailorBtn.textContent = '✦'; }
+      };
+    }
+
+    return {
+      enabled, pick, aiSuggest, setActive, get, clear, stageFor,
+      sharedBlock, phaseDirective, tintPalette, suggestViz,
+      playCue, onPhaseEnter, renderChip,
+    };
+  })();
+
 
   async function buildLivingProfile() {
     if (state.smartDirectorEnabled === false) {
@@ -14531,28 +14471,7 @@ I return to myself easily"></textarea>
 
   function computeReward(record, wasEmergency) {
     const delta = (record.postMood ?? 5) - (record.preMood ?? 5);
-    let reward = delta + (record.completed ? 1 : -1) - (wasEmergency ? 2 : 0);
-
-    // Round 29 — HR-derived reward bonus. When a heartRate trace was
-    // recorded with a locked baseline, add a small bonus proportional to
-    // the trough drop-from-baseline (parasympathetic shift = good
-    // session). Capped at +1.5 so HR data biases — but doesn't dominate
-    // — adaptive weighting. Sessions without a watch get the legacy
-    // mood-only reward unchanged. Negative drift (HR climbed) adds a
-    // small penalty, capped at -1, so the adaptive profile learns
-    // which method/persona combos actually settle this user's body.
-    const hr = record.heartRate;
-    if (hr && Number.isFinite(hr.baselineBpm) && Number.isFinite(hr.minBpm)) {
-      const lowestDrop = hr.baselineBpm - hr.minBpm;
-      if (lowestDrop > 0) {
-        // 5 bpm = +0.5 bonus, 15 bpm = +1.5 (capped)
-        reward += Math.min(1.5, lowestDrop / 10);
-      } else if (lowestDrop < -5) {
-        // session ended with HR significantly above baseline
-        reward += Math.max(-1, lowestDrop / 10);
-      }
-    }
-    return reward;
+    return delta + (record.completed ? 1 : -1) - (wasEmergency ? 2 : 0);
   }
 
   function updateWeights(w, record, reward) {
@@ -14563,338 +14482,6 @@ I return to myself easily"></textarea>
     apply(w.s, record.soundscape);
     apply(w.ln, record.length);
   }
-
-  // ════════════════════════════════════════════════════════════════════════
-  // Round 31 — Personal Insights module.
-  //
-  // Pure functions that derive deeper observations from the session
-  // history we already collect (postMood, postAlertness, postDepth, HR
-  // traces from Round 29, completion, durations, journals). All on-device,
-  // no telemetry, no new data collection — just better use of what's
-  // there. Two consumer surfaces:
-  //
-  //   1. Profile sidebar — derivePatternCallouts() + renderSidebarStats()
-  //      pull from these to surface trends inline (the existing UI panel
-  //      the user pointed at).
-  //   2. AI prompt context — getProfileContext() reads inferPreferences()
-  //      to enrich script generation with what actually works for this
-  //      practitioner.
-  //
-  // Each function is defensive: every record field can be missing, and
-  // missing data collapses to "insufficient" rather than throwing. Min
-  // sample thresholds prevent claims like "your best method is X" when
-  // there's only 1 data point.
-  // ════════════════════════════════════════════════════════════════════════
-  const personalInsights = (() => {
-    const MIN_SAMPLES_FOR_RANKING = 3;
-    const RECENT_WINDOW = 5;
-    // Imagery keyword regexes — scanned over journal text to infer
-    // preferred metaphor anchors. Names match the canonical anchor
-    // categories used elsewhere (freshSeeds, persona prompts).
-    const IMAGERY_KEYWORDS = {
-      ocean:    /\b(ocean|sea|wave|tide|shore|salt[- ]?water)\b/i,
-      forest:   /\b(forest|tree|wood|grove|leaves|moss)\b/i,
-      light:    /\b(light|sun|glow|warmth|golden|honey)\b/i,
-      water:    /\b(water|river|stream|rain|drift)\b/i,
-      mountain: /\b(mountain|peak|summit|valley|stone|rock)\b/i,
-      sky:      /\b(sky|cloud|star|moon|constellation)\b/i,
-      garden:   /\b(garden|flower|petal|bloom|seed)\b/i,
-      spaces:   /\b(room|hall|chamber|library|sanctuary|temple)\b/i,
-    };
-
-    // ─── helpers ─────────────────────────────────────────────────────
-    function _scorable(history) {
-      return (history || []).filter(r =>
-        r && Number.isFinite(r.preMood) && Number.isFinite(r.postMood) &&
-        (r.completed === true ||
-         (Number.isFinite(r.durationSec) && r.durationSec >= 60))
-      );
-    }
-    const _delta = r => (r.postMood || 0) - (r.preMood || 0);
-    const _mean = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-
-    // ─── Effectiveness ranking ───────────────────────────────────────
-    // Group sessions by a key, compute per-group avg mood delta +
-    // completion rate, return top entries with sample counts. Sample-
-    // count is exposed so callers can include "(n=5)" — the user
-    // sees how much evidence backs each claim.
-    function _rankByKey(history, keyFn, opts = {}) {
-      const minN = opts.minSamples || MIN_SAMPLES_FOR_RANKING;
-      const groups = new Map();
-      for (const r of _scorable(history)) {
-        const key = keyFn(r);
-        if (!key) continue;
-        const g = groups.get(key) || { key, deltas: [], completed: 0, total: 0 };
-        g.total++;
-        if (r.completed) g.completed++;
-        g.deltas.push(_delta(r));
-        groups.set(key, g);
-      }
-      const ranked = [];
-      for (const g of groups.values()) {
-        if (g.total < minN) continue;
-        const avgDelta = _mean(g.deltas);
-        const completion = g.completed / g.total;
-        // Score: mood delta primary (×3 weight), completion rate
-        // secondary. Range roughly -3..+12 — rankable but not
-        // user-facing (we surface delta + completion separately).
-        const score = avgDelta * 3 + completion * 2;
-        ranked.push({
-          key: g.key,
-          n: g.total,
-          avgDelta: +avgDelta.toFixed(2),
-          completionRate: +completion.toFixed(2),
-          score: +score.toFixed(2),
-        });
-      }
-      return ranked.sort((a, b) => b.score - a.score);
-    }
-    function rankMethods(h)    { return _rankByKey(h, r => r.methodId   || r.method); }
-    function rankPersonas(h)   { return _rankByKey(h, r => r.personaId  || r.guide); }
-    function rankSoundscapes(h){ return _rankByKey(h, r => r.soundscape, { minSamples: 2 }); }
-    function rankLengths(h)    { return _rankByKey(h, r => r.length); }
-
-    // ─── Time-of-day pattern ─────────────────────────────────────────
-    // Bucket sessions by morning / afternoon / evening / late-night
-    // and compute per-bucket completion + avg mood delta. Useful for
-    // surfacing "evening sessions complete 90% of the time vs 50%
-    // morning" style observations.
-    function computeTimeOfDayPattern(history) {
-      const buckets = {
-        morning:    { range: [5, 11],  total: 0, completed: 0, deltas: [] },
-        afternoon:  { range: [12, 16], total: 0, completed: 0, deltas: [] },
-        evening:    { range: [17, 21], total: 0, completed: 0, deltas: [] },
-        'late-night': { range: [22, 4], total: 0, completed: 0, deltas: [] },
-      };
-      for (const r of (history || [])) {
-        if (!r || !r.date) continue;
-        const hour = new Date(r.date).getHours();
-        let key;
-        if (hour >= 5  && hour <= 11) key = 'morning';
-        else if (hour >= 12 && hour <= 16) key = 'afternoon';
-        else if (hour >= 17 && hour <= 21) key = 'evening';
-        else key = 'late-night';
-        const b = buckets[key];
-        b.total++;
-        if (r.completed) b.completed++;
-        if (Number.isFinite(r.preMood) && Number.isFinite(r.postMood)) {
-          b.deltas.push(_delta(r));
-        }
-      }
-      const out = {};
-      for (const [k, b] of Object.entries(buckets)) {
-        if (b.total < 2) continue;
-        out[k] = {
-          n: b.total,
-          completionRate: +(b.completed / b.total).toFixed(2),
-          avgDelta: b.deltas.length ? +_mean(b.deltas).toFixed(2) : null,
-        };
-      }
-      return out;
-    }
-
-    // ─── HR trends from Round 29 trace data ──────────────────────────
-    // Compares baseline drift and drop-from-baseline trends. Rising
-    // baseline = potential burnout signal; improving drop = practice
-    // working. Only fires when at least 4 sessions had locked HR data.
-    function computeHrTrends(history) {
-      const withHr = (history || [])
-        .filter(r => r && r.heartRate &&
-                     Number.isFinite(r.heartRate.baselineBpm) &&
-                     Number.isFinite(r.heartRate.minBpm))
-        .slice(0, 12); // most recent 12
-      if (withHr.length < 4) return null;
-      const baselines = withHr.map(r => r.heartRate.baselineBpm);
-      const drops     = withHr.map(r => r.heartRate.baselineBpm - r.heartRate.minBpm);
-      // Compare oldest half to newest half — captures direction without
-      // requiring a least-squares fit (overkill for n<12).
-      const half = Math.floor(withHr.length / 2);
-      const oldBase = _mean(baselines.slice(half));   // older
-      const newBase = _mean(baselines.slice(0, half));// newer
-      const oldDrop = _mean(drops.slice(half));
-      const newDrop = _mean(drops.slice(0, half));
-      return {
-        n: withHr.length,
-        baselineTrend: +(newBase - oldBase).toFixed(1),  // positive = rising
-        dropTrend:     +(newDrop - oldDrop).toFixed(1),  // positive = bigger drops (better)
-        avgBaseline:   Math.round(_mean(baselines)),
-        avgDrop:       +_mean(drops).toFixed(1),
-        bestDrop:      Math.max(...drops),
-      };
-    }
-
-    // ─── Imagery preferences from journal text ───────────────────────
-    // Counts keyword mentions across journal entries and returns ranked
-    // categories. Crude (regex, not embedding) but completely on-device
-    // and good enough for biasing AI prompts toward what's resonating.
-    function computeImageryPreferences(history) {
-      const counts = {};
-      let totalJournals = 0;
-      for (const r of (history || [])) {
-        const text = (r && (r.journal || r.journalText || '')) || '';
-        if (!text || text.length < 10) continue;
-        totalJournals++;
-        for (const [cat, re] of Object.entries(IMAGERY_KEYWORDS)) {
-          if (re.test(text)) counts[cat] = (counts[cat] || 0) + 1;
-        }
-      }
-      if (totalJournals < 2) return null;
-      const ranked = Object.entries(counts)
-        .map(([cat, count]) => ({ cat, count, share: +(count / totalJournals).toFixed(2) }))
-        .filter(x => x.share >= 0.25)  // mentioned in at least 25% of journals
-        .sort((a, b) => b.count - a.count);
-      return ranked.length ? { totalJournals, top: ranked.slice(0, 3) } : null;
-    }
-
-    // ─── Anomaly detection — today vs historical baseline ────────────
-    // Compares the most recent session's pre-state to the user's
-    // historical pre-state mean. Flags sessions where the user is
-    // noticeably worse off (suggest gentler) or noticeably better off
-    // (suggest going deeper). Returns null if no anchor available.
-    function detectAnomaly(history, currentPreMood) {
-      const h = (history || []).filter(r => r && Number.isFinite(r.preMood));
-      if (h.length < 5) return null;
-      if (!Number.isFinite(currentPreMood)) return null;
-      const historicalMean = _mean(h.slice(0, 20).map(r => r.preMood));
-      const delta = currentPreMood - historicalMean;
-      // ±2 on a 0-10 scale is meaningful; smaller deltas are noise.
-      if (Math.abs(delta) < 2) return null;
-      return {
-        delta: +delta.toFixed(1),
-        historicalMean: +historicalMean.toFixed(1),
-        direction: delta > 0 ? 'better' : 'worse',
-      };
-    }
-
-    // ─── Burnout score ───────────────────────────────────────────────
-    // Composite signal: completion rate dropping + HR baseline rising
-    // + post-mood declining. Each component scored 0-1; final score
-    // 0-1 (1 = strong burnout signal). Threshold ~0.6 worth surfacing.
-    function computeBurnoutScore(history) {
-      const h = (history || []).filter(r => r);
-      if (h.length < 8) return null;
-      const recent = h.slice(0, RECENT_WINDOW);
-      const older  = h.slice(RECENT_WINDOW, RECENT_WINDOW * 2);
-      if (older.length < 3) return null;
-      const completionDrop = Math.max(0,
-        (older.filter(r => r.completed).length / older.length) -
-        (recent.filter(r => r.completed).length / recent.length));
-      const recentMoods = recent.filter(r => Number.isFinite(r.postMood)).map(r => r.postMood);
-      const olderMoods  = older.filter(r => Number.isFinite(r.postMood)).map(r => r.postMood);
-      const moodDrop = (recentMoods.length && olderMoods.length)
-        ? Math.max(0, (_mean(olderMoods) - _mean(recentMoods)) / 5)
-        : 0;
-      const hr = computeHrTrends(history);
-      // Baseline rising > 5 bpm over the trend window is a meaningful
-      // signal; cap at 15 bpm so it doesn't dominate the composite.
-      const hrSignal = hr ? Math.max(0, Math.min(1, hr.baselineTrend / 15)) : 0;
-      const score = completionDrop * 0.4 + moodDrop * 0.3 + hrSignal * 0.3;
-      return {
-        score: +score.toFixed(2),
-        components: {
-          completionDrop: +completionDrop.toFixed(2),
-          moodDrop:       +moodDrop.toFixed(2),
-          hrBaselineRise: hr ? hr.baselineTrend : null,
-        },
-      };
-    }
-
-    // ─── Streak + consistency ────────────────────────────────────────
-    function computeConsistency(history) {
-      const h = (history || []).filter(r => r && r.date);
-      if (h.length === 0) return null;
-      const now = Date.now();
-      const dayMs = 86400000;
-      const weekAgo  = now - 7 * dayMs;
-      const monthAgo = now - 28 * dayMs;
-      const thisWeek = h.filter(r => r.date >= weekAgo).length;
-      const last4Wk  = h.filter(r => r.date >= monthAgo).length;
-      // Average over the 4-week window (sessions per week)
-      const weeklyAvg = +(last4Wk / 4).toFixed(1);
-      return { thisWeek, last4WeekAvg: weeklyAvg, totalSessions: h.length };
-    }
-
-    // ─── Predicted session outcome ───────────────────────────────────
-    // Find similar past sessions (matching method, persona, length,
-    // and time-of-day bucket where possible) and return a predicted
-    // mood-delta range. Falls back to broader matching on lower
-    // sample counts. Used by the Step 6 setup summary to set
-    // expectations before the user hits "begin".
-    function predictOutcome(history, params) {
-      const all = _scorable(history);
-      if (all.length < 5) return null;
-      const tier1 = all.filter(r =>
-        (r.methodId  || r.method) === params.methodId &&
-        (r.personaId || r.guide)  === params.personaId &&
-        r.length === params.length);
-      const tier2 = all.filter(r => (r.methodId || r.method) === params.methodId);
-      const tier3 = all;
-      let pool, tier;
-      if (tier1.length >= 3)      { pool = tier1; tier = 'exact'; }
-      else if (tier2.length >= 5) { pool = tier2; tier = 'method'; }
-      else                        { pool = tier3; tier = 'global'; }
-      const deltas = pool.map(_delta);
-      const avg = _mean(deltas);
-      // Use spread (max-min) capped to ±2 either side of mean for
-      // range — robust to outliers without resorting to quantiles
-      // on small samples.
-      const min = Math.max(avg - 2, Math.min(...deltas));
-      const max = Math.min(avg + 2, Math.max(...deltas));
-      return {
-        n: pool.length,
-        tier,
-        avgDelta: +avg.toFixed(1),
-        min: +min.toFixed(1),
-        max: +max.toFixed(1),
-      };
-    }
-
-    // ─── inferPreferences — feeds AI prompt context ──────────────────
-    // Aggregates the most actionable inferences into a single shape
-    // that getProfileContext() can serialize into the script-gen
-    // prompt. Keep it tight — the AI doesn't need the whole story,
-    // just the strongest signals.
-    function inferPreferences(history) {
-      const out = {};
-      const methods   = rankMethods(history);
-      const personas  = rankPersonas(history);
-      const lengths   = rankLengths(history);
-      const tod       = computeTimeOfDayPattern(history);
-      const imagery   = computeImageryPreferences(history);
-      // Only surface if the top option is meaningfully better than the
-      // second — avoids "your best method is X" when X and Y are tied.
-      const topGap = (arr) => arr.length >= 2 ? arr[0].score - arr[1].score : (arr[0]?.score || 0);
-      if (methods.length  && topGap(methods)  > 1) out.bestMethod   = methods[0];
-      if (personas.length && topGap(personas) > 1) out.bestPersona  = personas[0];
-      if (lengths.length  && topGap(lengths)  > 1) out.bestLength   = lengths[0];
-      // Best time-of-day — the bucket with both highest completion
-      // AND positive avg delta. Don't recommend a bucket that
-      // completes well but produces no mood lift.
-      if (Object.keys(tod).length) {
-        let best = null;
-        for (const [k, v] of Object.entries(tod)) {
-          if (v.avgDelta == null || v.avgDelta < 0.5) continue;
-          if (!best || v.completionRate > best.v.completionRate) best = { k, v };
-        }
-        if (best) out.bestTimeOfDay = { bucket: best.k, ...best.v };
-      }
-      if (imagery && imagery.top.length) out.imageryPreferences = imagery.top.slice(0, 3);
-      return Object.keys(out).length ? out : null;
-    }
-
-    return {
-      // Pure analytics
-      rankMethods, rankPersonas, rankSoundscapes, rankLengths,
-      computeTimeOfDayPattern, computeHrTrends, computeImageryPreferences,
-      computeBurnoutScore, computeConsistency,
-      // Per-session helpers
-      detectAnomaly, predictOutcome,
-      // Bundled output for AI prompts
-      inferPreferences,
-      // Constants for testing
-      MIN_SAMPLES_FOR_RANKING, RECENT_WINDOW,
-    };
-  })();
 
   function computeDifficulty(sig, currentDiff) {
     const target = sig.completionRate * 0.4 + sig.avgImprovement * 0.3 + sig.depthNorm * 0.3;
@@ -15587,6 +15174,7 @@ Practitioner profile (full, natural sentences):`;
     state.abortFlag = false;
     state.paused = false;
     state.craftedSuggestion = null;
+    MotifEngine.clear();   // THROUGH-LINE: each fresh wizard run gets a new motif
 
     state._preMood = 5;
     state._preTension = 5;
@@ -16877,22 +16465,7 @@ ${messages}
             g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
             o.start(t); o.stop(t + 0.3);
           });
-          // Round 29 — heartbeat synth tracks real BPM when the bridge
-          // is connected; otherwise falls through to the legacy ~57 BPM
-          // (1050 ± 120 ms jitter) "ambient resting heartbeat" sound.
-          // The clamp to a safe range protects against a runaway socket
-          // value firing oscillators at 5 Hz. Small jitter is preserved
-          // even in synced mode so the synth doesn't sound robotic —
-          // real heartbeats have natural micro-variation too.
-          let nextMs = 1050 + Math.random() * 120;
-          if (typeof sensorBridge !== 'undefined' && sensorBridge.getCurrentBpm) {
-            const liveBpm = sensorBridge.getCurrentBpm();
-            if (Number.isFinite(liveBpm) && liveBpm >= 35 && liveBpm <= 180) {
-              const baseMs = (60 / liveBpm) * 1000;
-              nextMs = baseMs + (Math.random() - 0.5) * 60;  // ±30 ms jitter
-            }
-          }
-          setTimeout(beat, nextMs);
+          setTimeout(beat, 1050 + Math.random() * 120);
         };
         beat();
       } else if (type === 'binaural') {
@@ -17257,9 +16830,6 @@ ${messages}
 
     setPhaseFreq(phase) {
       const baseKey = String(phase || '').replace(/-\d+$/, '');
-      // Round 29 — remember the active phase so setRelaxBias can use the
-      // correct beat-frequency baseline when applying its calm-shift.
-      this._currentPhase = baseKey;
 
       if (this.type === 'drone' && this.ctx) {
         const freqMap = { settling: 70, induction: 67, deepener: 63, level: 62, work: 60, affirm: 64, lightener: 66, wake: 72, reintroduction: 74, emergence: 72 };
@@ -17295,44 +16865,6 @@ ${messages}
         const { lfo } = this._isochronicRefs;
         if (lfo?.frequency) {
           lfo.frequency.linearRampToValueAtTime(beatHz, this.ctx.currentTime + 6);
-        }
-      }
-    }
-
-    // Round 29 — relax bias for binaural/isochronic. Called periodically
-    // from the audio-reactive tick. Rather than overwriting the phase-
-    // anchored beat frequency, we apply a small downward nudge as
-    // relaxation rises — at relax=1, beat frequency drops by 1.5 Hz
-    // (e.g. work-phase 5 Hz → 3.5 Hz, sliding from theta toward delta).
-    // The nudge is small on purpose: large beat-frequency swings are
-    // disorienting in entrainment audio. Cached lastTarget prevents
-    // re-scheduling identical ramps every tick.
-    setRelaxBias(relax01) {
-      if (!this.ctx || !Number.isFinite(relax01)) return;
-      const r = Math.max(0, Math.min(1, relax01));
-      const baseKey = String(this._currentPhase || '').replace(/-\d+$/, '');
-      const phaseBeat = ({
-        settling: 8, induction: 6, deepener: 3.5, level: 4, work: 5,
-        affirm: 5, lightener: 7, wake: 12, reintroduction: 14, emergence: 12,
-      })[baseKey] ?? 6;
-      // Cap downward shift at the delta/theta floor so we don't push
-      // the beat frequency below ~2 Hz where the entrainment effect
-      // collapses into a slow tremolo.
-      const shifted = Math.max(2.0, phaseBeat - r * 1.5);
-      if (Math.abs(shifted - (this._relaxBiasLastBeatHz ?? -1)) < 0.05) return;
-      this._relaxBiasLastBeatHz = shifted;
-      const ramp = this.ctx.currentTime + 8;  // long ramp — calm transitions
-      if (this.type === 'binaural' && this._binauralRefs) {
-        const { oL, oR, carrier } = this._binauralRefs;
-        if (oL?.frequency && oR?.frequency) {
-          oL.frequency.linearRampToValueAtTime(carrier - shifted / 2, ramp);
-          oR.frequency.linearRampToValueAtTime(carrier + shifted / 2, ramp);
-        }
-      }
-      if (this.type === 'isochronic' && this._isochronicRefs) {
-        const { lfo } = this._isochronicRefs;
-        if (lfo?.frequency) {
-          lfo.frequency.linearRampToValueAtTime(shifted, ramp);
         }
       }
     }
@@ -18838,7 +18370,7 @@ ${messages}
       return null;
     }
     if (!state.remoteProcessingOptIn) {
-      notify.warn('Portraits require Cloud sync to be allowed (Options ▸ Use External Devices).');
+      notify.warn('Portraits require remote processing opt-in (in Options).');
       return null;
     }
 
@@ -18918,7 +18450,7 @@ ${messages}
       return null;
     }
     if (!state.remoteProcessingOptIn) {
-      notify.warn('Symbols require Cloud sync to be allowed (Options ▸ Use External Devices).');
+      notify.warn('Symbols require remote processing opt-in (in Options).');
       return null;
     }
     const promise = (async () => {
@@ -19526,16 +19058,9 @@ ${messages}
     const cx = W/2, cy = H/2, petals = 8, rgb = hexToRgb(color);
     const mod = getAudioMod();
 
-    // Round 29 — relax-aware speed and bloom. As the user relaxes
-    // the mandala rotation slows (down to 65% of nominal at relax=1)
-    // and the petal bloom tightens slightly, giving a visible "settling
-    // inward" feel that mirrors the body's parasympathetic shift.
-    // Heartbeat adds a tiny petal-scale pulse, perceptible only when a
-    // bridge is connected — degrades to no-op without one.
-    const relaxSlow = 1 - (mod.relax || 0) * 0.35;
-    const speedMul = (1 + mod.overall) * relaxSlow;
-    const armBright = 0.7 + mod.pulse * 0.3 + (mod.heartbeat || 0) * 0.15;
-    const petalScale = (1 + mod.bass * 0.35 + (mod.heartbeat || 0) * 0.05) * (1 - (mod.relax || 0) * 0.05);
+    const speedMul = 1 + mod.overall;
+    const armBright = 0.7 + mod.pulse * 0.3;
+    const petalScale = 1 + mod.bass * 0.35;
     ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fillRect(0,0,W,H);
     ctx.strokeStyle = `rgba(${rgb},${armBright})`; ctx.shadowColor = color; ctx.shadowBlur = 12 + mod.pulse * 18;
     for (let layer = 0; layer < 4; layer++) {
@@ -19583,22 +19108,13 @@ ${messages}
 
   function renderCanvasPulse(ctx, W, H, t, color) {
     const cx = W/2, cy = H/2, rgb = hexToRgb(color), maxR = Math.min(W,H)*0.46;
-    // Round 29 — read the HR-aware mod once. When a bridge is connected,
-    // the center dot becomes a literal heart pulse (size scales with the
-    // current beat phase). When not, the legacy 3 Hz wobble takes over.
-    const mod = getAudioMod();
     ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
     for (let i = 0; i < 6; i++) {
       const phase = (t*0.45 + i/6) % 1, r = phase*maxR, alpha = (1-phase)*0.7;
       ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
       ctx.strokeStyle = `rgba(${rgb},${alpha})`; ctx.lineWidth = 2+(1-phase)*5; ctx.stroke();
     }
-    // The center "heart" — sized from the heartbeat pulse if available,
-    // otherwise the 3 Hz fallback. Offsetting by mod.heartbeat directly
-    // scales the visual with real BPM without changing the renderer's
-    // overall pacing.
-    const beatBoost = (mod.heartbeat || 0) * 8;
-    ctx.beginPath(); ctx.arc(cx,cy,10+4*Math.sin(t*3) + beatBoost,0,Math.PI*2);
+    ctx.beginPath(); ctx.arc(cx,cy,10+4*Math.sin(t*3),0,Math.PI*2);
     ctx.fillStyle = `rgba(${rgb},0.85)`; ctx.fill();
   }
 
@@ -19779,15 +19295,7 @@ ${messages}
       });
     }
     ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0, 0, W, H);
-    // Round 29 — relax-aware warp speed. As the user relaxes, the
-    // starfield slows to a drift (down to 50% nominal at relax=1) — the
-    // mind sinking inward, the visible field pacing down to match.
-    // Heartbeat adds a tiny synchronous nudge so each beat carries the
-    // stars a fraction faster, perceptible only with a bridge.
-    const mod = getAudioMod();
-    const relaxSlow = 1 - (mod.relax || 0) * 0.5;
-    const beatNudge = (mod.heartbeat || 0) * 0.4;
-    const speed = (1.5 + Math.sin(t * 0.3) * 0.5) * relaxSlow + beatNudge;
+    const speed = 1.5 + Math.sin(t * 0.3) * 0.5;
     for (const s of renderStarfield._pool) {
       const psx = s.psx, psy = s.psy;
       s.z -= speed;
@@ -19812,17 +19320,9 @@ ${messages}
     const cx = W/2, cy = H * 0.4, rgb = hexToRgb(color);
     ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.fillRect(0, 0, W, H);
 
-    // Round 29 — relax-aware flame jitter. At relax=1 the flame is rock-
-    // steady (jitter scaled to 30%), the candle visibly settling with the
-    // body. Heartbeat adds a brief warmth pulse on each beat — perceptible
-    // only when a bridge is connected because mod.heartbeat stays at 0
-    // otherwise. Both inputs are additive over the legacy 4×3 jitter.
-    const mod = getAudioMod();
-    const jitterScale = 1 - (mod.relax || 0) * 0.7;
-    const jx = cx + (Math.random() - 0.5) * 4 * jitterScale;
-    const jy = cy + (Math.random() - 0.5) * 3 * jitterScale;
-    const heartGlow = (mod.heartbeat || 0) * 4;
-    const baseR = 30 + Math.sin(t * 2.5) * 5 + Math.sin(t * 4.1) * 3 + heartGlow;
+    const jx = cx + (Math.random() - 0.5) * 4;
+    const jy = cy + (Math.random() - 0.5) * 3;
+    const baseR = 30 + Math.sin(t * 2.5) * 5 + Math.sin(t * 4.1) * 3;
 
     const outer = ctx.createRadialGradient(jx, jy, 0, jx, jy, baseR * 3);
     outer.addColorStop(0, `rgba(${rgb},0.15)`);
@@ -20137,20 +19637,6 @@ ${messages}
     if (mod.pulse > 0.5 && now - renderRipples._lastSpawn > 250) {
       renderRipples._lastSpawn = now;
       renderRipples._r.push({ x: W/2, y: H/2, born: now, life: 4000 });
-    }
-    // Round 29 — also spawn a ripple on each real heartbeat when the
-    // bridge is connected. mod.heartbeat is non-zero only briefly at
-    // the start of each beat phase; the 250 ms guard above already
-    // dedupes against rapid re-fires. The small offset keeps the
-    // heartbeat-driven ripple visually distinct from voice-pulse
-    // ripples (slightly off-center, slightly shorter life).
-    if (mod.heartbeat > 0.7 && now - renderRipples._lastSpawn > 250) {
-      renderRipples._lastSpawn = now;
-      renderRipples._r.push({
-        x: W/2 + (Math.random() - 0.5) * 12,
-        y: H/2 + (Math.random() - 0.5) * 12,
-        born: now, life: 3200,
-      });
     }
 
     renderRipples._r = renderRipples._r.filter(r => now - r.born < r.life);
@@ -20972,7 +20458,11 @@ ${messages}
     },
 
     _updatePalette() {
-      const target = NB_PHASE_PALETTES[state._currentPhase] || NB_PHASE_PALETTES._default;
+      // THROUGH-LINE: nudge the phase palette toward the session motif's
+      // colours. tintPalette() returns _base unchanged when the engine is
+      // off or the phase is not on the amplification curve.
+      const _base  = NB_PHASE_PALETTES[state._currentPhase] || NB_PHASE_PALETTES._default;
+      const target = MotifEngine.tintPalette(_base, state._currentPhase);
       if (!this._targetColorA) {
         this._targetColorA = target.a.slice(); this._targetColorB = target.b.slice();
         this.colorA = target.a.slice(); this.colorB = target.b.slice();
@@ -23137,6 +22627,11 @@ End with a brief "and you carry that with you" beat. Output ONLY script text —
       }
     });
 
+    // THROUGH-LINE: append the per-phase motif directive to every phase.
+    // phaseDirective() returns '' for phases off the curve or when disabled.
+    Object.keys(phaseInstructions).forEach(p => {
+      phaseInstructions[p] += MotifEngine.phaseDirective(p, state.craftedSuggestion);
+    });
     return phaseInstructions;
   }
 
@@ -23484,6 +22979,13 @@ End with a brief "and you carry that with you" beat. Output ONLY script text —
     const sceneBlock = (state.aiSceneDirectivesEnabled !== false)
       ? `\nSCENE DIRECTIVES (optional, sparing): If the language of this phase clearly evokes a different audio/visual texture than the current setting, you may emit one or both of:\n  • [BG:type]   — switch soundscape. Valid types: rain, ocean, fire, forest, stream, wind, thunder, storm, drone, bowls, heartbeat, binaural, isochronic, chimes, pink, brown, white, fan, cave, crickets, temple, spaceship, underwater, clock, train, city, owls, whales, none.\n  • [VIZ:type]  — switch visualizer. Valid types: spiral, breathing, candle, moire, tunnel, starfield, colorwash, vortex, mandala, lissajous, aurora, rain, smoke, ink, sacred-geo, waveform, fireflies, ripples, pulse, none.\nUse at most ONE of each per phase, placed at the start of the phase before the first sentence. Skip entirely if the current scene already fits — defaulting to the user's choice is correct.`
       : '';
+    // THROUGH-LINE: choose the session motif once, before context is assembled.
+    // pick() is a no-op if a motif is already set (chip choice / restored share link).
+    if (MotifEngine.enabled() && !MotifEngine.get()) {
+      try { await MotifEngine.pick(); } catch (e) { console.warn('[motif] pick failed', e); }
+    }
+    // Surface the chosen motif in the crafted-suggestion panel (optional UI).
+    try { MotifEngine.renderChip($('motifChipWrap')); } catch (e) { console.warn('[motif] chip', e); }
     const freshBlock = buildFreshnessBlock();
     const sharedContext = trimToTokenBudget([
       { name: 'header',     text: headerBlock,       priority: 5 },
@@ -23497,6 +22999,7 @@ End with a brief "and you carry that with you" beat. Output ONLY script text —
       { name: 'markup',     text: markupBlock,       priority: 2 },
       { name: 'scene',      text: sceneBlock,        priority: 2 },
       { name: 'freshSeeds', text: freshBlock,        priority: 2 },
+      { name: 'motif',      text: MotifEngine.sharedBlock(), priority: 3 },
       { name: 'adaptive',   text: adaptiveCtx,       priority: 2 },
       { name: 'memory',     text: memoryCtx,         priority: 1 },
     ], 1200);
@@ -24988,27 +24491,12 @@ Start immediately:`;
     const sensorOn = !!$('sensorBridgeOptInThisSession')?.checked;
     const micOn    = !!$('micOptInThisSession')?.checked;
     const pacingEnabled = !!state.pacingSettings?.enabled;
-    // Round 29 — pacing source is now configurable. Engagement-source
-    // pacing needs webcam OR sensor; relaxation-source pacing strictly
-    // needs the sensor bridge connected (relaxation is HR-derived).
-    const pacingSource = state.pacingSettings?.source || 'engagement';
-    if (pacingEnabled && pacingSource === 'engagement' && !webcamOn && !sensorOn) {
+    if (pacingEnabled && !webcamOn && !sensorOn) {
       out.push({
         id: 'pacing_no_signal',
         severity: 'warn',
         title: 'Dynamic pacing has no engagement source',
         detail: 'Dynamic pacing modulates speed from the engagement score. With neither webcam attention nor sensor bridge active, engagement stays at a default 0.5 and pacing won\'t track real signals — it\'ll just hold a midpoint speed.',
-        action: { label: 'Open Step 5 controls', fn: () => {
-          const stepBtn = document.querySelector('[data-step="5"]'); if (stepBtn) stepBtn.click();
-        }},
-      });
-    }
-    if (pacingEnabled && pacingSource === 'relaxation' && !sensorOn) {
-      out.push({
-        id: 'pacing_no_hr',
-        severity: 'warn',
-        title: 'Relaxation-driven pacing needs the sensor bridge',
-        detail: 'Pacing source is "relaxation (HR)" but the biometric sensor bridge is off. Relaxation is derived from heart rate — without a connected watch, the score stays at 0 and pacing will hold at the minimum speed for the whole session. Either enable the sensor bridge in Step 5 or switch the source back to "engagement".',
         action: { label: 'Open Step 5 controls', fn: () => {
           const stepBtn = document.querySelector('[data-step="5"]'); if (stepBtn) stepBtn.click();
         }},
@@ -25023,61 +24511,6 @@ Start immediately:`;
         detail: `Intensity ramp mode is "${rampMode}" but no engagement source is enabled. The ramp will use whatever default engagement value the engine reports (typically 0.5), which makes the curve degenerate. Switch to mode "time" or enable webcam / sensor bridge.`,
       });
     }
-    if (state.rampSettings?.enabled && rampMode === 'relaxation' && !sensorOn) {
-      out.push({
-        id: 'ramp_no_hr',
-        severity: 'warn',
-        title: 'Relaxation-driven ramp needs the sensor bridge',
-        detail: 'Intensity ramp mode is "relaxation" but the biometric sensor bridge is off. The ramp will sit at startVal for the whole session because relaxation needs heart rate to compute. Enable the sensor bridge in Step 5 or switch the ramp mode.',
-      });
-    }
-    // Round 29 — playback dynamics + relaxation mode also depends on HR.
-    if (state.playbackDynamics?.enabled && state.playbackDynamics.mode === 'relaxation' && !sensorOn) {
-      out.push({
-        id: 'pd_no_hr',
-        severity: 'warn',
-        title: 'Relaxation-driven speech rate needs the sensor bridge',
-        detail: 'Playback dynamics mode is "relaxation" but the biometric sensor bridge is off. Speech rate will pin to the start scale for the whole session. Enable the sensor bridge or change the playback dynamics mode.',
-      });
-    }
-    // Round 29 — flag custom rules referencing HR metrics when the bridge
-    // is off. Default rules are inert at zero so we don't warn on those —
-    // only on user-authored rules where the intent was clearly "use HR".
-    // (We can't distinguish reliably, so we warn when ANY enabled rule
-    // references HR metrics. Acceptable: the message is informational.)
-    const HR_METRICS = new Set(['heartRate', 'relaxation', 'heartRateBpm']);
-    const activeRules = Array.isArray(state.runtimeRules) ? state.runtimeRules : (typeof DEFAULT_RUNTIME_RULES !== 'undefined' ? DEFAULT_RUNTIME_RULES : []);
-    const hrRuleNames = activeRules.filter(r => r.enabled && HR_METRICS.has(r.condition?.metric)).map(r => r.name);
-    if (hrRuleNames.length && !sensorOn) {
-      out.push({
-        id: 'hr_rules_no_bridge',
-        severity: 'info',
-        title: `${hrRuleNames.length} rule${hrRuleNames.length === 1 ? '' : 's'} reference heart rate but no bridge is connected`,
-        detail: `Heart-rate metrics stay at 0 without the sensor bridge, so these rules will never fire: ${hrRuleNames.slice(0, 3).join(', ')}${hrRuleNames.length > 3 ? `, +${hrRuleNames.length - 3} more` : ''}. Enable the bridge in Step 5 to activate them, or disable the rules in Options ▸ Rules if you don't have a watch.`,
-        action: { label: 'Open Step 5 controls', fn: () => {
-          const stepBtn = document.querySelector('[data-step="5"]'); if (stepBtn) stepBtn.click();
-        }},
-      });
-    }
-
-    // Round 29 — heartbeat-sync method shines when the sensor bridge is
-    // connected (synth heartbeat + visualizer pulse-rings sync to real
-    // BPM). Without a bridge it still works, but the user may not know
-    // they're missing the marquee feature. Info-level — not blocking.
-    try {
-      const methodNow = (typeof getMethod === 'function') ? getMethod() : null;
-      if (methodNow?.id === 'heartbeat-sync' && !sensorOn) {
-        out.push({
-          id: 'heartbeat_method_no_bridge',
-          severity: 'info',
-          title: 'Heartbeat sync method works best with a sensor bridge',
-          detail: 'The Heartbeat Synchronization method pairs especially well with a connected heart-rate watch — the soundscape and visualizer pulse-rings lock to your actual beats. Without a bridge it falls back to a stylized ~60 bpm pattern.',
-          action: { label: 'Open Step 5 controls', fn: () => {
-            const stepBtn = document.querySelector('[data-step="5"]'); if (stepBtn) stepBtn.click();
-          }},
-        });
-      }
-    } catch {}
 
     const hapticOn = !!$('hapticOptInThisSession')?.checked;
     if (hapticOn && !hapticBridge.isReady?.()) {
@@ -25746,64 +25179,12 @@ Start immediately:`;
       const compareChecked = state._historyCompareSel.includes(String(s.date));
       const compareCheckbox = `<input type="checkbox" class="h-compare-check" data-sid="${escapeHtml(String(s.date))}" ${compareChecked ? 'checked' : ''}>`;
 
-      // Round 29 — HR mini-sparkline. Built as inline SVG (no canvas
-      // resize observer needed inside a list — SVG scales for free) and
-      // dropped between the meta line and the preview text. Tooltip
-      // surfaces baseline / min / mean / max so the chart isn't lonely
-      // numerically. Hidden entirely when no trace was collected — the
-      // record's `heartRate` key will be missing for unsensored sessions.
-      let hrSparkHtml = '';
-      const hr = s.heartRate;
-      if (hr && Array.isArray(hr.samples) && hr.samples.length >= 2) {
-        const samples = hr.samples;
-        const xs = samples.map(p => p[0]);
-        const ys = samples.map(p => p[1]);
-        const xMax = Math.max(...xs) || 1;
-        const yMin = Math.min(...ys);
-        const yMax = Math.max(...ys);
-        // Pad y-range a touch when the data is dead-flat so the line
-        // doesn't sit on the bottom edge with no headroom (a 60-bpm
-        // session that spent the whole time at 60 should still show a
-        // nice mid-line trace).
-        const yRange = Math.max(2, yMax - yMin);
-        const W = 220, H = 28, pad = 2;
-        const path = samples.map((p, i) => {
-          const x = pad + (p[0] / xMax) * (W - pad * 2);
-          const y = H - pad - ((p[1] - yMin) / yRange) * (H - pad * 2);
-          return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
-        }).join(' ');
-        // Optional baseline guide line, drawn behind the trace, when
-        // the baseline falls inside the y-range (otherwise it'd just
-        // pin to a corner with no useful context).
-        let baselineLine = '';
-        if (Number.isFinite(hr.baselineBpm) && hr.baselineBpm >= yMin && hr.baselineBpm <= yMax) {
-          const by = H - pad - ((hr.baselineBpm - yMin) / yRange) * (H - pad * 2);
-          baselineLine = `<line x1="${pad}" x2="${W - pad}" y1="${by.toFixed(1)}" y2="${by.toFixed(1)}" stroke="rgba(184,154,74,0.35)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
-        }
-        const tipParts = [
-          `min ${hr.minBpm}`, `mean ${hr.meanBpm}`, `max ${hr.maxBpm}`,
-          Number.isFinite(hr.baselineBpm) ? `base ${hr.baselineBpm}` : null,
-          `${hr.sampleCount} samples`,
-        ].filter(Boolean);
-        const tip = `Heart rate: ${tipParts.join(' · ')}`;
-        hrSparkHtml = `
-          <div class="h-hr-spark" title="${escapeHtml(tip)}" style="margin-top:4px;display:flex;align-items:center;gap:6px;font-size:0.62rem;color:var(--text-faint);font-family:monospace">
-            <span style="color:#e85a8e">♥</span>
-            <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;max-width:220px;height:${H}px;display:block;flex:1;min-width:0">
-              ${baselineLine}
-              <path d="${path}" fill="none" stroke="#e85a8e" stroke-width="1.2"/>
-            </svg>
-            <span style="white-space:nowrap">${hr.minBpm}\u2013${hr.maxBpm} bpm</span>
-          </div>`;
-      }
-
       const item = document.createElement('div');
       item.className = 'history-item';
       item.innerHTML = `
         ${compareCheckbox}
         <div class="h-title">${modeBadge}${dateStr} ${timeStr} · ${status}</div>
         <div class="h-meta">${escapeHtml(s.guide || '—')} · ${escapeHtml(s.method || '—')} · ${phaseCount} phases · ${workBlocks} work block${workBlocks === 1 ? '' : 's'}${affirmMode ? ' · ' + escapeHtml(affirmMode) : ''}${profileName ? ' · ' + escapeHtml(profileName) : ''}${s.intentionText ? ' · ' + escapeHtml(s.intentionText.substring(0, 30)) : ''}</div>
-        ${hrSparkHtml}
         ${preview ? `<div class="h-preview">${escapeHtml(preview)}</div>` : '<div class="h-no-script">no script stored</div>'}
         ${tagsHtml}
         <div class="h-actions">
@@ -26057,71 +25438,6 @@ Start immediately:`;
     if (lastDeltas.length === 3 && lastDeltas.every(d => d >= 2)) {
       out.push({ rank: 6, msg: `Last 3 sessions all produced strong mood improvement (+2 or more). Whatever you're doing — keep going.` });
     }
-
-    // ─── Round 31 — deeper inferences from personalInsights ────────────
-    // Pull in best-method, HR trend, burnout, and imagery callouts
-    // when there's enough data to make confident claims. Each one
-    // is gated by its own sample-count threshold inside the module,
-    // so the early-return guard at the top of this function (h<3)
-    // is sufficient — these calls return null/empty for thin data.
-    try {
-      // Best-method callout — only fires when the top method is
-      // meaningfully better than the runner-up (gap > 1.5 score).
-      const methods = personalInsights.rankMethods(h);
-      if (methods.length >= 2 && (methods[0].score - methods[1].score) > 1.5 && methods[0].avgDelta > 1) {
-        const m = methods[0];
-        out.push({
-          rank: 7,
-          msg: `${m.key} is your strongest method — averages +${m.avgDelta} mood lift and ${Math.round(m.completionRate * 100)}% completion (n=${m.n}).`,
-        });
-      }
-      // HR practice-improving callout (Round 29 data)
-      const hr = personalInsights.computeHrTrends(h);
-      if (hr) {
-        if (hr.dropTrend > 2) {
-          out.push({
-            rank: 7,
-            msg: `Your nervous system is settling deeper across recent sessions — average HR drop has improved by ${hr.dropTrend.toFixed(1)} bpm. Practice is working.`,
-          });
-        } else if (hr.baselineTrend > 5) {
-          out.push({
-            rank: 9,
-            msg: `Your resting heart rate has drifted up ${hr.baselineTrend.toFixed(1)} bpm across recent sessions. Worth checking how you've been sleeping / how stressful the day-to-day has been.`,
-          });
-        }
-      }
-      // Burnout composite — only surface when score is genuinely high.
-      const burn = personalInsights.computeBurnoutScore(h);
-      if (burn && burn.score >= 0.55) {
-        out.push({
-          rank: 11,
-          msg: 'Your last several sessions have been getting harder to complete and less restorative. Consider a 2–3 day pause, or a much shorter / gentler session.',
-        });
-      }
-      // Time-of-day insight — surface when there's a clear winner.
-      const tod = personalInsights.computeTimeOfDayPattern(h);
-      const todEntries = Object.entries(tod).filter(([, v]) => v.avgDelta != null);
-      if (todEntries.length >= 2) {
-        const ranked = todEntries.sort((a, b) => (b[1].avgDelta - a[1].avgDelta));
-        const top = ranked[0];
-        const other = ranked[1];
-        if (top[1].avgDelta - other[1].avgDelta > 1 && top[1].n >= 3) {
-          out.push({
-            rank: 4,
-            msg: `${top[0]} sessions land best for you — averaging +${top[1].avgDelta} mood vs +${other[1].avgDelta} ${other[0]} (n=${top[1].n}).`,
-          });
-        }
-      }
-      // Best persona / guide — surface only with strong evidence
-      const personas = personalInsights.rankPersonas(h);
-      if (personas.length >= 2 && (personas[0].score - personas[1].score) > 1.5 && personas[0].avgDelta > 1) {
-        out.push({
-          rank: 6,
-          msg: `${personas[0].key} produces your strongest results — +${personas[0].avgDelta} avg mood lift across ${personas[0].n} sessions.`,
-        });
-      }
-    } catch (e) { console.warn('[insights derivePatternCallouts]', e); }
-
     out.sort((a, b) => b.rank - a.rank);
     return out.slice(0, 2).map(x => x.msg);
   }
@@ -26130,11 +25446,6 @@ Start immediately:`;
     const statsEl = $('sidebarStats');
     const streakEl = $('sidebarStreak');
     const history = (await idbGet('stillness_history_v1')) || [];
-    // Round 31 — cache for sync reads (getProfileContext is sync; AI
-    // prompt path can't await IDB). Refreshed every time the sidebar
-    // renders, which happens on session-end + on profile changes —
-    // the only times the cache could meaningfully be stale.
-    state._profileContextHistoryCache = history;
     const analytics = await getAnalytics();
 
     state._pickerStats = computePickerStats(history);
@@ -26213,137 +25524,6 @@ Start immediately:`;
           html += `</div>`;
         } catch {}
       }
-
-      // ─── Round 31 — deeper insights expandable section ───────────────
-      // Lazy-built from the personalInsights module. Collapsed by
-      // default; the summary line shows enough hint to be useful at a
-      // glance ("3 patterns observed" etc.) and expanding reveals the
-      // ranked breakdowns. Sample counts shown alongside every claim
-      // so the user sees how much evidence each is built on.
-      try {
-        if (history.length >= 5 && typeof personalInsights !== 'undefined') {
-          const methods   = personalInsights.rankMethods(history);
-          const personas  = personalInsights.rankPersonas(history);
-          const tod       = personalInsights.computeTimeOfDayPattern(history);
-          const hr        = personalInsights.computeHrTrends(history);
-          const imagery   = personalInsights.computeImageryPreferences(history);
-          const burn      = personalInsights.computeBurnoutScore(history);
-          const consist   = personalInsights.computeConsistency(history);
-
-          const sections = [];
-
-          // Effectiveness ranking — top 3 methods
-          if (methods.length >= 2) {
-            const rows = methods.slice(0, 3).map(m => {
-              const deltaTxt = m.avgDelta >= 0 ? `+${m.avgDelta}` : `${m.avgDelta}`;
-              const color = m.avgDelta >= 1 ? 'var(--accent-green)'
-                          : m.avgDelta >= 0 ? 'var(--text)'
-                          : 'var(--neon-amber)';
-              return `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
-                <span style="color:var(--text-dim)">${escapeHtml(m.key)}</span>
-                <span style="color:${color}">${deltaTxt} mood · ${Math.round(m.completionRate * 100)}% · n=${m.n}</span>
-              </div>`;
-            }).join('');
-            sections.push(`<div style="margin-top:8px"><div style="font-size:0.6rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">methods by effect</div>${rows}</div>`);
-          }
-
-          // Best personas
-          if (personas.length >= 2) {
-            const rows = personas.slice(0, 3).map(p => {
-              const deltaTxt = p.avgDelta >= 0 ? `+${p.avgDelta}` : `${p.avgDelta}`;
-              const color = p.avgDelta >= 1 ? 'var(--accent-green)' : 'var(--text)';
-              return `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
-                <span style="color:var(--text-dim)">${escapeHtml(p.key)}</span>
-                <span style="color:${color}">${deltaTxt} · n=${p.n}</span>
-              </div>`;
-            }).join('');
-            sections.push(`<div style="margin-top:8px"><div style="font-size:0.6rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">guides by effect</div>${rows}</div>`);
-          }
-
-          // Time-of-day breakdown
-          const todEntries = Object.entries(tod || {}).filter(([, v]) => v.avgDelta != null);
-          if (todEntries.length >= 2) {
-            const rows = todEntries
-              .sort((a, b) => b[1].avgDelta - a[1].avgDelta)
-              .map(([bucket, v]) => `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
-                <span style="color:var(--text-dim)">${bucket}</span>
-                <span>${v.avgDelta >= 0 ? '+' : ''}${v.avgDelta} · ${Math.round(v.completionRate * 100)}% · n=${v.n}</span>
-              </div>`).join('');
-            sections.push(`<div style="margin-top:8px"><div style="font-size:0.6rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">time of day</div>${rows}</div>`);
-          }
-
-          // HR trends — only when bridge data is present
-          if (hr) {
-            const dropArrow = hr.dropTrend > 0.5 ? '↑' : hr.dropTrend < -0.5 ? '↓' : '→';
-            const baseArrow = hr.baselineTrend > 1 ? '↑' : hr.baselineTrend < -1 ? '↓' : '→';
-            const dropColor = hr.dropTrend > 0.5 ? 'var(--accent-green)' : hr.dropTrend < -0.5 ? 'var(--neon-amber)' : 'var(--text)';
-            const baseColor = hr.baselineTrend > 3 ? 'var(--neon-amber)' : 'var(--text)';
-            sections.push(`<div style="margin-top:8px">
-              <div style="font-size:0.6rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">heart rate (n=${hr.n})</div>
-              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
-                <span style="color:var(--text-dim)">avg drop from baseline</span>
-                <span style="color:${dropColor}">${hr.avgDrop} bpm ${dropArrow}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
-                <span style="color:var(--text-dim)">resting baseline</span>
-                <span style="color:${baseColor}">${hr.avgBaseline} bpm ${baseArrow}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
-                <span style="color:var(--text-dim)">best drop</span>
-                <span>${hr.bestDrop} bpm</span>
-              </div>
-            </div>`);
-          }
-
-          // Imagery preferences — what shows up in their journal
-          if (imagery && imagery.top.length) {
-            const rows = imagery.top.map(t =>
-              `<span style="display:inline-block;padding:2px 6px;margin:1px;background:rgba(255,255,255,0.04);border-radius:8px;font-size:0.6rem;color:var(--text-dim)">${escapeHtml(t.cat)} · ${Math.round(t.share * 100)}%</span>`
-            ).join('');
-            sections.push(`<div style="margin-top:8px">
-              <div style="font-size:0.6rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">your journal imagery</div>
-              <div>${rows}</div>
-              <div style="font-size:0.56rem;color:var(--text-faint);margin-top:2px">across ${imagery.totalJournals} journal entries — script generation leans toward these</div>
-            </div>`);
-          }
-
-          // Consistency
-          if (consist) {
-            const trend = consist.thisWeek > consist.last4WeekAvg ? '↑'
-                        : consist.thisWeek < consist.last4WeekAvg ? '↓' : '→';
-            const trendColor = consist.thisWeek > consist.last4WeekAvg ? 'var(--accent-green)'
-                              : consist.thisWeek < consist.last4WeekAvg ? 'var(--text-dim)' : 'var(--text)';
-            sections.push(`<div style="margin-top:8px"><div style="font-size:0.6rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">consistency</div>
-              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
-                <span style="color:var(--text-dim)">this week</span>
-                <span style="color:${trendColor}">${consist.thisWeek} session${consist.thisWeek === 1 ? '' : 's'} ${trend}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:0.66rem">
-                <span style="color:var(--text-dim)">4-week avg</span>
-                <span>${consist.last4WeekAvg}/wk</span>
-              </div>
-            </div>`);
-          }
-
-          // Burnout warning — only render when significant
-          if (burn && burn.score >= 0.55) {
-            sections.push(`<div style="margin-top:8px;padding:6px 8px;background:rgba(255,171,0,0.06);border-left:2px solid var(--neon-amber);font-size:0.62rem;line-height:1.5;color:var(--text-dim)">
-              <span style="color:var(--neon-amber);text-transform:uppercase;letter-spacing:0.06em;font-size:0.56rem">⚠ recovery signal</span><br>
-              Recent sessions showing strain (completion ${Math.round(burn.components.completionDrop * 100)}% lower, mood ${Math.round(burn.components.moodDrop * 100)}% lower). Consider a 2–3 day rest or shorter sessions.
-            </div>`);
-          }
-
-          if (sections.length) {
-            html += `<details style="margin-top:8px;border-top:1px solid var(--glass-border);padding-top:6px">
-              <summary style="font-size:0.66rem;color:var(--text-dim);cursor:pointer;list-style:none">
-                <span style="color:var(--neon-cyan)">▸</span> deeper insights
-                <span style="color:var(--text-faint);font-size:0.58rem"> · ${sections.length} pattern${sections.length === 1 ? '' : 's'} observed</span>
-              </summary>
-              <div style="font-size:0.66rem">${sections.join('')}</div>
-            </details>`;
-          }
-        }
-      } catch (e) { console.warn('[deeper-insights]', e); }
 
       statsEl.innerHTML = html;
     }
@@ -27940,16 +27120,6 @@ Start immediately:`;
       startMic().catch(e => console.warn('[mic] start in startSession failed:', e));
     }
 
-    // Round 29 — re-arm the HR baseline at session start so the relaxation
-    // signal anchors on the user's "settled at the start of the session"
-    // state, not whatever they were doing while configuring the wizard.
-    // Safe to call unconditionally — the bridge no-ops if no HR data is
-    // currently flowing.
-    if ($('sensorBridgeOptInThisSession')?.checked) {
-      try { sensorBridge.resetBaseline(); }
-      catch (e) { console.warn('[sensor-bridge] resetBaseline in startSession failed:', e); }
-    }
-
     if (DIFF_BOUNCE_THRESHOLDS.commitOnSessionStart) {
       Object.values(diffBouncers).forEach(b => { try { b.hardCommit('sessionStart'); } catch(e) { console.warn('[DB] hardCommit failed for', b.source, e); } });
     }
@@ -28157,6 +27327,10 @@ Start immediately:`;
       const phaseText = state.parsedScript[phase];
 
       state._currentPhase = phase;
+
+      // THROUGH-LINE: fire the soft motif cue at most twice a session —
+      // once when the motif reaches full presence, once when it returns.
+      try { MotifEngine.onPhaseEnter(phase); } catch (e) { console.warn('[motif] cue', e); }
 
       try {
         if (typeof phaseBase === 'function' && phaseBase(phase) === 'work'
@@ -28458,15 +27632,7 @@ Start immediately:`;
       const webcamOn = !!(state._webcam && state._webcam.active);
 
       const sessionRunning = !!state._sessionStartTime && !state.abortFlag;
-      // Round 29 — HUD also surfaces live BPM whenever the sensor bridge
-      // is producing data, even outside a session (e.g. while the user is
-      // calibrating before tapping Begin). The bridge is treated as a
-      // first-class display source alongside webcam.
-      const hrBpm = (typeof sensorBridge !== 'undefined' && sensorBridge.getCurrentBpm)
-        ? sensorBridge.getCurrentBpm()
-        : null;
-      const hrAvailable = Number.isFinite(hrBpm);
-      if (!webcamOn && !sessionRunning && !hrAvailable) {
+      if (!webcamOn && !sessionRunning) {
         barsEl.innerHTML = '';
       } else {
         const eng = (typeof getEngineMetric === 'function') ? Math.max(0, Math.min(1, getEngineMetric('engagement') || 0)) : 0;
@@ -28478,22 +27644,6 @@ Start immediately:`;
         if (webcamOn) {
           rows.push(`<div class="hud-metric-row"><span>attention</span><span class="hud-metric-bar-track"><span class="hud-metric-bar-fill attention" style="width:${(att*100).toFixed(0)}%"></span></span><span class="hud-metric-bar-value">${(att*100).toFixed(0)}</span></div>`);
         }
-
-        // Round 29 — HR row. Two pieces of info squeezed into the same
-        // row shape: the heart icon + raw BPM as the label, and the
-        // relaxation score (0-1) as the bar fill. Saves vertical space
-        // vs splitting them across two rows. The fill uses --neon-magenta
-        // so it's visually distinct from engagement (cyan) and attention
-        // (amber). Only renders once we have a usable BPM reading.
-        if (hrAvailable) {
-          const relax = (typeof getEngineMetric === 'function') ? Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0)) : 0;
-          const baseline = (typeof sensorBridge !== 'undefined' && sensorBridge.getBaseline) ? sensorBridge.getBaseline() : null;
-          const baselineHint = Number.isFinite(baseline) ? ` (base ${Math.round(baseline)})` : '';
-          rows.push(
-            `<div class="hud-metric-row" title="Live heart rate · relaxation = drop from baseline${baselineHint}"><span>♥ ${Math.round(hrBpm)} bpm</span><span class="hud-metric-bar-track"><span class="hud-metric-bar-fill" style="width:${(relax*100).toFixed(0)}%;background:var(--neon-magenta,#e85a8e)"></span></span><span class="hud-metric-bar-value">${(relax*100).toFixed(0)}</span></div>`
-          );
-        }
-
         barsEl.innerHTML = rows.join('');
       }
     }
@@ -29690,22 +28840,6 @@ Start immediately:`;
 
       ...(state._sessionMode && !state._sosKind ? { mode: state._sessionMode } : {}),
 
-      // Round 29 — heart-rate trace, when available. _summarizeHrTrace
-      // returns null if no samples were collected (no bridge connected
-      // or bridge dropped before producing data). Spread is conditional
-      // so the key isn't even present in records from unsensored
-      // sessions — keeps history-search/analytics shape stable. The
-      // compact [tSec, bpm] sample form keeps a 30-min session under
-      // ~5 KB pre-gzip, well within the per-record budget.
-      ...(state._hrTrace && state._hrTrace.length
-        ? { heartRate: _summarizeHrTrace(
-              state._hrTrace,
-              (typeof sensorBridge !== 'undefined' && sensorBridge.getBaseline)
-                ? sensorBridge.getBaseline()
-                : null
-            ) }
-        : {}),
-
       susceptibilityAtSessionStart: ($('pfSusceptibility')?.value || ''),
       workflowVersion: 12,
       stepsTotal: 6,
@@ -29905,78 +29039,6 @@ Start immediately:`;
       } else {
         briefBox.style.display = 'none';
         briefBox.innerHTML = '';
-      }
-    }
-
-    // Round 29 — heart-rate summary card. Renders min / mean / max BPM,
-    // baseline anchor, total drop from baseline (a parasympathetic
-    // proxy), and a chart-like inline SVG sparkline of the trace. Only
-    // shown when the session collected at least 2 samples — matches the
-    // history-list sparkline gate. No emergency-exit gating here because
-    // even on an early end the trace tells a useful story (often the
-    // most useful: where exactly did the spike happen?).
-    const hrSummaryBox = $('postHrSummaryBox');
-    if (hrSummaryBox) {
-      const trace = state._hrTrace;
-      const baseline = (typeof sensorBridge !== 'undefined' && sensorBridge.getBaseline)
-        ? sensorBridge.getBaseline()
-        : null;
-      const summary = (trace && trace.length >= 2 && typeof _summarizeHrTrace === 'function')
-        ? _summarizeHrTrace(trace, baseline)
-        : null;
-      if (summary) {
-        // Build the same SVG sparkline the history list renders, sized
-        // a bit larger here since the post-card has more horizontal real
-        // estate. The shape matches so users learn the visual once.
-        const W = 360, H = 44, pad = 4;
-        const ys = summary.samples.map(p => p[1]);
-        const xMax = Math.max(...summary.samples.map(p => p[0])) || 1;
-        const yMin = Math.min(...ys), yMax = Math.max(...ys);
-        const yRange = Math.max(2, yMax - yMin);
-        const path = summary.samples.map((p, i) => {
-          const x = pad + (p[0] / xMax) * (W - pad * 2);
-          const y = H - pad - ((p[1] - yMin) / yRange) * (H - pad * 2);
-          return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
-        }).join(' ');
-        let baselineLine = '';
-        if (Number.isFinite(summary.baselineBpm) && summary.baselineBpm >= yMin && summary.baselineBpm <= yMax) {
-          const by = H - pad - ((summary.baselineBpm - yMin) / yRange) * (H - pad * 2);
-          baselineLine = `<line x1="${pad}" x2="${W - pad}" y1="${by.toFixed(1)}" y2="${by.toFixed(1)}" stroke="rgba(184,154,74,0.35)" stroke-width="0.5" stroke-dasharray="3,3"/>`;
-        }
-        // Compute drop-from-baseline if both baseline and minimum are
-        // available — this is the most plain-language-actionable number
-        // for relaxation-focused sessions. Negative numbers (HR went
-        // up) are still informative; we show them as +N to be clear.
-        let dropLine = '';
-        if (Number.isFinite(summary.baselineBpm)) {
-          const lowestDelta = summary.baselineBpm - summary.minBpm;
-          if (lowestDelta > 0) {
-            dropLine = `<div style="font-size:0.74rem;color:var(--accent-green);margin-top:6px">heart rate dropped <strong>${lowestDelta}</strong> bpm below your starting baseline at its lowest — a clear parasympathetic shift.</div>`;
-          } else if (lowestDelta < -3) {
-            dropLine = `<div style="font-size:0.74rem;color:var(--text-dim);margin-top:6px">heart rate stayed <strong>${Math.abs(lowestDelta)}</strong> bpm above baseline. Worth checking the post-checkin below — the body may not have settled into rest mode this session.</div>`;
-          }
-        }
-        const baselineCell = Number.isFinite(summary.baselineBpm)
-          ? `<div class="summary-card"><div class="summary-label">baseline</div><div class="summary-value">${summary.baselineBpm}</div></div>`
-          : '';
-        hrSummaryBox.style.display = '';
-        hrSummaryBox.innerHTML = `
-          <div class="post-card-title">♥ heart rate this session</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:8px;margin-bottom:10px">
-            <div class="summary-card"><div class="summary-label">min</div><div class="summary-value">${summary.minBpm}</div></div>
-            <div class="summary-card"><div class="summary-label">mean</div><div class="summary-value">${summary.meanBpm}</div></div>
-            <div class="summary-card"><div class="summary-label">max</div><div class="summary-value">${summary.maxBpm}</div></div>
-            ${baselineCell}
-          </div>
-          <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:${H}px;display:block;background:rgba(0,0,0,0.18);border:0.5px solid rgba(255,255,255,0.06);border-radius:3px">
-            ${baselineLine}
-            <path d="${path}" fill="none" stroke="#e85a8e" stroke-width="1.4"/>
-          </svg>
-          <div style="font-size:0.66rem;color:var(--text-faint);margin-top:4px;font-family:monospace">${summary.sampleCount} samples${Number.isFinite(summary.baselineBpm) ? ' · dashed line = baseline' : ''}</div>
-          ${dropLine}`;
-      } else {
-        hrSummaryBox.style.display = 'none';
-        hrSummaryBox.innerHTML = '';
       }
     }
 
@@ -39109,14 +38171,6 @@ Begin:`;
       const timeT = _applyRampCurve(tFraction, r.curve);
       const blend = (timeT + eng) / 2;
       target = r.startVal + (r.endVal - r.startVal) * blend;
-    } else if (r.mode === 'relaxation') {
-      // Round 29 — ramp tracks the HR-derived relaxation score directly.
-      // For the canonical "intensity rises as the user goes deeper" curve,
-      // pair with startVal=low, endVal=high (e.g. 0.3 → 1.4) so the
-      // visualizer / haptic intensity climbs as the body settles. Inert
-      // when no bridge connected (relaxation stays at 0 → target = startVal).
-      const relax = (typeof getEngineMetric === 'function') ? Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0)) : 0;
-      target = r.startVal + (r.endVal - r.startVal) * _applyRampCurve(relax, r.curve);
     }
     return Math.max(0, Math.min(2, target));
   }
@@ -39139,11 +38193,6 @@ Begin:`;
     state._rampActiveIntensity = Math.max(0, Math.min(2, result));
   }
 
-  // Round 29 — `source` field: which engine signal drives the speed
-  // mapping. Default 'engagement' preserves legacy behavior. 'relaxation'
-  // routes the HR-derived relaxation signal through the same min→max
-  // speed range, so a relaxing user gets a (typically) slower narrator
-  // with no extra wiring. Validated in _normalizePacingSettings.
   const PACING_DEFAULTS = Object.freeze({
     enabled:       false,
     minSpeed:      0.5,
@@ -39151,7 +38200,6 @@ Begin:`;
     smoothingSec:  4,
     curve:         'linear',
     lockDuringSec: 0,
-    source:        'engagement',
   });
   const HNE_PACING_KEY = 'hne_pacing_settings_v1';
   function loadPacingSettings() {
@@ -39176,7 +38224,6 @@ Begin:`;
       smoothingSec:  Number.isFinite(p.smoothingSec)  ? Math.max(0,    Math.min(30, p.smoothingSec))  : base.smoothingSec,
       curve:         ['linear','exponential','sine'].includes(p.curve) ? p.curve : base.curve,
       lockDuringSec: Number.isFinite(p.lockDuringSec) ? Math.max(0,    Math.min(60, p.lockDuringSec)) : base.lockDuringSec,
-      source:        ['engagement', 'relaxation'].includes(p.source) ? p.source : base.source,
     };
   }
 
@@ -39193,19 +38240,12 @@ Begin:`;
     const es = state.engineState;
     if (!es) return;
 
-    // Round 29 — pacing source is configurable. 'engagement' is the legacy
-    // default; 'relaxation' routes the HR-derived score through the same
-    // min→max speed envelope. Falls back to engagement for any unknown
-    // value so legacy stored settings keep working.
-    let signal = Math.max(0, Math.min(1, Number(es.engagement) || 0));
-    if (ps.source === 'relaxation' && typeof getEngineMetric === 'function') {
-      signal = Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0));
-    }
+    const engagement = Math.max(0, Math.min(1, Number(es.engagement) || 0));
 
     const sessionTime = es.sessionSec ?? es.sessionTime ?? 0;
     if (ps.lockDuringSec > 0 && (sessionTime - _pacingLastChangeAt) < ps.lockDuringSec) return;
 
-    const t = _applyRampCurve(signal, ps.curve);
+    const t = _applyRampCurve(engagement, ps.curve);
     const targetSpeed = ps.minSpeed + t * (ps.maxSpeed - ps.minSpeed);
 
     const alpha = ps.smoothingSec > 0 ? Math.min(1, frameSec / ps.smoothingSec) : 1;
@@ -39952,42 +38992,8 @@ Begin:`;
 
     'heartRate', 'hrv', 'gsr', 'breath', 'eegFocus',
 
-    // Round 29 — `relaxation` is a DERIVED signal: drop in BPM from the
-    // user's per-session baseline, normalized 0-1. Auto-computed when raw
-    // BPM arrives via the HR-OBS protocol; user-supplied bridges can also
-    // push it directly. For hypnosis/relaxation sessions this is far more
-    // useful than raw heartRate (which monotonically increases with arousal).
-    'relaxation',
-
     'custom1', 'custom2', 'custom3',
   ]);
-
-  // Round 29 — heart rate normalization & baseline tracking constants.
-  // BPM_NORM_MIN/MAX clamp raw BPM into the 0-1 engagement-signal space.
-  // Defaults cover the realistic resting-to-vigorous range for adults; the
-  // small dead-band at the bottom (40 vs typical 50 bpm resting) leaves
-  // headroom for athletic/sleeping users without clipping.
-  const HR_BPM_NORM_MIN          = 40;
-  const HR_BPM_NORM_MAX          = 180;
-  // Baseline learns over the first BASELINE_WARMUP_MS of valid samples
-  // after connect or resetBaseline(). 30 s is enough for most users to
-  // settle into a still-but-not-deeply-relaxed state, and short enough
-  // that the relaxation signal becomes useful well within the first
-  // induction phase.
-  const HR_BASELINE_WARMUP_MS    = 30_000;
-  const HR_BASELINE_MIN_SAMPLES  = 10;
-  // Drop in BPM that maps to relaxation = 1.0. 20 bpm below baseline is
-  // a substantial parasympathetic shift — typical of mid/deep trance for
-  // most users. Clamped, so anything beyond saturates at 1.
-  const HR_RELAXATION_FULL_DROP  = 20;
-  // Protocol detection tag for HR-OBS Monitor v2 messages.
-  const HR_OBS_MESSAGE_TYPE      = 'heart_rate';
-  // Engagement-engine weight applied to auto-translated HR-OBS signals.
-  // Default 0 = signals are populated for rule access and HUD display
-  // but do NOT pollute the engagement score unless the user opts in via
-  // a rule. Keeps "just plug in HR-OBS" non-disruptive for existing
-  // sessions while making the data fully available everywhere it's useful.
-  const HR_OBS_DEFAULT_WEIGHT    = 0;
 
   const sensorBridge = (() => {
     let _ws          = null;
@@ -40000,18 +39006,6 @@ Begin:`;
     const _stamps    = Object.create(null);
     const _values    = Object.create(null);
     let _staleTimer  = null;
-
-    // Round 29 — heart-rate state. Independent of the engagement-signal map
-    // because we want to display raw BPM in the HUD/status row even when
-    // the engagement weight is 0. _hrSamples is a small ring of recent
-    // {bpm,t} entries used to smooth and to compute the baseline.
-    const HR_SAMPLE_BUFFER_MAX = 64;
-    let _hrCurrentBpm   = null;       // Most recent raw BPM (null if stale/none)
-    let _hrCurrentAt    = 0;          // Timestamp of _hrCurrentBpm
-    let _hrBaseline     = null;       // Median of warm-up samples; null until learned
-    let _hrBaselineLockedAt = 0;
-    let _hrFirstSampleAt = 0;
-    const _hrSamples    = [];         // {bpm, t} ring
 
     function _setStatus(state, text) {
       const dot = document.getElementById('sensorBridgeDot');
@@ -40038,90 +39032,6 @@ Begin:`;
       line.textContent = names.map(n => `${n}=${_values[n].toFixed(2)}`).join(' · ');
     }
 
-    // Round 29 — render the live BPM badge in the status row. Hidden when
-    // there's no recent reading; shows raw BPM with a small drop-from-baseline
-    // hint once the baseline has locked in (e.g. "♥ 68 bpm  −7 base").
-    function _renderBpmBadge() {
-      const badge = document.getElementById('sensorBridgeBpmBadge');
-      const valEl = document.getElementById('sensorBridgeBpmValue');
-      if (!badge || !valEl) return;
-      const bpm = getCurrentBpm();
-      if (!Number.isFinite(bpm)) {
-        badge.style.display = 'none';
-        return;
-      }
-      badge.style.display = 'inline-flex';
-      let label = `${Math.round(bpm)}`;
-      if (Number.isFinite(_hrBaseline)) {
-        const drop = _hrBaseline - bpm;
-        const sign = drop >= 0 ? '−' : '+';
-        label += `  ${sign}${Math.abs(Math.round(drop))} base`;
-      } else if (_hrFirstSampleAt) {
-        const learned = Math.round((Date.now() - _hrFirstSampleAt) / 1000);
-        const remaining = Math.max(0, Math.round(HR_BASELINE_WARMUP_MS / 1000) - learned);
-        if (remaining > 0) label += `  base in ${remaining}s`;
-      }
-      valEl.textContent = label;
-    }
-
-    // Round 29 — pure: take a copy of recent samples and return the median.
-    // Median (vs mean) makes the baseline robust to spurious spikes from
-    // motion artefacts (typical of optical wrist sensors during the first
-    // 30 s of a session as the user settles in).
-    function _medianOf(arr) {
-      if (!arr.length) return null;
-      const sorted = arr.slice().sort((a, b) => a - b);
-      const mid = sorted.length >> 1;
-      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-    }
-
-    // Round 29 — ingest a raw BPM reading. Updates the sample ring, learns
-    // the baseline once warm-up completes, and pushes derived signals into
-    // the engagement engine. Rejects out-of-range values silently (a watch
-    // briefly reporting 0 BPM during a sync glitch shouldn't reset the
-    // baseline). Caller handles the wire-format translation.
-    function _ingestRawBpm(bpm, weight) {
-      if (!Number.isFinite(bpm) || bpm < 25 || bpm > 240) return;
-      const now = Date.now();
-      _hrCurrentBpm = bpm;
-      _hrCurrentAt  = now;
-      if (!_hrFirstSampleAt) _hrFirstSampleAt = now;
-
-      _hrSamples.push({ bpm, t: now });
-      if (_hrSamples.length > HR_SAMPLE_BUFFER_MAX) _hrSamples.shift();
-
-      // Learn baseline once we've collected enough samples and let the
-      // warm-up window elapse. Median over the warm-up window is the
-      // anchor for the relaxation signal for the rest of the session
-      // (or until resetBaseline is called).
-      if (_hrBaseline === null) {
-        const warmupSamples = _hrSamples.filter(s => s.t - _hrFirstSampleAt <= HR_BASELINE_WARMUP_MS);
-        const elapsed = now - _hrFirstSampleAt;
-        if (elapsed >= HR_BASELINE_WARMUP_MS && warmupSamples.length >= HR_BASELINE_MIN_SAMPLES) {
-          _hrBaseline = _medianOf(warmupSamples.map(s => s.bpm));
-          _hrBaselineLockedAt = now;
-        }
-      }
-
-      // Normalized heartRate signal — 0 at rest-floor, 1 at vigorous-ceiling.
-      const heartRateNorm = Math.max(0, Math.min(1,
-        (bpm - HR_BPM_NORM_MIN) / (HR_BPM_NORM_MAX - HR_BPM_NORM_MIN)
-      ));
-      const w = Number.isFinite(weight) ? weight : HR_OBS_DEFAULT_WEIGHT;
-      _applySignal('heartRate', heartRateNorm, w);
-
-      // Derived relaxation — only meaningful once baseline is locked.
-      // Until then we keep relaxation at 0 with weight 0 so it doesn't
-      // skew engagement during the warm-up.
-      if (Number.isFinite(_hrBaseline)) {
-        const drop = _hrBaseline - bpm;
-        const relax = Math.max(0, Math.min(1, drop / HR_RELAXATION_FULL_DROP));
-        _applySignal('relaxation', relax, w);
-      }
-
-      _renderBpmBadge();
-    }
-
     function _applySignal(signal, value, weight) {
       if (!SENSOR_BRIDGE_SIGNALS.has(signal)) return;
       if (!Number.isFinite(value)) return;
@@ -40135,44 +39045,14 @@ Begin:`;
 
     function _handleMessage(msg) {
       if (!msg || typeof msg !== 'object') return;
-      // Round 29 — HR-OBS Monitor v2 protocol auto-detection.
-      // The OBS overlay ships {"type":"heart_rate","data":{"bpm":N,...}}
-      // on the same socket the dashboard uses. We translate transparently
-      // to the engine's normalized signal space and feed both raw heartRate
-      // and the derived relaxation signal — no separate translator process
-      // required. The optional config_updated message from HR-OBS is a UI
-      // hint for the OBS overlay only; we silently ignore it here.
-      if (msg.type === HR_OBS_MESSAGE_TYPE && msg.data && Number.isFinite(Number(msg.data.bpm))) {
-        _ingestRawBpm(Number(msg.data.bpm), undefined);
-        return;
-      }
-      if (msg.type === 'config_updated') {
-        return;
-      }
-      // Generic HNE protocol — batch form.
       if (Array.isArray(msg.signals)) {
         for (const s of msg.signals) {
-          if (s && typeof s === 'object') {
-            // Allow user-supplied bridges to push raw BPM through the
-            // generic protocol via {signal:"heartRateBpm",value:72}. Same
-            // ingestion path as HR-OBS — single source of truth for
-            // baseline + relaxation.
-            if (s.signal === 'heartRateBpm') {
-              _ingestRawBpm(Number(s.value), Number(s.weight));
-            } else {
-              _applySignal(s.signal, Number(s.value), s.weight);
-            }
-          }
+          if (s && typeof s === 'object') _applySignal(s.signal, Number(s.value), s.weight);
         }
         return;
       }
-      // Generic HNE protocol — single signal form.
       if (typeof msg.signal === 'string') {
-        if (msg.signal === 'heartRateBpm') {
-          _ingestRawBpm(Number(msg.value), Number(msg.weight));
-        } else {
-          _applySignal(msg.signal, Number(msg.value), msg.weight);
-        }
+        _applySignal(msg.signal, Number(msg.value), msg.weight);
         return;
       }
     }
@@ -40193,13 +39073,6 @@ Begin:`;
           if (!(name in _stamps)) setEngineSignal(name, 0, 0);
         } } catch {}
         _renderSignalsLine();
-      }
-      // Round 29 — invalidate raw BPM display when the source goes silent.
-      // (Stays separate from _stamps so we can show "stale" on the badge
-      // without zeroing the engine signals more than once.)
-      if (_hrCurrentBpm !== null && now - _hrCurrentAt > SENSOR_BRIDGE_STALE_MS) {
-        _hrCurrentBpm = null;
-        _renderBpmBadge();
       }
     }
 
@@ -40265,58 +39138,13 @@ Begin:`;
       for (const k of Object.keys(_stamps)) delete _stamps[k];
       for (const k of Object.keys(_values)) delete _values[k];
       _renderSignalsLine();
-      // Round 29 — also clear HR-specific state so a fresh connect starts
-      // with a clean baseline-learning window. resetBaseline() does the
-      // same job mid-session without dropping the WS.
-      _hrCurrentBpm = null; _hrCurrentAt = 0;
-      _hrBaseline = null; _hrBaselineLockedAt = 0;
-      _hrFirstSampleAt = 0;
-      _hrSamples.length = 0;
-      _renderBpmBadge();
       _setStatus('idle');
     }
 
     function isConnected() { return _ws?.readyState === WebSocket.OPEN; }
     function setEnabled(v) { _enabled = !!v; _setStatus(isConnected() ? 'connected' : 'idle'); }
 
-    // Round 29 — public read API. Exposed so the HUD, session-history
-    // serializer, rules engine (via getEngineMetric), and the in-app
-    // diagnostic chip can all read the same numbers without poking
-    // private module state. Returns null when no fresh reading exists
-    // — callers should treat null as "not available", not as zero.
-    function getCurrentBpm() {
-      if (!Number.isFinite(_hrCurrentBpm)) return null;
-      if (Date.now() - _hrCurrentAt > SENSOR_BRIDGE_STALE_MS) return null;
-      return _hrCurrentBpm;
-    }
-    function getBaseline() {
-      return Number.isFinite(_hrBaseline) ? _hrBaseline : null;
-    }
-    function getRelaxationScore() {
-      const bpm = getCurrentBpm();
-      if (!Number.isFinite(bpm) || !Number.isFinite(_hrBaseline)) return 0;
-      return Math.max(0, Math.min(1, (_hrBaseline - bpm) / HR_RELAXATION_FULL_DROP));
-    }
-    // Round 29 — re-arm the baseline learning window. Called automatically
-    // at startSession() so the baseline reflects the user's "settled in"
-    // state at the start of the session, not the state when they first
-    // turned on the bridge (which may have been minutes earlier while
-    // they were still configuring the wizard).
-    function resetBaseline() {
-      _hrBaseline = null;
-      _hrBaselineLockedAt = 0;
-      _hrFirstSampleAt = _hrCurrentBpm !== null ? Date.now() : 0;
-      _hrSamples.length = 0;
-      // Don't clear _hrCurrentBpm — we want the badge to keep showing
-      // the live BPM during the warm-up window, just without a baseline
-      // hint until the new window completes.
-      _renderBpmBadge();
-    }
-
-    return {
-      connect, disconnect, isConnected, setEnabled,
-      getCurrentBpm, getBaseline, getRelaxationScore, resetBaseline,
-    };
+    return { connect, disconnect, isConnected, setEnabled };
   })();
 
   $('hapticOptInThisSession')?.addEventListener('change', async e => {
@@ -41044,7 +39872,6 @@ Begin:`;
       setIfPresent('pacingCurve',  pacing.curve);
       setIfPresent('pacingSmooth', pacing.smoothingSec);
       setIfPresent('pacingLock',   pacing.lockDuringSec);
-      setIfPresent('pacingSource', pacing.source);
       const _persistPacing = () => {
         state.pacingSettings = _normalizePacingSettings(pacing);
         savePacingSettings(state.pacingSettings);
@@ -41079,13 +39906,6 @@ Begin:`;
         const v = Math.max(0, Math.min(60, parseFloat(e.target.value) || 0));
         pacing.lockDuringSec = v; e.target.value = v; _persistPacing();
       });
-      // Round 29 — pacing source picker. Switching to 'relaxation' makes
-      // the speed envelope track the HR-derived score instead of voice
-      // engagement. Same min/max/curve apply, just a different signal.
-      $('pacingSource')?.addEventListener('change', e => {
-        pacing.source = ['engagement', 'relaxation'].includes(e.target.value) ? e.target.value : 'engagement';
-        _persistPacing();
-      });
 
       setInterval(() => {
         const det = $('liveControlDetails');
@@ -41093,23 +39913,9 @@ Begin:`;
         const line = $('pacingStatusLine');
         if (!line) return;
         if (!pacing.enabled) { line.textContent = ''; return; }
-        // Round 29 — status line now reports the actual source signal
-        // driving the speed envelope. When source = relaxation we also
-        // surface the live BPM and baseline so the user can see the
-        // physiological number behind the pacing decision.
-        if (pacing.source === 'relaxation') {
-          const relax = (typeof getEngineMetric === 'function') ? Math.max(0, Math.min(1, getEngineMetric('relaxation') || 0)) : 0;
-          const bpm = (typeof sensorBridge !== 'undefined' && sensorBridge.getCurrentBpm) ? sensorBridge.getCurrentBpm() : null;
-          const baseline = (typeof sensorBridge !== 'undefined' && sensorBridge.getBaseline) ? sensorBridge.getBaseline() : null;
-          const hrTxt = Number.isFinite(bpm)
-            ? ` · ♥ ${Math.round(bpm)}${Number.isFinite(baseline) ? ` (base ${Math.round(baseline)})` : ''}`
-            : ' · ♥ —';
-          line.textContent = `pacing: ${_pacingCurrentSpeed.toFixed(2)}× (relaxation: ${relax.toFixed(2)}${hrTxt})`;
-        } else {
-          const eng = state.engineState?.engagement;
-          const engTxt = (typeof eng === 'number') ? eng.toFixed(2) : '—';
-          line.textContent = `pacing: ${_pacingCurrentSpeed.toFixed(2)}× (engagement: ${engTxt})`;
-        }
+        const eng = state.engineState?.engagement;
+        const engTxt = (typeof eng === 'number') ? eng.toFixed(2) : '—';
+        line.textContent = `pacing: ${_pacingCurrentSpeed.toFixed(2)}× (engagement: ${engTxt})`;
       }, 500);
     }
   }
@@ -41135,26 +39941,6 @@ Begin:`;
     const url = ($('sensorBridgeUrl')?.value || '').trim() || 'ws://localhost:8765';
     sensorBridge.disconnect();
     sensorBridge.connect(url);
-  });
-
-  // Round 29 — URL preset chips. Tap to fill the URL field with the
-  // common ports (generic 8765, HR-OBS 8080). If the bridge is already
-  // active, also reconnect immediately so the change takes effect without
-  // an extra tap on "reconnect". Delegated to the panel so future presets
-  // (Polar adapter, Muse bridge, etc.) drop in without extra wiring.
-  document.querySelectorAll('.sensor-bridge-preset').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const url = btn.getAttribute('data-url');
-      if (!url) return;
-      const input = $('sensorBridgeUrl');
-      if (input) input.value = url;
-      if ($('sensorBridgeOptInThisSession')?.checked) {
-        sensorBridge.disconnect();
-        sensorBridge.connect(url);
-      } else {
-        notify.info(`URL set to ${url} — toggle the bridge on to connect.`, 4000);
-      }
-    });
   });
 
   const HNE_USER_PATTERNS_KEY = 'hne_user_funscript_patterns_v1';
@@ -43212,99 +41998,16 @@ Begin:`;
       'Thanks for helping make HNE better.');
   });
 
-  // Round 30 — Device permission gating. Per-session device toggles in
-  // Step 5 are disabled when the matching permission class isn't
-  // granted in Options. Tapping a disabled toggle pulses an inline
-  // hint and offers a one-click jump to the permissions panel.
-  // Idempotent — safe to call multiple times. Reads the current
-  // state.devicePermissions and applies disabled / opacity / hint
-  // state to each per-session checkbox + its containing toggle-row.
-  const _DEVICE_PERMISSION_TOGGLES = [
-    { perm: 'webcam',     toggleId: 'webcamOptInThisSession',       label: 'Webcam' },
-    { perm: 'microphone', toggleId: 'micOptInThisSession',          label: 'Microphone' },
-    { perm: 'heartRate',  toggleId: 'sensorBridgeOptInThisSession', label: 'Heart rate sensor' },
-    { perm: 'haptic',     toggleId: 'hapticOptInThisSession',       label: 'Haptic devices' },
-  ];
-  function _applyDevicePermissionGating() {
-    const perms = state.devicePermissions || {};
-    for (const { perm, toggleId, label } of _DEVICE_PERMISSION_TOGGLES) {
-      const cb = document.getElementById(toggleId);
-      if (!cb) continue;
-      const allowed = !!perms[perm];
-      const row = cb.closest('label.toggle-row') || cb.parentElement;
-      if (!allowed) {
-        // Force off if it was on and the user just revoked permission.
-        if (cb.checked) {
-          cb.checked = false;
-          cb.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        cb.disabled = true;
-        if (row) {
-          row.style.opacity = '0.5';
-          row.title = `${label} requires the matching permission in Options ▸ Use External Devices.`;
-        }
-      } else {
-        cb.disabled = false;
-        if (row) {
-          row.style.opacity = '';
-          row.title = '';
-        }
-      }
-    }
-  }
-
-  // Round 30 — open the cloud-consent modal (formerly opened from the
-  // single remoteProcessingOptIn toggle). Reuses the existing modal
-  // markup at #remoteConsentModal — only the cloud permission needs
-  // explicit consent because it's the only class that transmits data
-  // off the device.
-  function _openCloudConsentModal() {
-    if (typeof openRemoteConsentModal === 'function') openRemoteConsentModal();
-  }
-
-  // Round 30 — generic device permission change handler. Shared by
-  // four of the five rows; the cloud row has its own handler that
-  // routes through the consent modal first.
-  function _wireDevicePermission(checkboxId, permKey, label) {
-    const cb = document.getElementById(checkboxId);
-    if (!cb) return;
-    cb.addEventListener('change', e => {
-      if (!state.devicePermissions) state.devicePermissions = {};
-      state.devicePermissions[permKey] = !!e.target.checked;
-      _applyDevicePermissionGating();
-      saveUserSettings();
-      notify.info(`${label}: ${e.target.checked ? 'allowed' : 'blocked'}.`);
-    });
-  }
-  _wireDevicePermission('devPermWebcam',     'webcam',     '📷 Webcam');
-  _wireDevicePermission('devPermMicrophone', 'microphone', '🎙 Microphone');
-  _wireDevicePermission('devPermHeartRate',  'heartRate',  '♥ Heart rate sensor');
-  _wireDevicePermission('devPermHaptic',     'haptic',     '🌀 Haptic devices');
-
-  // Cloud row — gated by the existing consent modal. Rejects the
-  // checkbox flip until the user explicitly agrees in the modal; the
-  // modal's I-Agree button then re-checks and saves.
-  $('devPermCloud')?.addEventListener('change', e => {
-    if (!state.devicePermissions) state.devicePermissions = {};
-    if (e.target.checked && !state.devicePermissions.cloud) {
-      // Roll the visible state back; the consent modal will set it
-      // forward only after the user agrees.
+  $('remoteProcessingOptIn')?.addEventListener('change', e => {
+    if (e.target.checked && !state.remoteProcessingOptIn) {
       e.target.checked = false;
-      _openCloudConsentModal();
+      openRemoteConsentModal();
       return;
     }
-    state.devicePermissions.cloud = !!e.target.checked;
-    state.remoteProcessingOptIn = state.devicePermissions.cloud;
-    const mirror = $('remoteProcessingOptIn'); if (mirror) mirror.checked = state.remoteProcessingOptIn;
-    _applyDevicePermissionGating();
+    state.remoteProcessingOptIn = !!e.target.checked;
     saveUserSettings();
-    notify.info(state.devicePermissions.cloud ? '☁ Cloud sync allowed.' : '☁ Cloud sync blocked.');
+    notify.info(state.remoteProcessingOptIn ? 'Remote backup + processing enabled.' : 'Remote backup + processing disabled.');
   });
-
-  // Apply the gating once at boot so per-session toggles in Step 5
-  // start with the correct enabled/disabled state even before the
-  // user opens Options.
-  setTimeout(() => { try { _applyDevicePermissionGating(); } catch {} }, 100);
   $('smartDirectorEnabled')?.addEventListener('change', e => {
     state.smartDirectorEnabled = !!e.target.checked;
     saveUserSettings();
@@ -43613,26 +42316,15 @@ Begin:`;
   $('remoteConsentCancelBtn')?.addEventListener('click', () => {
     const cb = $('remoteProcessingOptIn'); if (cb) cb.checked = false;
     state.remoteProcessingOptIn = false;
-    // Round 30 — keep the cloud row in the device list in sync.
-    if (state.devicePermissions) state.devicePermissions.cloud = false;
-    const cloudRow = $('devPermCloud'); if (cloudRow) cloudRow.checked = false;
     saveUserSettings();
     closeRemoteConsentModal();
   });
   $('remoteConsentAgreeBtn')?.addEventListener('click', () => {
     const cb = $('remoteProcessingOptIn'); if (cb) cb.checked = true;
     state.remoteProcessingOptIn = true;
-    // Round 30 — also flip the cloud device-permission row and trigger
-    // the gating refresh (no-op for non-Step-5 toggles, but keeps the
-    // mental model "all device classes go through the same allow-list
-    // surface" consistent).
-    if (!state.devicePermissions) state.devicePermissions = {};
-    state.devicePermissions.cloud = true;
-    const cloudRow = $('devPermCloud'); if (cloudRow) cloudRow.checked = true;
-    try { _applyDevicePermissionGating(); } catch {}
     saveUserSettings();
     closeRemoteConsentModal();
-    notify.info('☁ Cloud sync allowed.');
+    notify.info('Remote backup + processing enabled.');
   });
   $('remoteConsentModal')?.addEventListener('click', e => {
     if (e.target?.id === 'remoteConsentModal') closeRemoteConsentModal();
